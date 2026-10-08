@@ -18,7 +18,7 @@ Every transition in HedgePets goes through `scripts/anim/motion.gd` (`Motion`). 
 | plant grows a stage | the new stage scales up from the old one's size while the old shrinks away underneath |
 | seedbed, gift, emote | `appear`; gifts `drop` with a bounce, then bob; collected gifts and emotes `float_away` |
 | cleared junk | `vanish` |
-| camera (garden, viewer) | `Motion.spring`: a critically damped follow (eases in and out, no lunge); tight under a finger, a glide after a fling |
+| camera (garden orbit, viewer) | `Motion.spring` on yaw / tilt / distance: eases in and out, tight under a finger, unhurried on big turns, a glide after a fling |
 | toast | the old one fades, the new one slides in, holds, fades |
 | tools, seeds | opacity and scale ease to the selection |
 | seed bar, journal | `slide_in` / `fade` |

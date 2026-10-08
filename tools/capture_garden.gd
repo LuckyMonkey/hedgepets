@@ -13,6 +13,9 @@ func _run() -> void:
 	root.add_child(scene)
 	scene.set_process_input(false)
 	scene.set_process_unhandled_input(false)
+	if OS.get_environment("YAW") != "":
+		scene._yaw = deg_to_rad(float(OS.get_environment("YAW")))
+		scene._goal_yaw = scene._yaw
 	if OS.get_environment("DIST") != "":
 		scene._distance = float(OS.get_environment("DIST"))
 		scene._goal_distance = scene._distance

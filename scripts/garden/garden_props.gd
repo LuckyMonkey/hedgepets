@@ -444,3 +444,117 @@ static func bake_static(r: Node3D) -> Node3D:
 		merged.material_overlay = groups[key][1]
 		r.add_child(merged)
 	return r
+
+
+# ------------------------------------------------------------------ around the garden
+## The creek: a strip mesh following `center(z) -> x`, `width` wide, from z0 to z1, with the creek shader.
+static func creek(parent: Node3D, center: Callable, z0: float, z1: float, width: float) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var steps := int((z1 - z0) / 0.5)
+	var along := 0.0
+	var prev := Vector3.INF
+	var rows: Array = []
+	for i in range(steps + 1):
+		var z := lerpf(z0, z1, float(i) / steps)
+		var c := Vector3(center.call(z), 0.012, z)
+		if prev != Vector3.INF:
+			along += c.distance_to(prev)
+		var nxt := Vector3(center.call(z + 0.1), 0.012, z + 0.1)
+		var side := (nxt - c).normalized().cross(Vector3.UP)
+		var w := width * (0.5 + 0.1 * sin(z * 0.7))
+		rows.append([c - side * w, c + side * w, along])
+		prev = c
+	for i in range(rows.size() - 1):
+		var a: Array = rows[i]
+		var b: Array = rows[i + 1]
+		var quad := [[a[0], Vector2(a[2], 0)], [a[1], Vector2(a[2], 1)], [b[1], Vector2(b[2], 1)], [b[0], Vector2(b[2], 0)]]
+		for idx in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(Vector3.UP)
+			st.set_uv(quad[idx][1])
+			st.add_vertex(quad[idx][0])
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/creek.gdshader")
+	var node := MeshInstance3D.new()
+	node.mesh = st.commit()
+	node.material_override = m
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.name = "Creek"
+	parent.add_child(node)
+	return node
+
+
+## A plank footbridge across the creek, low and a bit crooked, with a rail on one side.
+static func footbridge(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "Footbridge", Vector3.ZERO, 0.0)
+	var wood := mat("bridge", Color("8a6e4e"))
+	var dir := (to - from).normalized()
+	var side := dir.cross(Vector3.UP)
+	var length := from.distance_to(to)
+	var yaw := rad_to_deg(atan2(-dir.z, dir.x))
+	var n := int(length / 0.32)
+	for k in range(n):
+		var at := from + dir * (k + 0.5) * length / n + Vector3(0, 0.1 + 0.08 * sin(PI * k / n), 0)
+		part(r, box(Vector3(0.26, 0.06, 1.2)), wood, at + side * rng.randf_range(-0.04, 0.04), Vector3(0, yaw + rng.randf_range(-4, 4), rng.randf_range(-3, 3)), 0.008)
+	for k in range(4):
+		var at := from + dir * length * (k + 0.5) / 4.0 + side * 0.62
+		part(r, cyl(0.04, 0.05, 0.8, 6), wood, at + Vector3(0, 0.45, 0), Vector3.ZERO, 0.008)
+	part(r, cyl(0.035, 0.035, length, 6), wood, (from + to) * 0.5 + side * 0.62 + Vector3(0, 0.82, 0), Vector3(0, yaw, 90), 0.008)
+	return r
+
+
+## Cattails and reeds at a creek's edge.
+static func cattails(parent: Node3D, at: Vector3, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "Cattails", at, rng.randf_range(0, 360))
+	var reed := mat("reed", Color("7a8a4a"))
+	var head := mat("cattail", Color("6a4a2e"))
+	for k in range(rng.randi_range(5, 9)):
+		var p := Vector3(rng.randf_range(-0.4, 0.4), 0, rng.randf_range(-0.4, 0.4))
+		var h := rng.randf_range(0.9, 1.6)
+		var tilt := Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(-8, 8))
+		part(r, cyl(0.015, 0.025, h, 5), reed, p + Vector3(0, h * 0.5, 0), tilt, 0.0)
+		if k % 2 == 0:
+			part(r, blob(Vector3(0.05, 0.16, 0.05), {"exponent": 2.0}), head, p + Vector3(0, h * 0.82, 0), tilt, 0.006)
+	return r
+
+
+## A New England house seen from the back: clapboard box, steep gable roof, chimney, windows with white trim, a back
+## door. `porch` adds steps toward the garden.
+static func house(parent: Node3D, at: Vector3, yaw: float, siding: Color, size: Vector3, porch: bool, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "House", at, yaw)
+	var wall := mat("siding%s" % siding.to_html(false), siding)
+	var trim := mat("trim", Color("efeae0"))
+	var roof_m := mat("shingles", Color("4a4440"))
+	var glass := mat("window", Color("3e4a52"), 0.3)
+	part(r, box(size), wall, Vector3(0, size.y * 0.5, 0), Vector3.ZERO, 0.02)
+	var roof := PrismMesh.new()
+	roof.size = Vector3(size.x * 1.08, size.y * 0.6, size.z * 1.1)
+	part(r, roof, roof_m, Vector3(0, size.y + size.y * 0.3, 0), Vector3(0, 90, 0), 0.02)
+	part(r, box(Vector3(0.7, 1.6, 0.7)), mat("brick", Color("8a4a3a")), Vector3(size.x * 0.28, size.y * 1.45, 0), Vector3.ZERO, 0.012)
+	# the back wall faces -z (the garden): windows in two rows, a door
+	var face := -size.z * 0.5 - 0.03
+	for row in range(2):
+		for k in range(3):
+			var x := (k - 1) * size.x * 0.3
+			if row == 0 and k == 1:
+				continue
+			var y := size.y * (0.3 + row * 0.42)
+			part(r, box(Vector3(0.9, 1.1, 0.06)), trim, Vector3(x, y, face), Vector3.ZERO, 0.0)
+			var lit := rng.randf() < 0.3
+			part(r, box(Vector3(0.7, 0.9, 0.08)), mat("windowlit", Color("e8c878")) if lit else glass, Vector3(x, y, face - 0.01), Vector3.ZERO, 0.0)
+	part(r, box(Vector3(1.0, 2.0, 0.08)), mat("door", Color("3a4a3a")), Vector3(0, 1.0, face), Vector3.ZERO, 0.008)
+	if porch:
+		for k in range(3):
+			part(r, box(Vector3(1.8, 0.18, 0.4)), mat("steps", Color("9a8a74")), Vector3(0, 0.09 + k * 0.18, face - 1.1 + k * 0.38), Vector3.ZERO, 0.008)
+	return r
+
+
+## A garden gate standing open on its hinge.
+static func open_gate(parent: Node3D, hinge: Vector3, width: float, swing_deg: float) -> Node3D:
+	var r := root(parent, "Gate", hinge, swing_deg)
+	var paint := mat("fence", Color("e3ddcb"))
+	part(r, box(Vector3(width, 0.08, 0.06)), paint, Vector3(width * 0.5, 0.3, 0), Vector3.ZERO, 0.006)
+	part(r, box(Vector3(width, 0.08, 0.06)), paint, Vector3(width * 0.5, 0.85, 0), Vector3.ZERO, 0.006)
+	for k in range(6):
+		part(r, box(Vector3(0.09, 1.15, 0.05)), paint, Vector3(0.1 + k * (width - 0.2) / 5.0, 0.6, 0.02), Vector3.ZERO, 0.006)
+	return r

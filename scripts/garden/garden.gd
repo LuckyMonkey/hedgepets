@@ -20,6 +20,16 @@ var _distance := 12.5
 ## The camera eases toward these (Motion.approach): input moves the goal, never the camera itself; a drag that ends
 ## moving keeps gliding a little.
 var _goal_target := Vector3(0.0, 0.0, -0.5)
+## Orbit: the camera circles the middle of the garden. Drag sideways to spin (with a glide after a fling), drag up and
+## down to tilt a little, wheel / pinch to zoom. Springs on all three (Motion.spring).
+const CENTER := Vector3(0.0, 0.0, -0.8)
+var _yaw := 0.0
+var _goal_yaw := 0.0
+var _yaw_velocity := 0.0
+var _elev := deg_to_rad(49.5)
+var _goal_elev := deg_to_rad(49.5)
+var _cam_yaw := {}
+var _cam_elev := {}
 var _goal_distance := 12.5
 var _pan_velocity := Vector3.ZERO
 var _cam_pan := {}
@@ -31,7 +41,29 @@ var roster: Array = []                            # every CharacterArtProfile; p
 var _nodes := {}                                  # pet name -> HedgePetNode
 var _wander := {}                                 # pet -> {target, wait, mode}
 var game: Node                                    # scripts/garden/garden_game.gd
-const GAP := Vector3(2.5, 0.0, -11.0)             # the collapsed bit of fence where visitors come through
+const GAP := Vector3(2.5, 0.0, -11.0)             # the collapsed bit of fence (the burying-ground side)
+## Ways in. Each pet comes by the one that fits it (gate_for): the creek's footbridge, the gap in the woods wall, the
+## garden gate from the houses, or the broken fence by the burying ground. out = where it waits unseen, peek = where
+## it stands looking in, inside = its first steps in the garden.
+const GATES := {
+	"fence": {"out": Vector3(2.5, 0, -17.0), "peek": Vector3(2.5, 0, -11.7), "inside": Vector3(2.5, 0, -8.5)},
+	"woods": {"out": Vector3(17.0, 0, -2.0), "peek": Vector3(10.2, 0, -2.0), "inside": Vector3(6.5, 0, -2.0)},
+	"creek": {"out": Vector3(-23.0, 0, 1.5), "peek": Vector3(-14.2, 0, 1.5), "inside": Vector3(-10.0, 0, 1.5)},
+	"houses": {"out": Vector3(-1.0, 0, 17.0), "peek": Vector3(-1.0, 0, 10.6), "inside": Vector3(-1.0, 0, 7.0)},
+}
+const GATE_WORDS := {
+	"creek": ["otter", "mink", "peeper", "bullfrog", "turtle", "mallard", "duck", "loon", "seal", "puffin", "eft", "beaver", "mole"],
+	"woods": ["fox", "coyote", "fisher", "bobcat", "fawn", "moose", "bear", "porcupine", "turkey", "owl", "woodpecker", "chipmunk", "hedgehog"],
+	"houses": ["raccoon", "opossum", "skunk", "mouse", "bunny", "robin", "cardinal", "jay", "chickadee", "dove", "bluebird", "squirrel"],
+}
+
+
+func gate_for(p: CharacterArtProfile) -> String:
+	for gate in GATE_WORDS:
+		for word: String in GATE_WORDS[gate]:
+			if p.species.contains(word):
+				return gate
+	return "fence"
 var _leaf_mats := {}
 var _bald_noise: FastNoiseLite
 
@@ -92,9 +124,9 @@ func _build_world() -> void:
 
 
 func _place_camera() -> void:
-	var dir := Vector3(0.0, 0.76, 0.65).normalized()   # three-quarter: you see faces, not just backs
-	camera.position = _target + dir * _distance
-	camera.look_at(_target, Vector3.UP)
+	var dir := Vector3(sin(_yaw) * cos(_elev), sin(_elev), cos(_yaw) * cos(_elev))
+	camera.position = CENTER + dir * _distance
+	camera.look_at(CENTER, Vector3.UP)
 
 
 ## A real lawn: soft patches of greens, bald dirt spots, a worn track from the gate to the grill.
@@ -208,9 +240,10 @@ func _build_backdrop() -> void:
 		"warm_yellow_green": Color("7a9246"), "soft_sage": Color("647e5e"), "pale_highlight": Color("9fb47a")}
 	# a ragged hedge along the back, behind the fence, with a gap where it has thinned
 	_burying_ground()
+	_surroundings()
 	_bush(Vector3(12.5, 1.2, -12.8), Vector3(4.6, 1.4, 1.3), "hedgeivy", hedge_palette, Color("2a4223"), 0.7, 0.55, "cushion")
 	# tall trees: their crowns go off the top of the screen, their shadows fall across the lawn
-	_tree(Vector3(-7.4, 0, 2.2), 12.0, hedge_palette)          # near, at the edge: a trunk, and its shade on the lawn
+	_tree(Vector3(-12.6, 0, 6.5), 12.0, hedge_palette)          # by the creek: its shade reaches the lawn
 	_pine(Vector3(5.5, 0, -15.0), 14.0)
 	_pine(Vector3(9.0, 0, -12.5), 11.0)
 	_pine(Vector3(-9.5, 0, -7.0), 12.0)
@@ -220,6 +253,62 @@ func _build_backdrop() -> void:
 	for at: Vector3 in [Vector3(8.5, 0.0, -6.5), Vector3(-9.5, 0.0, -6.8)]:
 		_bush(at + Vector3(0, 0.15, 0), Vector3(1.3, 0.5, 1.1), "hedgeivy", autumn, Color("7a5332"), 0.45, 0.9, "dome")
 		_thing("leaf_pile", get_child(get_child_count() - 1), Vector2(at.x, at.z), 1.4, 3)
+
+
+## The creek's course (x for a given z), down the west side.
+func _creek_x(z: float) -> float:
+	return -17.0 + 1.5 * sin(z * 0.15)
+
+
+func _in_creek(p: Vector2) -> bool:
+	return absf(p.x - _creek_x(p.y)) < 1.7
+
+
+## What surrounds the garden, one world on each side, each with its way in (GATES): the burying ground behind the
+## broken fence (north), woods past the stone wall (east), a creek with a footbridge (west), the houses and the
+## garden gate (south). They sit far enough out that the tilt-shift keeps them soft.
+func _surroundings() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 1775
+	# west: the creek, a footbridge where the creek gate is, cattails along the banks
+	var west := Node3D.new()
+	west.name = "Creekside"
+	add_child(west)
+	GardenProps.creek(self, _creek_x, -32.0, 24.0, 2.6)
+	var bz: float = GATES["creek"]["peek"].z
+	GardenProps.footbridge(west, Vector3(_creek_x(bz) - 2.3, 0, bz), Vector3(_creek_x(bz) + 2.3, 0, bz), r)
+	for k in range(14):
+		var z := r.randf_range(-24, 18)
+		if absf(z - bz) < 2.0:
+			continue
+		var side := 1.0 if r.randf() < 0.5 else -1.0
+		GardenProps.cattails(west, Vector3(_creek_x(z) + side * r.randf_range(1.2, 1.7), 0, z), r)
+	for k in range(12):
+		var z := r.randf_range(-26, 20)
+		GardenProps.rock(west, Vector3(_creek_x(z) + r.randf_range(-1.5, 1.5), 0, z), r.randf_range(0.2, 0.45), r)
+	GardenProps.bake_static(west)
+	for k in range(4):
+		_pine(Vector3(_creek_x(-20.0 + k * 11.0) - r.randf_range(4.0, 7.0), 0, -20.0 + k * 11.0), r.randf_range(10.0, 13.0))
+	# south: the houses, backs to the garden, and a picket fence with the garden gate standing open
+	var south := Node3D.new()
+	south.name = "Houses"
+	add_child(south)
+	var gx: float = GATES["houses"]["peek"].x
+	GardenProps.broken_fence(south, -16.0, 16.0, 10.0, r, Vector2(gx - 1.1, gx + 1.1))
+	GardenProps.house(south, Vector3(-12.5, 0, 20.0), 0.0, Color("e8e2d2"), Vector3(8.0, 5.0, 6.5), false, r)
+	GardenProps.house(south, Vector3(0.0, 0, 18.5), 0.0, Color("c8a050"), Vector3(9.0, 5.5, 7.0), true, r)
+	GardenProps.house(south, Vector3(12.5, 0, 20.5), 0.0, Color("8a3a2a"), Vector3(8.0, 5.0, 6.5), false, r)
+	GardenProps.bake_static(south)
+	GardenProps.open_gate(self, Vector3(gx + 1.1, 0, 10.0), 2.1, 115.0)
+	# east: woods past the stone wall, through the gap in it
+	for k in range(12):
+		var at := Vector3(r.randf_range(12.0, 28.0), 0, r.randf_range(-24.0, 16.0))
+		if absf(at.z - GATES["woods"]["peek"].z) < 2.5 and at.x < 20.0:
+			continue                                           # keep the woods path open
+		if k % 3 == 0:
+			_tree(at, r.randf_range(10.0, 13.0), SpeciesBuilder.palette_of(["autumn", "green", "crimson"][k % 3]), ["hedgeoak", "hedgemaple"][k % 2])
+		else:
+			_pine(at, r.randf_range(10.0, 15.0))
 
 
 ## Past the back fence on the left: an old New England burying ground. Slate stones in uneven rows inside a low
@@ -279,7 +368,7 @@ func _leaf_litter() -> void:
 			p = Vector3(c.x + cos(a) * rr, 0, c.z + sin(a) * rr)
 		else:
 			p = Vector3(_rng.randf_range(-18, 18), 0, _rng.randf_range(-24, 10))
-		if _in_puddle(Vector2(p.x, p.z)):
+		if _in_puddle(Vector2(p.x, p.z)) or _in_creek(Vector2(p.x, p.z)):
 			continue
 		var s := _rng.randf_range(0.22, 0.4)
 		var b := Basis.from_euler(Vector3(_rng.randf_range(-0.25, 0.25), _rng.randf() * TAU, _rng.randf_range(-0.25, 0.25))).scaled(Vector3(s, s, s))
@@ -418,7 +507,9 @@ func _thing(kind: String, node: Node3D, at: Vector2, radius: float, value: int, 
 func _build_props() -> void:
 	var r := _rng
 	GardenProps.bake_static(GardenProps.broken_fence(self, -16.0, 16.0, -11.0, r, Vector2(0.5, 4.5)))
-	GardenProps.bake_static(GardenProps.stone_wall(self, Vector3(7.2, 0, -10.2), Vector3(9.6, 0, 5.0), r))      # the old field wall down the side
+	# the old field wall down the east side, with a gap where the woods path comes in
+	GardenProps.bake_static(GardenProps.stone_wall(self, Vector3(7.2, 0, -10.2), Vector3(8.3, 0, -3.2), r))
+	GardenProps.bake_static(GardenProps.stone_wall(self, Vector3(8.6, 0, -0.8), Vector3(9.6, 0, 5.0), r))
 	obstacles.append([Vector2(8.0, -5.0), 0.6])
 	obstacles.append([Vector2(8.8, 0.0), 0.6])
 	_thing("lawn_chair", GardenProps.lawn_chair(self, Vector3(-5.2, 0, -3.2), 28), Vector2(-5.0, -3.2), 1.3, 6)
@@ -471,7 +562,7 @@ func _build_grass() -> void:
 	for i in range(22000):
 		var x := _rng.randf_range(-19, 19)
 		var z := _rng.randf_range(-11, 11)
-		if _blocked(Vector2(x, z), 0.12) or _in_puddle(Vector2(x, z)):
+		if _blocked(Vector2(x, z), 0.12) or _in_puddle(Vector2(x, z)) or _in_creek(Vector2(x, z)):
 			continue
 		var bald := _bald_noise.get_noise_2d((x + 30.0) / 60.0 * 512.0, (z + 30.0) / 60.0 * 512.0)
 		if bald > 0.4 and _rng.randf() < 0.8:
@@ -574,11 +665,11 @@ func node_for(p: CharacterArtProfile) -> HedgePetNode:
 	node.rotation.y = _rng.randf_range(-PI, PI)
 	node.set_detail("MEDIUM", true)
 	node.visible = false
-	node.position = GAP + Vector3(0, 0, -6)
+	node.position = GATES[gate_for(p)]["out"]
 	_contact_shadow(node, p)
 	pets.append(node)
 	_nodes[p.pet_name] = node
-	_wander[node] = {"target": node.position, "wait": _rng.randf_range(0.5, 3.0), "mode": "away"}
+	_wander[node] = {"target": node.position, "wait": _rng.randf_range(0.5, 3.0), "mode": "away", "gate": gate_for(p)}
 	return node
 
 
@@ -588,32 +679,34 @@ func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 	var w: Dictionary = _wander[node]
 	var was: String = w["mode"]
 	w["mode"] = mode
+	var g: Dictionary = GATES[w.get("gate", "fence")]
+	var side := Vector3(g["peek"] - g["out"]).normalized().cross(Vector3.UP)
 	match mode:
 		"away":
 			if node.visible and not at_once:             # out through the gap: shrink away, then park outside
-				Motion.vanish(node, false).tween_callback(func() -> void: node.position = GAP + Vector3(0, 0, -6))
+				Motion.vanish(node, false).tween_callback(func() -> void: node.position = g["out"])
 			else:
 				node.visible = false
-				node.position = GAP + Vector3(0, 0, -6)
+				node.position = g["out"]
 		"peek":
 			if was == "away":
-				node.position = GAP + Vector3(_rng.randf_range(-1.0, 1.0), 0, -4.0)
+				node.position = g["out"].lerp(g["peek"], 0.55) + side * _rng.randf_range(-1.0, 1.0)
 				Motion.appear(node, Vector3.ONE * PET_SCALE, Motion.SLOW)
-			w["target"] = GAP + Vector3(_rng.randf_range(-1.2, 1.2), 0, -0.7)
+			w["target"] = g["peek"] + side * _rng.randf_range(-1.2, 1.2)
 		"roam":
 			if was == "away":
 				Motion.appear(node, Vector3.ONE * PET_SCALE, Motion.SLOW)
-				node.position = GAP + Vector3(0, 0, 1.5)
+				node.position = g["peek"].lerp(g["inside"], 0.5)
 				if at_once:                              # already living here when the garden opens
 					for k in range(20):
 						var spot := Vector2(_rng.randf_range(-3, 3), _rng.randf_range(-2, 3))
 						if not _blocked(spot, 0.8):
 							node.position = Vector3(spot.x, 0, spot.y)
 							break
-			w["target"] = GAP + Vector3(_rng.randf_range(-1.0, 1.0), 0, 2.5)
+			w["target"] = g["inside"] + side * _rng.randf_range(-1.0, 1.0)
 			w["wait"] = 0.5
 		"leave":
-			w["target"] = GAP + Vector3(0, 0, -5.0)
+			w["target"] = g["out"].lerp(g["peek"], 0.2)
 
 
 func pet_mode(node: HedgePetNode) -> String:
@@ -623,10 +716,11 @@ func pet_mode(node: HedgePetNode) -> String:
 func _process(delta: float) -> void:
 	for node in pets:
 		_walk(node, delta)
-	if _press_at == Vector2.INF and _pan_velocity.length() > 0.01:     # glide after a fling
-		_goal_target = _clamp_target(_goal_target + _pan_velocity * delta)
-		_pan_velocity *= pow(0.03, delta)
-	_target = Motion.spring(_target, _goal_target, _cam_pan, 0.07 if _dragged else 0.22, delta)   # tight under a finger
+	if _press_at == Vector2.INF and absf(_yaw_velocity) > 0.001:     # keep turning a little after a fling
+		_goal_yaw += _yaw_velocity * delta
+		_yaw_velocity *= pow(0.04, delta)
+	_yaw = Motion.spring(_yaw, _goal_yaw, _cam_yaw, 0.07 if _dragged else 0.45, delta)   # tight under a finger, unhurried otherwise
+	_elev = Motion.spring(_elev, _goal_elev, _cam_elev, 0.1 if _dragged else 0.25, delta)
 	_distance = Motion.spring(_distance, _goal_distance, _cam_zoom, 0.16, delta)
 	_place_camera()
 
@@ -645,7 +739,7 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 	if to.length() < 0.15:
 		node.walking = move_toward(node.walking, 0.0, delta * 3.0)
 		if w["mode"] == "peek":
-			node.rotation.y = lerp_angle(node.rotation.y, -PI * 0.5, clampf(delta * 3.0, 0.0, 1.0))   # looking in
+			node.rotation.y = lerp_angle(node.rotation.y, _heading(node.position, CENTER), clampf(delta * 3.0, 0.0, 1.0))   # looking in
 			return
 		if w["mode"] == "leave":
 			set_pet_mode(node, "away")
@@ -653,7 +747,7 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 		w["wait"] = float(w["wait"]) - delta
 		# standing: turn three-quarters toward the viewer, so you see faces, not backs
 		var face: float = w.get("face", 0.0)
-		node.rotation.y = lerp_angle(node.rotation.y, -PI * 0.5 + face, clampf(delta * 2.0, 0.0, 1.0))
+		node.rotation.y = lerp_angle(node.rotation.y, _heading(node.position, camera.position) + face, clampf(delta * 2.0, 0.0, 1.0))
 		if w.get("fav", "") != "":
 			emote(node, str(w["fav"]))                   # got to a favourite thing: enjoy it
 			w["fav"] = ""
@@ -702,6 +796,11 @@ func emote(node: Node3D, text: String) -> void:
 	Motion.float_away(l, 0.7, 1.6, 0.6)
 
 
+## The yaw that points a pet (it faces +x) from `from` toward `to`.
+func _heading(from: Vector3, to: Vector3) -> float:
+	return atan2(-(to.z - from.z), to.x - from.x)
+
+
 func _path_blocked(a: Vector2, b: Vector2) -> bool:
 	for k in range(1, 8):
 		if _blocked(a.lerp(b, float(k) / 8.0), 0.7):
@@ -726,15 +825,18 @@ func _build_tilt_shift() -> void:
 
 # ------------------------------------------------------------------ input: pan, zoom, tap a pet
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMagnifyGesture:
+		_goal_distance = clampf(_goal_distance / event.factor, 8.0, 24.0)
+		return
 	if event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
-		_goal_distance = clampf(_goal_distance * (0.88 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.12), 8.0, 34.0)
+		_goal_distance = clampf(_goal_distance * (0.88 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.12), 8.0, 24.0)
 		return
 	var pressed: bool = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) or (event is InputEventScreenTouch and event.pressed)
 	var released: bool = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed) or (event is InputEventScreenTouch and not event.pressed)
 	if pressed:
 		_press_at = event.position
 		_dragged = false
-		_pan_velocity = Vector3.ZERO
+		_yaw_velocity = 0.0
 	elif released and _press_at != Vector2.INF:
 		if not _dragged:
 			_tap(event.position)
@@ -743,10 +845,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.position.distance_to(_press_at) > 10.0:
 			_dragged = true
 		if _dragged:
-			var k := _goal_distance * 0.0016
-			var move := Vector3(-event.relative.x * k, 0.0, -event.relative.y * k)
-			_goal_target = _clamp_target(_goal_target + move)
-			_pan_velocity = _pan_velocity.lerp(move * 60.0, 0.5)
+			var turn: float = -event.relative.x * 0.006
+			_goal_yaw += turn
+			_yaw_velocity = lerpf(_yaw_velocity, turn * 60.0, 0.5)
+			_goal_elev = clampf(_goal_elev + event.relative.y * 0.003, deg_to_rad(28), deg_to_rad(72))
 
 
 func _tap(at: Vector2) -> void:

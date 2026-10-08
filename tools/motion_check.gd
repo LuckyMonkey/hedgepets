@@ -40,15 +40,16 @@ func _run() -> void:
 	var rest: float = garden.PET_SCALE
 	watch("gerald scale", func() -> float: return gerald.scale.y / rest, 0.2)
 	watch("gerald leaves", func() -> float: return gerald.leaf_growth, 0.12)
-	watch("camera x", func() -> float: return garden.camera.position.x, 0.5)
+	watch("camera yaw", func() -> float: return garden._yaw, 0.06)
+	watch("camera height", func() -> float: return garden.camera.position.y, 0.5)
 	watch("camera distance", func() -> float: return garden._distance, 0.6)
 	watch("toast alpha", func() -> float: return game._toast.modulate.a, 0.35)
 	await frames(60)
 	print("regraft…")
 	gerald.set_plant("holly")
 	await frames(90)
-	print("camera pan + zoom…")
-	garden._goal_target = Vector3(6, 0, 3)
+	print("camera orbit + zoom…")
+	garden._goal_yaw += 2.0
 	garden._goal_distance = 20.0
 	await frames(90)
 	print("a plant grows a stage…")

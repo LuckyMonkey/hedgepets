@@ -60,6 +60,19 @@ puddle, Juniper the tipped chair, Bramble rocks. Clear everything and you lose t
 The wish keys come from `garden_game.gd:garden_counts()`: `puddle sticks branches rocks leaf_pile lawn_chair grill tire pot cleared`
 and `<plant>_planted/_grown/_flowering`.
 
+**Camera:** it orbits the middle of the garden. Drag sideways to spin it around (a fling keeps it turning a little),
+drag up or down to tilt, wheel or pinch to zoom (8 to 24). There's no panning: the garden stays put and you walk
+around it. The garden itself is still rectangular.
+
+**All around it,** soft in the tilt-shift, each with its own way in (`garden.gd: GATES`, `gate_for`):
+
+| side | world | gate | who comes that way |
+|---|---|---|---|
+| north | the burying ground | the broken fence | moths, bats, the woodchuck, snakes, the rest |
+| east | woods (oaks, maples, pines) | the gap in the stone wall | fox, coyote, bobcat, fawn, moose, bear, owl, turkey... |
+| west | a creek with cattails and rocks | the plank footbridge | otter, mink, frogs, turtles, ducks, the loon, Gerald |
+| south | three houses (backs to the garden) | the garden gate, standing open | raccoon, opossum, skunk, mouse, bunny, songbirds |
+
 Past the back fence: an old New England burying ground, autumn and not spooky. Slate stones in uneven rows, a low
 field-stone wall, a big sugar maple gone crimson, one bare old tree, pumpkins along the fence, and fallen leaves
 over the lawn (`_leaf_litter`). Static scenery is merged into one mesh per material (`GardenProps.bake_static`).
