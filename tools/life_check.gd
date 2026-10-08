@@ -59,7 +59,11 @@ func _run() -> void:
 	if gerald.curious > 0.1:
 		return _fail("Gerald kept staring after the pointer left")
 	print("looks up at the pointer, with a tilt, and lets go")
-	# watering a pet
+	# watering a pet (frame him first: a tap in the top bar or the toolbar belongs to the HUD)
+	garden._goal_target = gerald.position
+	garden._target = gerald.position
+	for i in range(5):
+		await process_frame
 	var w0: int = game.coins
 	game.tool = "water"
 	game.tap(garden.camera.unproject_position(gerald.global_position + Vector3(0, 0.6, 0)), gerald)

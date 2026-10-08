@@ -66,17 +66,19 @@ regions = {
 },
 "HEAD": {
 "center": Vector3(1.22, 0.58, 0),
-"color": Color(0.4862745, 0.54901963, 0.36078432, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
-"outline": 0.014,
+"coverage": 0.97,
+"density": 3.2,
+"foliage": true,
+"growth_up": 0.3,
+"leaf_scale": 0.55,
+"leaves_per_cluster": 18,
+"material": "foliage",
+"max_displacement": 0.12,
 "parent": "",
-"radii": Vector3(0.4, 0.34, 0.36),
-"shape": "egg"
+"radii": Vector3(0.432, 0.36720002, 0.38880002),
+"shape": "egg",
+"tint": "pale_highlight",
+"tint_amount": 0.42
 },
 "TAIL": {
 "center": Vector3(-1.08, 0.24, 0),
@@ -123,8 +125,28 @@ anchors = {
 "on": "HEAD"
 }
 }
+protected_zones = {
+"EYE_LEFT": {
+"radius": 0.36,
+"strength": 1.0
+},
+"EYE_RIGHT": {
+"radius": 0.36,
+"strength": 1.0
+},
+"MOUTH": {
+"radius": 0.16,
+"strength": 1.0
+},
+"NOSE": {
+"radius": 0.2,
+"strength": 1.0
+}
+}
 feet = Array[Vector3]([Vector3(0.66, 0, 0.62), Vector3(0.66, 0, -0.62), Vector3(-0.62, 0, 0.6), Vector3(-0.62, 0, -0.6)])
-leaf_size = 0.34
+leaf_size = 0.44200000000000006
+leaves_per_cluster = 12
+coverage = 0.8
 flowering = 0.8
 tendrils = 3
 palette = {
@@ -135,5 +157,8 @@ palette = {
 "soft_sage": Color(0.47843137, 0.5803922, 0.4627451, 1),
 "warm_yellow_green": Color(0.5411765, 0.6392157, 0.3529412, 1)
 }
-inner_mass = Color(0.2, 0.3137255, 0.17254902, 1)
-eye_size = 0.08
+inner_mass = Color(0.176, 0.27607843, 0.15184315, 1)
+ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
+silhouette_ink = 1.0
+interior_ink = 0.6
+eye_size = 0.092

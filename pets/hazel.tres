@@ -53,16 +53,16 @@ regions = {
 }
 },
 "EARS": {
-"center": Vector3(-0.06, 0.36, 0.2),
-"color": Color(0.6901961, 0.44705883, 0.24313726, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
+"center": Vector3(-0.0648, 0.38880002, 0.216),
+"coverage": 1.0,
+"density": 7.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.42,
+"leaves_per_cluster": 14,
+"material": "foliage",
+"max_displacement": 0.05,
 "mirror": true,
-"outline": 0.012,
 "parent": "HEAD",
 "radii": Vector3(0.07, 0.15, 0.05),
 "rotation": Vector3(-14, 0, 0),
@@ -98,34 +98,38 @@ regions = {
 },
 "HEAD": {
 "center": Vector3(0.2, 1.52, 0),
-"color": Color(0.6901961, 0.44705883, 0.24313726, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
-"outline": 0.014,
+"coverage": 0.97,
+"density": 3.2,
+"foliage": true,
+"growth_up": 0.3,
+"leaf_scale": 0.55,
+"leaves_per_cluster": 18,
+"material": "foliage",
+"max_displacement": 0.12,
 "parent": "",
-"radii": Vector3(0.42, 0.38, 0.38),
+"radii": Vector3(0.4536, 0.4104, 0.4104),
 "shape": {
 "exponent": 2.0,
 "taper": -0.15
-}
+},
+"tint": "pale_highlight",
+"tint_amount": 0.42
 },
 "MUZZLE": {
-"center": Vector3(0.32, -0.1, 0),
-"color": Color(0.8901961, 0.7882353, 0.627451, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
-"outline": 0.01,
+"center": Vector3(0.3456, -0.108, 0),
+"coverage": 1.0,
+"density": 5.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.36,
+"leaves_per_cluster": 14,
+"material": "foliage",
+"max_displacement": 0.05,
 "parent": "HEAD",
-"radii": Vector3(0.17, 0.13, 0.18),
-"shape": "cushion"
+"radii": Vector3(0.1445, 0.13, 0.18),
+"shape": "cushion",
+"tint": "pale_highlight",
+"tint_amount": 0.35
 },
 "TAIL": {
 "center": Vector3(-0.72, 1.1, 0),
@@ -186,9 +190,32 @@ anchors = {
 "on": "MUZZLE"
 }
 }
+protected_zones = {
+"EYE_LEFT": {
+"radius": 0.36,
+"strength": 1.0
+},
+"EYE_RIGHT": {
+"radius": 0.36,
+"strength": 1.0
+},
+"MOUTH": {
+"radius": 0.16,
+"strength": 1.0
+},
+"NOSE": {
+"radius": 0.2,
+"strength": 1.0
+},
+"TEETH": {
+"radius": 0.18,
+"strength": 1.0
+}
+}
 feet = Array[Vector3]([Vector3(0.36, 0, 0.2), Vector3(0.36, 0, -0.2), Vector3(-0.08, 0, 0.34), Vector3(-0.08, 0, -0.34)])
-leaf_size = 0.32
-leaves_per_cluster = 18
+leaf_size = 0.41600000000000004
+leaves_per_cluster = 12
+coverage = 0.8
 flower_color = Color(0.65882355, 0.45490196, 0.22745098, 1)
 flowering = 0.5
 tendrils = 0
@@ -200,6 +227,9 @@ palette = {
 "soft_sage": Color(0.5411765, 0.41568628, 0.22745098, 1),
 "warm_yellow_green": Color(0.7882353, 0.57254905, 0.23529412, 1)
 }
-inner_mass = Color(0.3529412, 0.20392157, 0.09411765, 1)
-eye_size = 0.095
+inner_mass = Color(0.31058824, 0.17945099, 0.08282353, 1)
+ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
+silhouette_ink = 1.0
+interior_ink = 0.6
+eye_size = 0.10924999999999999
 hop_height = 0.5

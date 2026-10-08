@@ -36,7 +36,7 @@ frame_target = Vector3(0.4, 1.6, 0)
 frame_distance = 9.6
 regions = {
 "ANTLERS": {
-"center": Vector3(-0.08, 0.5, 0.68),
+"center": Vector3(-0.0864, 0.54, 0.73440003),
 "color": Color(0.5411765, 0.43137255, 0.2901961, 1),
 "density": 0.0,
 "foliage": false,
@@ -52,18 +52,21 @@ regions = {
 "shape": "paddle"
 },
 "BELL": {
-"center": Vector3(0.12, -0.5, 0),
+"center": Vector3(0.1296, -0.54, 0),
 "color": Color(0.47843137, 0.38431373, 0.28235295, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
-"outline": 0.012,
+"coverage": 1.0,
+"density": 6.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.34,
+"leaves_per_cluster": 12,
+"material": "foliage",
+"max_displacement": 0.04,
 "parent": "HEAD",
 "radii": Vector3(0.08, 0.17, 0.06),
-"shape": "teardrop"
+"shape": "teardrop",
+"tint_amount": 0.75,
+"tint_color": Color(0.47843137, 0.38431373, 0.28235295, 1)
 },
 "BODY": {
 "center": Vector3(0, 1.62, 0),
@@ -80,15 +83,16 @@ regions = {
 }
 },
 "EARS": {
-"center": Vector3(-0.26, 0.32, 0.44),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "ear",
-"max_displacement": 0.0,
+"center": Vector3(-0.2808, 0.3456, 0.47520003),
+"coverage": 1.0,
+"density": 7.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.42,
+"leaves_per_cluster": 14,
+"material": "foliage",
+"max_displacement": 0.05,
 "mirror": true,
-"outline": 0.012,
 "parent": "HEAD",
 "radii": Vector3(0.07, 0.15, 0.05),
 "rotation": Vector3(-40, 0, 0)
@@ -111,14 +115,18 @@ regions = {
 },
 "HEAD": {
 "center": Vector3(1.72, 2.2, 0),
-"density": 2.0,
+"coverage": 0.97,
+"density": 3.2,
 "foliage": true,
 "growth_up": 0.3,
 "leaf_scale": 0.55,
+"leaves_per_cluster": 18,
 "material": "foliage",
-"max_displacement": 0.08,
+"max_displacement": 0.12,
 "parent": "",
-"radii": Vector3(0.56, 0.52, 0.5)
+"radii": Vector3(0.60480005, 0.5616, 0.54),
+"tint": "pale_highlight",
+"tint_amount": 0.42
 },
 "HUMP": {
 "center": Vector3(0.7, 2.18, 0),
@@ -132,21 +140,23 @@ regions = {
 "radii": Vector3(0.58, 0.42, 0.52)
 },
 "MUZZLE": {
-"center": Vector3(0.58, -0.24, 0),
-"color": Color(0.47843137, 0.38431373, 0.28235295, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
-"outline": 0.016,
+"center": Vector3(0.6264, -0.2592, 0),
+"coverage": 1.0,
+"density": 5.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.36,
+"leaves_per_cluster": 14,
+"material": "foliage",
+"max_displacement": 0.05,
 "parent": "HEAD",
-"radii": Vector3(0.4, 0.27, 0.3),
+"radii": Vector3(0.34, 0.27, 0.3),
 "shape": {
 "exponent": 2.4,
 "taper": 0.15
-}
+},
+"tint": "pale_highlight",
+"tint_amount": 0.35
 }
 }
 anchors = {
@@ -176,29 +186,30 @@ anchors = {
 }
 }
 protected_zones = {
-"CHEEK_LEFT": {
-"radius": 0.3,
-"strength": 0.6
-},
-"CHEEK_RIGHT": {
-"radius": 0.3,
-"strength": 0.6
-},
 "EYE_LEFT": {
-"radius": 0.45,
+"radius": 0.36,
 "strength": 1.0
 },
 "EYE_RIGHT": {
-"radius": 0.45,
+"radius": 0.36,
+"strength": 1.0
+},
+"MOUTH": {
+"radius": 0.16,
+"strength": 1.0
+},
+"NOSE": {
+"radius": 0.2,
 "strength": 1.0
 }
 }
 feet = Array[Vector3]([Vector3(0.8, 0, 0.32), Vector3(0.8, 0, -0.32), Vector3(-0.8, 0, 0.34), Vector3(-0.8, 0, -0.34)])
-leaf_size = 0.42
-leaves_per_cluster = 22
+leaf_size = 0.546
+leaves_per_cluster = 12
+coverage = 0.8
 flower_color = Color(0.5411765, 0.3529412, 0.20392157, 1)
 flowering = 0.25
-tendrils = 0
+tendrils = 3
 palette = {
 "deep_forest": Color(0.12156863, 0.23137255, 0.1882353, 1),
 "matcha": Color(0.27058825, 0.41960785, 0.29803923, 1),
@@ -207,6 +218,9 @@ palette = {
 "soft_sage": Color(0.36862746, 0.47843137, 0.42352942, 1),
 "warm_yellow_green": Color(0.37254903, 0.49019608, 0.30588236, 1)
 }
-inner_mass = Color(0.13333334, 0.22745098, 0.17254902, 1)
-eye_size = 0.12
+inner_mass = Color(0.11733334, 0.20015687, 0.15184315, 1)
+ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
+silhouette_ink = 1.0
+interior_ink = 0.6
+eye_size = 0.13799999999999998
 hop_height = 0.18

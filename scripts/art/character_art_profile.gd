@@ -230,7 +230,7 @@ static func clover() -> CharacterArtProfile:
 	p.wants = {"notice": {"cleared": 4}, "visit": {"clover_planted": 1}, "resident": {"clover_grown": 2}}
 	p.hints = {"notice": "A tidier lawn would catch a bunny's eye.", "visit": "Something sweet and three-leaved would bring her in.",
 		"resident": "Two good clover patches and she'd never leave."}
-	return p
+	return SpeciesBuilder.plantify(p)
 
 
 ## Juniper: a hedgehog of fern. A low bean body with fronds that sweep up and back (spiky, but bounded), a bare
@@ -280,7 +280,7 @@ static func juniper() -> CharacterArtProfile:
 	p.wants = {"notice": {"leaf_pile": 1}, "visit": {"fern_planted": 1}, "resident": {"lawn_chair": 1, "fern_grown": 1}}
 	p.hints = {"notice": "Hedgehogs can't resist a pile of old leaves.", "visit": "A fern would make him feel at home.",
 		"resident": "He's been eyeing that tipped-over chair as a bedroom. Don't tidy it away."}
-	return p
+	return SpeciesBuilder.plantify(p)
 
 
 ## Bramble: a tortoise whose shell is a flowering jasmine bush. A low dome shell, a mossy head and legs, a short
@@ -329,7 +329,7 @@ static func bramble() -> CharacterArtProfile:
 	p.wants = {"notice": {"rocks": 2}, "visit": {"jasmine_planted": 1}, "resident": {"jasmine_flowering": 1, "puddle": 1}}
 	p.hints = {"notice": "Warm stones to sun on.", "visit": "The smell of jasmine, even a little one.",
 		"resident": "Flowering jasmine and a drink of water. He's in no hurry."}
-	return p
+	return SpeciesBuilder.plantify(p)
 
 
 
@@ -399,7 +399,7 @@ static func spruce() -> CharacterArtProfile:
 	p.wants = {"notice": {"cleared": 6}, "visit": {"pine_planted": 1}, "resident": {"pine_grown": 2, "puddle": 1}}
 	p.hints = {"notice": "Something big needs room. Clear out some of the junk.", "visit": "A pine seedling smells like home to him.",
 		"resident": "Two good pines and somewhere to drink, and he'll stay."}
-	return p
+	return SpeciesBuilder.plantify(p)
 
 
 ## Hazel: a squirrel in autumn oak, sitting up, with a tail bigger than she is curling up behind; acorns for flowers.
@@ -463,7 +463,7 @@ static func hazel() -> CharacterArtProfile:
 	p.wants = {"notice": {"branches": 1}, "visit": {"oak_planted": 1}, "resident": {"oak_flowering": 1, "sticks": 2}}
 	p.hints = {"notice": "A fallen branch to run along. Don't clear them all.", "visit": "An oak, even a tiny one.",
 		"resident": "An oak with acorns on it, and a few sticks for the nest."}
-	return p
+	return SpeciesBuilder.plantify(p)
 
 
 ## Smudge: a raccoon of silvery sage, with a dark mask, a ringed tail and dark mittens. He likes the junk best of all.
@@ -529,7 +529,7 @@ static func smudge() -> CharacterArtProfile:
 	p.wants = {"notice": {"grill": 1}, "visit": {"sage_planted": 1}, "resident": {"grill": 1, "tire": 1, "sage_grown": 1}}
 	p.hints = {"notice": "Something smells that old grill from streets away.", "visit": "Sage. He likes to roll in it.",
 		"resident": "Keep the grill AND the tire, and grow him some sage. He's not going to explain."}
-	return p
+	return SpeciesBuilder.plantify(p)
 
 
 ## Every pet: the hand-made profiles (res://pets/*.tres, Gerald first), then res://pets/species.json.

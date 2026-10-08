@@ -52,16 +52,16 @@ regions = {
 }
 },
 "EARS": {
-"center": Vector3(-0.1, 0.36, 0.27),
-"color": Color(0.5411765, 0.5411765, 0.47843137, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
+"center": Vector3(-0.108, 0.38880002, 0.29160002),
+"coverage": 1.0,
+"density": 7.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.42,
+"leaves_per_cluster": 14,
+"material": "foliage",
+"max_displacement": 0.05,
 "mirror": true,
-"outline": 0.012,
 "parent": "HEAD",
 "radii": Vector3(0.1, 0.12, 0.05),
 "rotation": Vector3(-20, 0, 0)
@@ -82,50 +82,58 @@ regions = {
 },
 "HEAD": {
 "center": Vector3(1, 0.98, 0),
-"color": Color(0.4862745, 0.47843137, 0.43137255, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
-"outline": 0.014,
+"coverage": 0.97,
+"density": 3.2,
+"foliage": true,
+"growth_up": 0.3,
+"leaf_scale": 0.55,
+"leaves_per_cluster": 18,
+"material": "foliage",
+"max_displacement": 0.12,
 "parent": "",
-"radii": Vector3(0.48, 0.42, 0.46),
+"radii": Vector3(0.5184, 0.4536, 0.49680004),
 "shape": {
 "exponent": 2.0,
 "taper": -0.4
-}
+},
+"tint": "pale_highlight",
+"tint_amount": 0.42
 },
 "MASK": {
-"center": Vector3(0, 0.08, 0),
+"center": Vector3(0, 0.0864, 0),
 "color": Color(0.22745098, 0.22745098, 0.19607843, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
+"coverage": 1.0,
+"density": 6.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.34,
+"leaves_per_cluster": 12,
+"material": "foliage",
+"max_displacement": 0.04,
 "parent": "HEAD",
 "radii": Vector3(0.43, 0.2, 0.475),
 "shape": {
 "exponent": 2.0,
 "taper": -0.4
-}
+},
+"tint_amount": 0.75,
+"tint_color": Color(0.22745098, 0.22745098, 0.19607843, 1)
 },
 "MUZZLE": {
-"center": Vector3(0.34, -0.12, 0),
-"color": Color(0.9019608, 0.8901961, 0.8235294, 1),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "sage",
-"max_displacement": 0.0,
-"outline": 0.01,
+"center": Vector3(0.36720002, -0.1296, 0),
+"coverage": 1.0,
+"density": 5.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.36,
+"leaves_per_cluster": 14,
+"material": "foliage",
+"max_displacement": 0.05,
 "parent": "HEAD",
-"radii": Vector3(0.22, 0.16, 0.22),
-"shape": "cushion"
+"radii": Vector3(0.187, 0.16, 0.22),
+"shape": "cushion",
+"tint": "pale_highlight",
+"tint_amount": 0.35
 },
 "TAIL_A": {
 "center": Vector3(-1.12, 0.78, 0),
@@ -202,12 +210,31 @@ anchors = {
 "on": "MUZZLE"
 }
 }
+protected_zones = {
+"EYE_LEFT": {
+"radius": 0.36,
+"strength": 1.0
+},
+"EYE_RIGHT": {
+"radius": 0.36,
+"strength": 1.0
+},
+"MOUTH": {
+"radius": 0.16,
+"strength": 1.0
+},
+"NOSE": {
+"radius": 0.2,
+"strength": 1.0
+}
+}
 feet = Array[Vector3]([Vector3(0.6, 0, 0.4), Vector3(0.6, 0, -0.4), Vector3(-0.55, 0, 0.44), Vector3(-0.55, 0, -0.44)])
-leaf_size = 0.34
-leaves_per_cluster = 18
+leaf_size = 0.44200000000000006
+leaves_per_cluster = 12
+coverage = 0.8
 flower_color = Color(0.78431374, 0.7058824, 0.9019608, 1)
 flowering = 0.3
-tendrils = 0
+tendrils = 3
 palette = {
 "deep_forest": Color(0.27450982, 0.34117648, 0.2901961, 1),
 "matcha": Color(0.5254902, 0.5882353, 0.5176471, 1),
@@ -216,5 +243,8 @@ palette = {
 "soft_sage": Color(0.654902, 0.7019608, 0.6509804, 1),
 "warm_yellow_green": Color(0.6039216, 0.64705884, 0.5568628, 1)
 }
-inner_mass = Color(0.2901961, 0.3529412, 0.29803923, 1)
-eye_size = 0.1
+inner_mass = Color(0.25537255, 0.31058824, 0.26227453, 1)
+ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
+silhouette_ink = 1.0
+interior_ink = 0.6
+eye_size = 0.11499999999999999

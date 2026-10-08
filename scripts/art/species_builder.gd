@@ -30,8 +30,8 @@ const PALETTES := {
 	"blossom": ["7a3a4a", "a85a6a", "d07e8a", "e8a0a0", "b88a90", "f4c8c8", "6a3040"],
 	"lavender": ["4a4466", "6a6288", "8a82a8", "a8a0c0", "8c8ca0", "d0c8e0", "3e3a58"],
 	"snow": ["a8b0a0", "c2c8b8", "d8dccf", "e6e6d8", "c8ccc0", "f6f6ee", "9aa092"],
-	"dark": ["1a2622", "263630", "34483e", "485a4a", "3a4a44", "6a7e70", "18221e"],
-	"bark": ["3e3020", "5a4630", "76603e", "8f7a4c", "6e6450", "b0a070", "34281a"],
+	"dark": ["2a3a32", "3a4e44", "4e6656", "66806a", "58706a", "90a894", "24302a"],
+	"bark": ["4e3e2a", "6e5a3e", "8e7650", "a8925e", "827a62", "c8b88a", "3e3222"],
 	"blue": ["24365a", "34507a", "4a6c98", "6a88b0", "6a7a90", "a8c0dc", "1e2c48"],
 	"moss": ["2e4a1e", "4a6e26", "6e9430", "8eac3a", "6a8a4a", "c4d870", "2e4418"],
 	"holly": ["14301e", "1e4228", "2a5a34", "3e7040", "3a5a44", "7aa070", "142a1a"],
@@ -405,6 +405,74 @@ static func build(spec: Dictionary) -> CharacterArtProfile:
 	p.wants = spec.get("wants", {"notice": {}, "visit": {}, "resident": {}})
 	var hints: Array = spec.get("hints", ["", "", ""])
 	p.hints = {"notice": hints[0], "visit": hints[1], "resident": hints[2]}
+	return plantify(p)
+
+
+## The cute, all-plant pass (the goal image's rules, applied to any pet):
+##   - a hedgepet is ALL PLANT except its feet and tail: head, face, snout and ears are leaves (the face younger and
+##     lighter); markings (masks, stripes, caps, bibs, collars, bellies, crests) are patches of tinted leaves
+##   - features stay features: eyes, nose, teeth, beak; so do paws, tails, horns, antlers, antennae (wood and stems)
+##   - cute proportions: a bigger head, bigger eyes, a shorter snout
+##   - the leaf look: fewer, bigger leaves you can tell apart with shadow between, fine ink, a few vines
+const KEEP := ["BODY", "FEET", "HANDS", "HORNS", "ANTLERS", "ANTLER_TINES", "ANTENNAE", "BEAK", "SLUG", "TRUNK", "WINGS"]
+const MARKINGS := ["MASK", "EYE_PATCH", "BLAZE", "CAP", "BIB", "RING", "STRIPES", "FACE_DISC", "BELLY", "CREST", "WATTLE", "BELL"]
+
+
+static func plantify(p: CharacterArtProfile) -> CharacterArtProfile:
+	var R: Dictionary = p.regions
+	var head: Dictionary = R["HEAD"]
+	var grow := 1.08
+	# a bigger head (its parts move out with it)
+	head["radii"] = (head["radii"] as Vector3) * grow
+	for name in R:
+		if name != "HEAD" and R[name].get("parent", "") == "HEAD":
+			R[name]["center"] = (R[name]["center"] as Vector3) * grow
+			if name in ["MUZZLE"]:
+				var r: Vector3 = R[name]["radii"]
+				R[name]["radii"] = Vector3(r.x * 0.85, r.y, r.z)   # a shorter snout
+	for name in R:
+		var r: Dictionary = R[name]
+		if name in KEEP or name.begins_with("TAIL") or name.begins_with("SEG_"):
+			continue
+		var leafy := {"foliage": true, "material": "foliage", "growth_up": 0.2, "coverage": 1.0}
+		if name == "HEAD":
+			leafy.merge({"density": 3.2, "leaf_scale": 0.55, "max_displacement": 0.12, "growth_up": 0.3, "tint": "pale_highlight",
+				"tint_amount": 0.42, "coverage": 0.97, "leaves_per_cluster": 18}, true)   # a lighter face: it reads as a head
+		elif name == "MUZZLE" or name == "FACE":
+			leafy.merge({"density": 5.0, "leaf_scale": 0.36, "max_displacement": 0.05, "tint": "pale_highlight", "tint_amount": 0.35,
+				"leaves_per_cluster": 14}, true)
+		elif name == "EARS":
+			leafy.merge({"density": 7.0, "leaf_scale": 0.42, "max_displacement": 0.05, "leaves_per_cluster": 14}, true)
+		elif name in MARKINGS:
+			# a patch of leaves in the marking's colour, lying just over the fur-less face or body
+			leafy.merge({"density": 6.0, "leaf_scale": 0.34, "max_displacement": 0.04, "leaves_per_cluster": 12,
+				"tint_color": r.get("color", p.palette["pale_highlight"]), "tint_amount": 0.75}, true)
+		else:
+			continue
+		r.merge(leafy, true)
+		r.erase("outline")
+		if not name in MARKINGS:
+			r.erase("color")             # under the leaves is the plant's own dark mass, not a painted skin
+	# the face shows through: eyes, nose, mouth and teeth keep a small clearing
+	var zones := {}
+	for a in ["EYE_LEFT", "EYE_RIGHT"]:
+		if p.anchors.has(a):
+			zones[a] = {"radius": 0.36, "strength": 1.0}
+	for a: Array in [["NOSE", 0.2], ["MOUTH", 0.16], ["TEETH", 0.18]]:
+		if p.anchors.has(a[0]):
+			zones[a[0]] = {"radius": a[1], "strength": 1.0}
+	p.protected_zones = zones
+	p.eye_size *= 1.15
+	p.leaf_size *= 1.3
+	p.leaves_per_cluster = 12
+	p.coverage = 0.8
+	p.interior_ink = 0.6
+	p.silhouette_ink = 1.0
+	p.ink_color = Color("1c2213")
+	p.inner_mass = p.inner_mass.darkened(0.12)
+	# vines only on pets big enough to carry them (on a chickadee they'd be spider legs)
+	var body_r: Vector3 = R["BODY"]["radii"]
+	p.tendrils = 3 if body_r.x >= 0.9 else (1 if body_r.x >= 0.6 else 0)
 	return p
 
 

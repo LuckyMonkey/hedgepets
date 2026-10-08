@@ -596,8 +596,9 @@ func _tendrils() -> Array:
 		# the end lifts off and curls out into the air
 		var last: Vector3 = pts[-1]
 		var out := (last - c).normalized()
+		var reach := clampf((body["radii"] as Vector3).x / 1.3, 0.35, 1.0)        # tendrils sized to the pet
 		for k in range(3):
-			last += out * 0.1 + Vector3(0, 0.05 - k * 0.06, 0) + out.cross(Vector3.UP).normalized() * 0.04 * k
+			last += (out * 0.1 + Vector3(0, 0.05 - k * 0.06, 0) + out.cross(Vector3.UP).normalized() * 0.04 * k) * reach
 			pts.append(last)
 		for k in range(1, pts.size() - 1):
 			if k % 2 != 0:

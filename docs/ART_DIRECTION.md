@@ -168,3 +168,19 @@ Deterministic: the same seed rebuilds identically; another seed differs.
 - **Eyes:** a soft vertical oval, glossy deep brown-black, a big sheen and a small sparkle, a fine outline.
 - **Feet** dark brown with toes; **tail** a finer, darker crosshatch with a heavier outline.
 - Any plant on any animal: the plant is separate from the shape (`SpeciesBuilder.restyle`).
+
+## The cute pass (everyone)
+
+`SpeciesBuilder.plantify` applies the goal-image rules to every pet. That's the 40 generated from `pets/species.json`
+and the six hand-made ones besides Gerald.
+
+- **All plant except feet and tail.** Heads, faces, snouts and ears are leaves. Markings are patches of leaves
+  tinted the marking's colour: masks, stripes, caps, bibs, collars, bellies, crests.
+- **Features stay features:** eyes, nose, teeth, beak. So do paws, horns, antlers and antennae.
+- **Cute proportions:** heads 8% bigger, eyes 15% bigger, snouts 15% shorter. Every face is lighter than its body
+  (a `pale_highlight` tint), so it reads as a head.
+- **Leaf look:** fewer, bigger leaves with shadow between, and fine ink. Vines only on pets big enough to carry them,
+  with tendrils sized to the pet.
+- **Palettes:** the "dark" and "bark" palettes are lighter, so the skunk, bear and loon read as creatures, not blobs.
+
+Before and after: `docs/acceptance/roster_before_cute.png`, `docs/acceptance/roster.png`.

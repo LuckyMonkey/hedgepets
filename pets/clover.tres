@@ -52,11 +52,13 @@ regions = {
 }
 },
 "EARS": {
-"center": Vector3(-0.14, 0.74, 0.22),
-"density": 4.0,
+"center": Vector3(-0.15120001, 0.79920006, 0.23760001),
+"coverage": 1.0,
+"density": 7.0,
 "foliage": true,
-"growth_up": 0.9,
-"leaf_scale": 0.62,
+"growth_up": 0.2,
+"leaf_scale": 0.42,
+"leaves_per_cluster": 14,
 "material": "foliage",
 "max_displacement": 0.05,
 "mirror": true,
@@ -84,28 +86,35 @@ regions = {
 },
 "HEAD": {
 "center": Vector3(0.46, 1.92, 0),
-"density": 2.4,
+"coverage": 0.97,
+"density": 3.2,
 "foliage": true,
 "growth_up": 0.3,
-"leaf_scale": 0.6,
+"leaf_scale": 0.55,
+"leaves_per_cluster": 18,
 "material": "foliage",
-"max_displacement": 0.08,
+"max_displacement": 0.12,
 "parent": "",
-"radii": Vector3(0.62, 0.56, 0.6),
-"shape": "egg"
+"radii": Vector3(0.6696, 0.60480005, 0.64800006),
+"shape": "egg",
+"tint": "pale_highlight",
+"tint_amount": 0.42
 },
 "MUZZLE": {
-"center": Vector3(0.5, -0.15, 0),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
-"material": "moss",
-"max_displacement": 0.0,
-"outline": 0.012,
+"center": Vector3(0.54, -0.16200002, 0),
+"coverage": 1.0,
+"density": 5.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.36,
+"leaves_per_cluster": 14,
+"material": "foliage",
+"max_displacement": 0.05,
 "parent": "HEAD",
-"radii": Vector3(0.2, 0.16, 0.25),
-"shape": "cushion"
+"radii": Vector3(0.17, 0.16, 0.25),
+"shape": "cushion",
+"tint": "pale_highlight",
+"tint_amount": 0.35
 },
 "TAIL": {
 "center": Vector3(-0.86, 0.48, 0),
@@ -151,39 +160,33 @@ anchors = {
 }
 }
 protected_zones = {
-"CHEEK_LEFT": {
-"radius": 0.3,
-"strength": 0.6
-},
-"CHEEK_RIGHT": {
-"radius": 0.3,
-"strength": 0.6
-},
 "EYE_LEFT": {
-"radius": 0.42,
+"radius": 0.36,
 "strength": 1.0
 },
 "EYE_RIGHT": {
-"radius": 0.42,
+"radius": 0.36,
 "strength": 1.0
 },
 "MOUTH": {
-"radius": 0.45,
+"radius": 0.16,
 "strength": 1.0
 },
 "NOSE": {
-"radius": 0.5,
+"radius": 0.2,
 "strength": 1.0
 },
 "TEETH": {
-"radius": 0.45,
+"radius": 0.18,
 "strength": 1.0
 }
 }
 feet = Array[Vector3]([Vector3(0.52, 0, 0.34), Vector3(0.52, 0, -0.34), Vector3(0.05, 0, 0.6), Vector3(0.05, 0, -0.6)])
-leaf_size = 0.3
+leaf_size = 0.39
+leaves_per_cluster = 12
+coverage = 0.8
 flowering = 0.5
-tendrils = 0
+tendrils = 1
 palette = {
 "blossom": Color(1, 0.97, 0.95, 1),
 "deep_forest": Color(0.20784314, 0.3529412, 0.17254902, 1),
@@ -193,5 +196,8 @@ palette = {
 "soft_sage": Color(0.4862745, 0.6039216, 0.42352942, 1),
 "warm_yellow_green": Color(0.56078434, 0.68235296, 0.29803923, 1)
 }
-inner_mass = Color(0.23529412, 0.38431373, 0.1882353, 1)
-eye_size = 0.13
+inner_mass = Color(0.20705882, 0.33819607, 0.16564706, 1)
+ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
+silhouette_ink = 1.0
+interior_ink = 0.6
+eye_size = 0.1495

@@ -86,6 +86,8 @@ static func _build_live(profile: CharacterArtProfile, region_name: String, head_
 		var family := _family(profile, cn, key_dir, rng)
 		if region.has("tint"):                                   # e.g. a face of younger, lighter leaves
 			family = family.lerp(profile.palette[region["tint"]], float(region.get("tint_amount", 0.5)))
+		elif region.has("tint_color"):                           # a marking: a mask of dark leaves, a pale stripe
+			family = family.lerp(region["tint_color"], float(region.get("tint_amount", 0.5)))
 		clusters.append({"position": cp, "normal": cn, "color": family})
 		var count := int(float(region.get("leaves_per_cluster", profile.leaves_per_cluster)) * (0.75 if is_head else 1.0))
 		for li in range(count):
