@@ -15,6 +15,23 @@ features = {
 "nose": Vector3(0.075, 0.065, 0.075),
 "teeth": false
 }
+wants = {
+"notice": {
+"leaf_pile": 1
+},
+"resident": {
+"fern_grown": 1,
+"lawn_chair": 1
+},
+"visit": {
+"fern_planted": 1
+}
+}
+hints = {
+"notice": "Hedgehogs can't resist a pile of old leaves.",
+"resident": "He's been eyeing that tipped-over chair as a bedroom. Don't tidy it away.",
+"visit": "A fern would make him feel at home."
+}
 frame_target = Vector3(0.2, 0.55, 0)
 frame_distance = 5.6
 regions = {

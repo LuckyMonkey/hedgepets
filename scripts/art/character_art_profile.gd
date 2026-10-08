@@ -19,6 +19,14 @@ extends Resource
 ## "nose" (radii of the nose seed).
 @export var features := {"teeth": true, "mouth": "beaver", "cheeks": true, "nose": Vector3(0.11, 0.085, 0.14)}
 
+## Garden wishes (scripts/garden/garden_game.gd): what makes this pet NOTICE the garden (peek through the fence),
+## VISIT (come in and wander) and MOVE IN (stay). Conditions are garden counts: "puddle", "sticks", "branches",
+## "rocks", "leaf_pile", "lawn_chair", "cleared" (junk cleared so far), "<plant>_planted", "<plant>_grown",
+## "<plant>_flowering" (plants: ivy, clover, fern, jasmine). "hints" are the journal's words for each step.
+@export var wants := {"notice": {}, "visit": {}, "resident": {}}
+@export var hints := {"notice": "", "visit": "", "resident": ""}
+@export var starts_resident := false
+
 ## Framing: what the camera looks at, and from how far, in the default three-quarter view.
 @export var frame_target := Vector3(0.15, 0.85, 0.0)
 @export var frame_distance := 7.4
@@ -142,6 +150,10 @@ static func gerald() -> CharacterArtProfile:
 	}
 	p.frame_target = Vector3(0.15, 0.85, 0.0)
 	p.frame_distance = 7.4
+	p.starts_resident = true
+	p.wants = {"notice": {"puddle": 1}, "visit": {"sticks": 3}, "resident": {"ivy_grown": 1, "puddle": 1}}
+	p.hints = {"notice": "Gerald likes the sound of water.", "visit": "He collects sticks. Leave a few lying about.",
+		"resident": "He'd stay for good with some ivy to chew and his puddle."}
 	p.feet = [Vector3(0.82, 0.0, 0.56), Vector3(0.82, 0.0, -0.56), Vector3(-0.66, 0.0, 0.62), Vector3(-0.66, 0.0, -0.62)]
 	return p
 
@@ -197,6 +209,9 @@ static func clover() -> CharacterArtProfile:
 	p.tendrils = 0
 	p.frame_target = Vector3(0.1, 1.25, 0.0)
 	p.frame_distance = 7.0
+	p.wants = {"notice": {"cleared": 4}, "visit": {"clover_planted": 1}, "resident": {"clover_grown": 2}}
+	p.hints = {"notice": "A tidier lawn would catch a bunny's eye.", "visit": "Something sweet and three-leaved would bring her in.",
+		"resident": "Two good clover patches and she'd never leave."}
 	return p
 
 
@@ -244,6 +259,9 @@ static func juniper() -> CharacterArtProfile:
 	p.tendrils = 0
 	p.frame_target = Vector3(0.2, 0.55, 0.0)
 	p.frame_distance = 5.6
+	p.wants = {"notice": {"leaf_pile": 1}, "visit": {"fern_planted": 1}, "resident": {"lawn_chair": 1, "fern_grown": 1}}
+	p.hints = {"notice": "Hedgehogs can't resist a pile of old leaves.", "visit": "A fern would make him feel at home.",
+		"resident": "He's been eyeing that tipped-over chair as a bedroom. Don't tidy it away."}
 	return p
 
 
@@ -290,5 +308,8 @@ static func bramble() -> CharacterArtProfile:
 	p.tendrils = 3
 	p.frame_target = Vector3(0.15, 0.45, 0.0)
 	p.frame_distance = 6.0
+	p.wants = {"notice": {"rocks": 2}, "visit": {"jasmine_planted": 1}, "resident": {"jasmine_flowering": 1, "puddle": 1}}
+	p.hints = {"notice": "Warm stones to sun on.", "visit": "The smell of jasmine, even a little one.",
+		"resident": "Flowering jasmine and a drink of water. He's in no hurry."}
 	return p
 

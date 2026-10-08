@@ -55,7 +55,7 @@ func _ready() -> void:
 	box.add_child(lod)
 	overlay = Node3D.new()
 	overlay.name = "ArtDebugOverlay"
-	pet3d.pet.add_child(overlay)
+	pet3d.pet_node.pet.add_child(overlay)
 	_apply()
 
 
@@ -146,7 +146,7 @@ func _apply() -> void:
 	if _on("clusters") or _on("normals"):
 		for c in pet3d.cluster_debug:
 			var parent: Node3D = c["parent"]
-			var pos: Vector3 = c["position"] + (head_c if parent == pet3d.head else Vector3.ZERO)
+			var pos: Vector3 = c["position"] + (head_c if parent == pet3d.pet_node.head else Vector3.ZERO)
 			if _on("clusters"):
 				_blob(pos, Vector3.ONE * 0.07, Color(c["color"].r, c["color"].g, c["color"].b, 1.0))
 			if _on("normals"):

@@ -4,6 +4,24 @@
 
 [resource]
 script = ExtResource("1_sf8kk")
+wants = {
+"notice": {
+"puddle": 1
+},
+"resident": {
+"ivy_grown": 1,
+"puddle": 1
+},
+"visit": {
+"sticks": 3
+}
+}
+hints = {
+"notice": "Gerald likes the sound of water.",
+"resident": "He'd stay for good with some ivy to chew and his puddle.",
+"visit": "He collects sticks. Leave a few lying about."
+}
+starts_resident = true
 regions = {
 "BODY": {
 "center": Vector3(0, 0.95, 0),

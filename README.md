@@ -5,7 +5,12 @@ A tiny Godot 4.7 (GL Compatibility, portrait 1080 × 1920) garden-creature lab. 
 
 ![Gerald](docs-gerald.png)
 
-## Gerald in 3D (the main scene, `main3d.tscn`)
+## The garden (the main scene, `garden.tscn`)
+
+A messy back garden: clear junk 🪏, plant and water 🌱💧, and pets peek through the broken fence, visit, then move in
+when the garden suits them. **[docs/GARDEN.md](docs/GARDEN.md).**
+
+## Gerald in 3D (the pet viewer, `main3d.tscn`)
 
 **Art direction, parameters and acceptance: [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md).** Developer view: F1.
 

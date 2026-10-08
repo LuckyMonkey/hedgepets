@@ -15,6 +15,22 @@ features = {
 "nose": Vector3(0.07, 0.055, 0.09),
 "teeth": true
 }
+wants = {
+"notice": {
+"cleared": 4
+},
+"resident": {
+"clover_grown": 2
+},
+"visit": {
+"clover_planted": 1
+}
+}
+hints = {
+"notice": "A tidier lawn would catch a bunny's eye.",
+"resident": "Two good clover patches and she'd never leave.",
+"visit": "Something sweet and three-leaved would bring her in."
+}
 frame_target = Vector3(0.1, 1.25, 0)
 frame_distance = 7.0
 regions = {
