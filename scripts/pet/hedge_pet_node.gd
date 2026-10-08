@@ -357,8 +357,8 @@ func rebuild_foliage() -> void:
 	foliage_nodes.clear()
 	cluster_debug.clear()
 	if leaves_mat == null:
-		var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/%s.png" % profile.leaf_sheet))
-		var normals := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/%s_n.png" % profile.leaf_sheet))
+		var image := Assets.image("res://assets/sprites/%s.png" % profile.leaf_sheet)
+		var normals := Assets.image("res://assets/sprites/%s_n.png" % profile.leaf_sheet)
 		image.generate_mipmaps()
 		normals.generate_mipmaps()
 		leaves_mat = ShaderMaterial.new()

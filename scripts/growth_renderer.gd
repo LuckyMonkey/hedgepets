@@ -652,14 +652,14 @@ func _load_leaf_sheet() -> void:
 	if profile == null:
 		return
 	var name: String = profile.geometry_path.get_file().replace("_geometry.json", "")
-	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/%s.png" % name))
+	var image := Assets.image("res://assets/sprites/%s.png" % name)
 	if image == null or image.is_empty():
 		return
 	# the sheet plus its normal map (tools/make_normal_maps.py): Godot's 2D lights shape every leaf, and leaves
 	# glint as they turn in the wind
 	var lit := CanvasTexture.new()
 	lit.diffuse_texture = ImageTexture.create_from_image(image)
-	var normals := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/%s_n.png" % name))
+	var normals := Assets.image("res://assets/sprites/%s_n.png" % name)
 	if normals != null and not normals.is_empty():
 		lit.normal_texture = ImageTexture.create_from_image(normals)
 	lit.specular_color = Color(1.0, 0.98, 0.85, 1.0)

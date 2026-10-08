@@ -96,7 +96,13 @@ static func cyl(r_top: float, r_bottom: float, h: float, seg := 10) -> CylinderM
 
 
 static func blob(radii: Vector3, shape: Variant = {}) -> ArrayMesh:
-	return HedgeAnatomy.build_mesh({"radii": radii, "shape": shape}, 14, 24)
+	var k := BakeCache.key(["blob", radii, shape, 14, 24])
+	var cached = BakeCache.fetch(k)
+	if cached != null:
+		return cached
+	var m := HedgeAnatomy.build_mesh({"radii": radii, "shape": shape}, 14, 24)
+	BakeCache.store(k, m)
+	return m
 
 
 static func root(parent: Node3D, name: String, at: Vector3, yaw_deg: float) -> Node3D:

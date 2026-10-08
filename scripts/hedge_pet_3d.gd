@@ -246,6 +246,8 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION:
+		return                      # on touch screens Godot also sends each touch as a mouse event: handle it once
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_F1:

@@ -17,6 +17,22 @@ const UP := Vector3.UP
 
 
 static func build(profile: CharacterArtProfile, region_name: String, head_center: Vector3, key_dir: Vector3) -> Dictionary:
+	# pure function of the profile and these inputs: every stored property of the profile goes in the key, so any
+	# change is a cache miss (built live), never a stale result (util/bake_cache.gd)
+	var parts: Array = ["foliage", region_name, head_center, key_dir]
+	for prop in profile.get_property_list():
+		if prop["usage"] & PROPERTY_USAGE_STORAGE and prop["name"] != "script" and prop["name"] != "resource_path":
+			parts.append(profile.get(prop["name"]))
+	var k := BakeCache.key(parts)
+	var cached = BakeCache.fetch(k)
+	if cached != null:
+		return cached
+	var out := _build_live(profile, region_name, head_center, key_dir)
+	BakeCache.store(k, out)
+	return out
+
+
+static func _build_live(profile: CharacterArtProfile, region_name: String, head_center: Vector3, key_dir: Vector3) -> Dictionary:
 	var region: Dictionary = profile.regions[region_name]
 	# built in the space of the region's parent node: the head node sits at the HEAD centre (so HEAD is at the
 	# origin there), regions attached to the head use their head-local centre, the rest creature space

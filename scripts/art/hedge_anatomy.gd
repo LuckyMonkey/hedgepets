@@ -88,6 +88,17 @@ static func shape_normal(region: Dictionary, c: Vector3, p: Vector3) -> Vector3:
 
 ## A mesh of the region's primitive, centred on its own origin (place it at the region centre).
 static func build_mesh(region: Dictionary, rings := 24, segments := 48) -> ArrayMesh:
+	# pure function of its inputs: the bake cache has the garden's and the pets' meshes ready (util/bake_cache.gd)
+	var k := BakeCache.key(["mesh", region, rings, segments])
+	var cached = BakeCache.fetch(k)
+	if cached != null:
+		return cached
+	var m := _build_mesh_live(region, rings, segments)
+	BakeCache.store(k, m)
+	return m
+
+
+static func _build_mesh_live(region: Dictionary, rings := 24, segments := 48) -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()

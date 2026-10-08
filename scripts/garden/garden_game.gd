@@ -340,6 +340,21 @@ func _collect_gift(p2: Vector2) -> bool:
 
 
 # ------------------------------------------------------------------ tools
+## Is there a visible, clickable piece of the HUD at this screen point? (touch input: see garden._unhandled_input)
+func ui_blocks(at: Vector2) -> bool:
+	var stack: Array = _ui.get_children()
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Control:
+			var c := n as Control
+			if not c.is_visible_in_tree() or c.modulate.a < 0.05:
+				continue
+			if c.mouse_filter != Control.MOUSE_FILTER_IGNORE and c.get_global_rect().has_point(at):
+				return true
+		stack.append_array(n.get_children())
+	return false
+
+
 ## A tap on the garden. Returns true when the game used it (the garden then does nothing else).
 func tap(at: Vector2, pet: HedgePetNode) -> bool:
 	if at.y > garden.get_viewport().get_visible_rect().size.y * 0.86 or at.y < 120:

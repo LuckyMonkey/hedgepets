@@ -66,22 +66,24 @@ var _leaf_mats := {}
 var _bald_noise: FastNoiseLite
 
 
+var boot_ms := {}                                 # how long each part of building the garden took (tools/boot_time.gd)
+
+
 func _ready() -> void:
 	_rng.seed = 20261008
-	_build_world()
-	_build_ground()
-	_build_backdrop()
-	_build_props()
-	_build_grass()
-	_spawn_pets()
-	_leaf_litter()
-	_build_ambience()
-	_build_tilt_shift()
+	for step: Callable in [_build_world, _build_ground, _build_backdrop, _build_props, _build_grass, _spawn_pets,
+			_leaf_litter, _build_ambience, _build_tilt_shift, _start_game]:
+		var t0 := Time.get_ticks_msec()
+		step.call()
+		boot_ms[step.get_method()] = Time.get_ticks_msec() - t0
+	_place_camera()
+
+
+func _start_game() -> void:
 	game = preload("res://scripts/garden/garden_game.gd").new()
 	game.name = "Game"
 	add_child(game)
 	game.setup(self)
-	_place_camera()
 
 
 # ------------------------------------------------------------------ world
@@ -158,7 +160,7 @@ func _build_ground() -> void:
 			c = c.lerp(dirt, clampf(bald * 0.8 + track * 0.45, 0.0, 0.85))
 			img.set_pixel(x, y, c)
 	img.generate_mipmaps()
-	var detail := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/lawn_detail.png"))
+	var detail := Assets.image("res://assets/sprites/lawn_detail.png")
 	detail.generate_mipmaps()
 	var m := ShaderMaterial.new()
 	m.shader = load("res://shaders/lawn.gdshader")
@@ -177,8 +179,8 @@ func _build_ground() -> void:
 func _leaf_material(sheet: String) -> ShaderMaterial:
 	if _leaf_mats.has(sheet):
 		return _leaf_mats[sheet]
-	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/%s.png" % sheet))
-	var normals := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/%s_n.png" % sheet))
+	var image := Assets.image("res://assets/sprites/%s.png" % sheet)
+	var normals := Assets.image("res://assets/sprites/%s_n.png" % sheet)
 	image.generate_mipmaps()
 	normals.generate_mipmaps()
 	var m := ShaderMaterial.new()
@@ -194,42 +196,54 @@ func _leaf_material(sheet: String) -> ShaderMaterial:
 
 ## A leafy mass (hedge, tree crown, leaf pile) grown with the pets' foliage system.
 func _bush(center: Vector3, radii: Vector3, sheet: String, palette: Dictionary, inner: Color, leaf_size: float, density: float, shape: Variant = {}, flowering := 0.0) -> Node3D:
-	var p := CharacterArtProfile.new()
-	p.seed = _rng.randi()
-	p.leaf_size = leaf_size
-	p.growth = 1.0
-	p.flowering = flowering
-	p.leaves_per_cluster = 16
-	p.palette = palette
-	p.anchors = {}
-	p.protected_zones = {}
-	p.regions = {
-		"BODY": {"center": center, "radii": radii, "parent": "", "foliage": true, "density": density, "leaf_scale": 1.0,
-			"max_displacement": 0.2, "growth_up": 0.4, "material": "foliage", "shape": shape},
-		"HEAD": {"center": Vector3(0, -100, 0), "radii": Vector3(0.1, 0.1, 0.1), "parent": "", "foliage": false},
-	}
+	var seed := _rng.randi()
 	var holder := Node3D.new()
 	add_child(holder)
+	# the mass and the leaves are pure functions of these inputs: read them from the bake cache when it has them
+	var k := BakeCache.key(["bush", center, radii, sheet, palette, inner, leaf_size, density, shape, flowering, seed])
+	var cached = BakeCache.fetch(k)
+	var mass_mesh: Mesh
+	var mm: MultiMesh
+	if cached != null:
+		mass_mesh = cached[0]
+		mm = cached[1]
+	else:
+		var p := CharacterArtProfile.new()
+		p.seed = seed
+		p.leaf_size = leaf_size
+		p.growth = 1.0
+		p.flowering = flowering
+		p.leaves_per_cluster = 16
+		p.palette = palette
+		p.anchors = {}
+		p.protected_zones = {}
+		p.regions = {
+			"BODY": {"center": center, "radii": radii, "parent": "", "foliage": true, "density": density, "leaf_scale": 1.0,
+				"max_displacement": 0.2, "growth_up": 0.4, "material": "foliage", "shape": shape},
+			"HEAD": {"center": Vector3(0, -100, 0), "radii": Vector3(0.1, 0.1, 0.1), "parent": "", "foliage": false},
+		}
+		mass_mesh = HedgeAnatomy.build_mesh(p.regions["BODY"], 16, 28)
+		var built := FoliageBuilder.build(p, "BODY", Vector3(0, -100, 0), Vector3(0.5, -0.8, 0.3).normalized())
+		var items: Array = built["items"]
+		mm = MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.use_custom_data = true
+		var quad := QuadMesh.new()
+		quad.center_offset = Vector3(0, 0.5, 0)
+		mm.mesh = quad
+		mm.instance_count = items.size()
+		for i in range(items.size()):
+			mm.set_instance_transform(i, items[i][0])
+			mm.set_instance_color(i, items[i][1])
+			mm.set_instance_custom_data(i, items[i][2])
+		BakeCache.store(k, [mass_mesh, mm])
 	var mass := MeshInstance3D.new()
-	mass.mesh = HedgeAnatomy.build_mesh(p.regions["BODY"], 16, 28)
+	mass.mesh = mass_mesh
 	mass.position = center
 	mass.scale = Vector3.ONE * 0.96
 	mass.material_override = GardenProps.mat("inner%s" % inner.to_html(), inner)
 	holder.add_child(mass)
-	var built := FoliageBuilder.build(p, "BODY", Vector3(0, -100, 0), Vector3(0.5, -0.8, 0.3).normalized())
-	var items: Array = built["items"]
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.use_custom_data = true
-	var quad := QuadMesh.new()
-	quad.center_offset = Vector3(0, 0.5, 0)
-	mm.mesh = quad
-	mm.instance_count = items.size()
-	for i in range(items.size()):
-		mm.set_instance_transform(i, items[i][0])
-		mm.set_instance_color(i, items[i][1])
-		mm.set_instance_custom_data(i, items[i][2])
 	var leaves := MultiMeshInstance3D.new()
 	leaves.multimesh = mm
 	leaves.material_override = _leaf_material(sheet)
@@ -340,7 +354,7 @@ func _burying_ground() -> void:
 
 ## Fallen leaves lying on the ground everywhere, thickest under the trees (one MultiMesh of flat leaf cards).
 func _leaf_litter() -> void:
-	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/hedgemaple.png"))
+	var image := Assets.image("res://assets/sprites/hedgemaple.png")
 	var tex := ImageTexture.create_from_image(image.get_region(Rect2i(0, 0, 160 * 8, 160)))
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = tex
@@ -445,7 +459,7 @@ var _crowns: Array = []                           # broadleaf crowns: where fall
 
 ## Life in the garden: leaves drifting down from the oaks, butterflies over the lawn.
 func _build_ambience() -> void:
-	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/hedgemaple.png"))
+	var image := Assets.image("res://assets/sprites/hedgemaple.png")
 	var leaf := ImageTexture.create_from_image(image.get_region(Rect2i(0, 0, 160, 160)))
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = leaf
@@ -538,7 +552,7 @@ func count(kind: String) -> int:
 
 ## Grass tufts and weeds over the lawn, thinner on the bald spots, none under the junk.
 func _build_grass() -> void:
-	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/grass.png"))
+	var image := Assets.image("res://assets/sprites/grass.png")
 	image.generate_mipmaps()
 	var m := ShaderMaterial.new()
 	m.shader = load("res://shaders/grass.gdshader")
@@ -907,6 +921,13 @@ var _pinch := 0.0
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# On touch screens Godot also sends each touch as a mouse event (the HUD's buttons rely on that). The garden takes
+	# the touch itself and ignores the copy, or a one-finger turn would count twice.
+	if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
+	# a touch that lands on the HUD belongs to the HUD (its button got the mouse copy), not to the garden under it
+	if event is InputEventScreenTouch and event.pressed and game != null and game.ui_blocks(event.position):
+		return
 	if event is InputEventMagnifyGesture:
 		_zoom_by(1.0 / event.factor)
 		return
