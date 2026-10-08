@@ -36,13 +36,20 @@ size/leg/neck/head/eyes, ears, snout, tail, extras, colours, wants and hints. Th
 `species_builder.gd`. Check it with `DISPLAY=:0 godot --path . --script tools/capture_roster.gd && python3
 tools/roster_sheet.py` (docs/acceptance/roster.png).
 
+Residents live in it: they wander to the things and plants they wished for (`garden_game.gd:favourite()`) and
+show it (💧 at the puddle, 💤 in the chair or tire, 🍂 in the leaves, 🌸 at a flowering plant). When idle they turn
+three-quarters to the viewer. A happy resident leaves a **gift** every 30 s (🌰 🪶 🍄 🐚 💎 🌼 🫐, 2-6 coins) that
+bobs in the grass until you tap it (any tool; gone after two minutes, at most 12 lying about).
+
 A visitor whose wishes stop being met wanders off after ~20 s. Junk isn't all bad: Gerald wants sticks and the
 puddle, Juniper the tipped chair, Bramble rocks. Clear everything and you lose them.
 
 The wish keys come from `garden_game.gd:garden_counts()`: `puddle sticks branches rocks leaf_pile lawn_chair grill tire pot cleared`
 and `<plant>_planted/_grown/_flowering`.
 
-The scenery: tall oaks (leaning trunk, forked branches, a leaf clump per branch) and tiered pines whose crowns run
+The scenery: a real puddle (`shaders/water.gdshader`: muddy rim, sky sheen, drip ripples; no grass in it), a New
+England dry-stone wall down the side, maple leaves drifting from the oak crowns, six butterflies that visit flowering
+plants, and a soft contact shadow under every pet. Tall oaks (leaning trunk, forked branches, a leaf clump per branch) and tiered pines whose crowns run
 off the top of the screen and whose shade falls across the lawn; ankle-high grass tufts (22k, `tools/make_grass_sprites.py`)
 over a lawn with fine blade grain (`shaders/lawn.gdshader`, `tools/make_lawn_detail.py`). Leaf styles for pets and plants:
 ivy, clover, fern, jasmine, and `tools/make_leaf_styles.py`: oak (acorns), pine (cones), sage (lilac sprigs), maple
@@ -69,6 +76,6 @@ its palette and bloom; `tools/capture_plants.gd` -> docs/acceptance/plants.png.
     godot --headless --path . --script tools/game_check.gd     # plays the loop: clear, plant, grow, a pet moves in
     HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/capture_garden.gd   # /tmp/hedgepets-views/garden.png
                                                                # FRAMES=700 later in time, DIST=30 zoomed out
-    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/garden_fps.gd       # ~3.5 ms/frame on the RTX 3050
+    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/garden_fps.gd       # ~4 ms/frame on the RTX 3050 (close other game windows first)
 
 HEDGEPETS_FRESH=1 starts from a new garden and never reads or writes the player's save.

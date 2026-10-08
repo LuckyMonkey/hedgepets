@@ -50,6 +50,22 @@ func _run() -> void:
 	print("after ", game.pet_state, " coins ", game.coins, " counts ", game.garden_counts())
 	if game.pet_state["Clover"] != "resident":
 		return _fail("Clover should have moved in")
+	# favourites and gifts
+	var gerald: HedgePetNode = game._node(garden.roster[0])
+	var fav: Dictionary = game.favourite(gerald)
+	print("Gerald's favourite: ", fav.get("emote", "none"))
+	if fav.is_empty():
+		return _fail("Gerald has nowhere he likes")
+	game._drop_gift(gerald)
+	var c0: int = game.coins
+	var g: Dictionary = game.gifts[0]
+	if not game._collect_gift(Vector2(g["at"].x, g["at"].z)) or game.coins <= c0:
+		return _fail("gift not collected")
+	print("gift +", game.coins - c0)
+	# regraft
+	gerald.set_plant("holly")
+	if SpeciesBuilder.plant_of(gerald.profile) != "holly" or gerald.get_node_or_null("ContactShadow") == null:
+		return _fail("regraft lost the plant or the contact shadow")
 	game.save_path = "user://garden_check.json"
 	OS.set_environment("HEDGEPETS_FRESH", "")
 	game.save()

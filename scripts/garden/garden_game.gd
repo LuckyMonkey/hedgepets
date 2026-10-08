@@ -99,6 +99,7 @@ func _met(wants: Dictionary, counts: Dictionary) -> bool:
 # ------------------------------------------------------------------ the loop
 func _process(delta: float) -> void:
 	_grow(delta)
+	_tend_gifts(delta)
 	_check -= delta
 	if _check <= 0.0:
 		_check = 1.0
@@ -106,15 +107,12 @@ func _process(delta: float) -> void:
 	_income -= delta
 	if _income <= 0.0:
 		_income = INCOME_SECONDS
-		var happy := 0
 		var counts := garden_counts()
 		for p: CharacterArtProfile in garden.roster:
-			if pet_state[p.pet_name] == "resident" and _met(p.wants["resident"], counts):
-				happy += 1
-		if happy > 0:
-			coins += 2 * happy
-			toast("🪙 +%d from your residents" % (2 * happy))
-			_refresh()
+			if pet_state[p.pet_name] == "resident" and _met(p.wants["resident"], counts) and gifts.size() < 12:
+				var node: HedgePetNode = _node(p)
+				if node.visible:
+					_drop_gift(node)
 	_save -= delta
 	if _save <= 0.0:
 		_save = 8.0
@@ -204,6 +202,75 @@ func _grow(delta: float) -> void:
 						toast("Your %s is flowering." % pl["species"])
 
 
+# ------------------------------------------------------------------ favourites and gifts
+const WANT_THINGS := {"puddle": ["sprinkler", "💧"], "sticks": ["stick", "🪵"], "branches": ["branch", "🪵"], "rocks": ["rock", "☀️"],
+	"leaf_pile": ["leaf_pile", "🍂"], "lawn_chair": ["lawn_chair", "💤"], "grill": ["grill", "👃"], "tire": ["tire", "💤"], "pot": ["pot", "💤"]}
+const GIFTS := [["🌰", 2], ["🪶", 3], ["🍄", 2], ["🐚", 4], ["💎", 6], ["🌼", 2], ["🫐", 3]]
+var gifts: Array = []               # {at: Vector3, node: Label3D, value, age}
+
+
+## Somewhere this pet likes to go: one of the things or plants in its wishes. {at, radius, emote} or {}.
+func favourite(node: HedgePetNode) -> Dictionary:
+	var p: CharacterArtProfile = node.profile
+	var options: Array = []
+	for step in ["notice", "visit", "resident"]:
+		for key: String in p.wants[step]:
+			if WANT_THINGS.has(key):
+				var kind: String = WANT_THINGS[key][0]
+				for t in garden.things:
+					if t["kind"] == kind:
+						options.append({"at": Vector3(t["at"].x, 0, t["at"].y), "radius": t["radius"], "emote": WANT_THINGS[key][1]})
+			else:
+				var sp := key.get_slice("_", 0)
+				for pl in plants:
+					if pl["species"] == sp and pl["stage"] >= 1:
+						options.append({"at": Vector3(pl["at"].x, 0, pl["at"].y), "radius": 0.6, "emote": "💚" if pl["stage"] < 3 else "🌸"})
+	return options.pick_random() if not options.is_empty() else {}
+
+
+## A happy resident leaves something behind: tap it to collect.
+func _drop_gift(node: HedgePetNode) -> void:
+	var g: Array = GIFTS.pick_random()
+	var l := Label3D.new()
+	l.text = g[0]
+	l.font_size = 64
+	l.pixel_size = 0.005
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	var at := node.position + Vector3(randf_range(-0.5, 0.5), 0.0, randf_range(0.3, 0.7))
+	l.position = at + Vector3(0, 0.25, 0)
+	garden.add_child(l)
+	gifts.append({"at": at, "node": l, "value": g[1], "age": 0.0})
+	garden.emote(node, "🎁")
+
+
+func _tend_gifts(delta: float) -> void:
+	for g in gifts.duplicate():
+		g["age"] += delta
+		var l: Label3D = g["node"]
+		l.position.y = 0.25 + 0.07 * sin(g["age"] * 3.0)
+		if g["age"] > 100.0:
+			l.modulate.a = clampf((120.0 - g["age"]) / 20.0, 0.0, 1.0)
+		if g["age"] > 120.0:
+			l.queue_free()
+			gifts.erase(g)
+
+
+func _collect_gift(p2: Vector2) -> bool:
+	for g in gifts:
+		if Vector2(g["at"].x, g["at"].z).distance_to(p2) < 0.75:
+			coins += int(g["value"])
+			gifts.erase(g)
+			var l: Label3D = g["node"]
+			var tw := garden.create_tween()
+			tw.tween_property(l, "position:y", 1.6, 0.5).set_ease(Tween.EASE_OUT)
+			tw.parallel().tween_property(l, "modulate:a", 0.0, 0.5)
+			tw.tween_callback(l.queue_free)
+			toast("%s 🪙 +%d" % [l.text, g["value"]])
+			_refresh()
+			return true
+	return false
+
+
 # ------------------------------------------------------------------ tools
 ## A tap on the garden. Returns true when the game used it (the garden then does nothing else).
 func tap(at: Vector2, pet: HedgePetNode) -> bool:
@@ -213,6 +280,8 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 	if g == Vector3.INF:
 		return false
 	var p2 := Vector2(g.x, g.z)
+	if _collect_gift(p2):
+		return true
 	match tool:
 		"hand":
 			if pet != null:

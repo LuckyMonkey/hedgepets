@@ -36,7 +36,8 @@ var _materials := {}
 func setup(p: CharacterArtProfile) -> void:
 	profile = p
 	for child in get_children():
-		child.queue_free()
+		if child.name != "ContactShadow":                # the garden's, not ours
+			child.queue_free()
 	foliage_nodes.clear()
 	eyes.clear()
 	_materials.clear()

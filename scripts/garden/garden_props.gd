@@ -199,14 +199,18 @@ static func broken_sprinkler(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
 	part(s, box(Vector3(0.5, 0.12, 0.25)), plastic, Vector3.ZERO, Vector3.ZERO, 0.008)
 	part(s, cyl(0.05, 0.05, 0.9, 8), mat("sprinkler_bar", Color("9ea4a8"), 0.5), Vector3(0, 0.15, 0), Vector3(90, 0, 0), 0.006)
 	# the puddle it made
-	var water := StandardMaterial3D.new()
-	water.albedo_color = Color(0.40, 0.50, 0.52, 0.42)
-	water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	water.roughness = 0.05
-	water.metallic_specular = 0.8
-	var puddle := part(r, blob(Vector3(0.95, 0.02, 0.6), {"exponent": 2.2}), water, Vector3(0.9, 0.005, 0.4), Vector3(0, 20, 0), 0.0)
+	var water := ShaderMaterial.new()
+	water.shader = load("res://shaders/water.gdshader")
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(2.6, 1.8)
+	var puddle := MeshInstance3D.new()
+	puddle.mesh = plane
+	puddle.material_override = water
+	puddle.position = Vector3(0.9, 0.012, 0.4)
+	puddle.rotation_degrees = Vector3(0, 20, 0)
+	puddle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	puddle.name = "Puddle"
-	puddle.scale = Vector3(1, 0.3, 1)
+	r.add_child(puddle)
 	# the hose: a few lazy segments, then a coil
 	var hose := mat("hose", Color("4f7a3a"), 0.8)
 	var p := Vector3(-0.3, 0.05, 0)
@@ -229,6 +233,32 @@ static func rock(parent: Node3D, at: Vector3, size: float, rng: RandomNumberGene
 	var r := root(parent, "Rock", at, rng.randf_range(0, 360))
 	var grey := Color("8d8a80").lerp(Color("a39e90"), rng.randf())
 	part(r, blob(Vector3(size, size * 0.62, size * 0.8), {"exponent": 2.3, "taper": rng.randf_range(-0.2, 0.2), "flat_bottom": 0.4}), mat("rock%d" % int(grey.r * 100), grey), Vector3(0, size * 0.22, 0), Vector3.ZERO, 0.01)
+	return r
+
+
+## A New England dry-stone wall: two or three courses of field stones, no mortar, slumped and mossy in places.
+static func stone_wall(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "StoneWall", Vector3.ZERO, 0.0)
+	var length := from.distance_to(to)
+	var dir := (to - from).normalized()
+	var side := dir.cross(Vector3.UP)
+	var moss := Color("6e7a4a")
+	for course in range(3):
+		var x := rng.randf_range(0.0, 0.3)
+		while x < length:
+			var size := rng.randf_range(0.28, 0.42) * (1.0 - course * 0.12)
+			var slump := 0.5 + 0.5 * sin(x * 0.7 + 1.3)          # a lower, tumbled stretch here and there
+			if course == 2 and slump < 0.35:
+				x += size * 1.6
+				continue
+			var at := from + dir * x + side * rng.randf_range(-0.08, 0.08) + Vector3(0, course * 0.36 * (0.75 + 0.25 * slump), 0)
+			var grey := Color("8d8a80").lerp(Color("a7a294"), rng.randf())
+			if course == 2 and rng.randf() < 0.3:
+				grey = grey.lerp(moss, 0.6)                          # moss on the cap stones
+			var stone := part(r, blob(Vector3(size, size * 0.55, size * 0.75), {"exponent": 2.4, "flat_bottom": 0.5}), mat("wall%d" % int(grey.r * 100 + grey.g * 10), grey),
+				at + Vector3(0, size * 0.3, 0), Vector3(rng.randf_range(-6, 6), rad_to_deg(atan2(-dir.z, dir.x)) + rng.randf_range(-12, 12), rng.randf_range(-6, 6)), 0.01)
+			stone.name = "Stone"
+			x += size * 1.75
 	return r
 
 

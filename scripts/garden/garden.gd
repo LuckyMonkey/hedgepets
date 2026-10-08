@@ -37,6 +37,7 @@ func _ready() -> void:
 	_build_props()
 	_build_grass()
 	_spawn_pets()
+	_build_ambience()
 	_build_tilt_shift()
 	game = preload("res://scripts/garden/garden_game.gd").new()
 	game.name = "Game"
@@ -247,6 +248,7 @@ func _tree(at: Vector3, height: float, palette: Dictionary) -> void:
 		var r := _rng.randf_range(1.6, 2.3)
 		_bush(to + Vector3(0, 0.6, 0), Vector3(r, r * 0.72, r), "hedgeoak", palette, Color("2f4a27"), 0.8, 0.5, "egg")
 	_bush(top + Vector3(0, 2.6, 0), Vector3(2.6, 2.0, 2.6), "hedgeoak", palette, Color("2f4a27"), 0.85, 0.5, "egg")
+	_crowns.append(top + Vector3(0, 1.5, 0))
 	obstacles.append([Vector2(at.x, at.z), 1.0])
 
 
@@ -266,6 +268,66 @@ func _pine(at: Vector3, height: float) -> void:
 	obstacles.append([Vector2(at.x, at.z), 0.7])
 
 
+var _crowns: Array = []                           # broadleaf crowns: where falling leaves come from
+
+
+## Life in the garden: leaves drifting down from the oaks, butterflies over the lawn.
+func _build_ambience() -> void:
+	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/hedgemaple.png"))
+	var leaf := ImageTexture.create_from_image(image.get_region(Rect2i(0, 0, 160, 160)))
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = leaf
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	m.alpha_scissor_threshold = 0.4
+	m.vertex_color_use_as_albedo = true
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color("c9923c"))
+	ramp.set_color(1, Color("9a3428"))
+	ramp.add_point(0.5, Color("b8702e"))
+	for at: Vector3 in _crowns:
+		var p := CPUParticles3D.new()
+		p.amount = 10
+		p.lifetime = 14.0
+		p.preprocess = 14.0
+		p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		p.emission_box_extents = Vector3(3.0, 1.0, 3.0)
+		p.direction = Vector3(1, -0.2, 0.3)
+		p.spread = 40.0
+		p.initial_velocity_min = 0.1
+		p.initial_velocity_max = 0.4
+		p.gravity = Vector3(0.18, -0.55, 0.12)
+		p.angle_min = 0.0
+		p.angle_max = 360.0
+		p.angular_velocity_min = -90.0
+		p.angular_velocity_max = 90.0
+		p.scale_amount_min = 0.09
+		p.scale_amount_max = 0.14
+		p.color_initial_ramp = ramp
+		var quad := QuadMesh.new()
+		quad.material = m
+		p.mesh = quad
+		p.position = at
+		p.name = "FallingLeaves"
+		add_child(p)
+	var colors := [Color("f4f0dc"), Color("f2e27a"), Color("f0b860"), Color("f4f0dc"), Color("e8eef6"), Color("f2e27a")]
+	for i in range(colors.size()):
+		var b := preload("res://scripts/garden/butterfly.gd").new()
+		add_child(b)
+		b.setup(self, colors[i], Vector3(_rng.randf_range(-6, 6), 0, _rng.randf_range(-6, 4)))
+
+
+## Where butterflies like to go: flowering plants, and a few fixed flowery patches.
+func butterfly_spots() -> Array:
+	var out: Array = [Vector3(-3, 0, 1), Vector3(3.5, 0, -2), Vector3(0, 0, 4)]
+	if game != null:
+		for pl in game.plants:
+			if pl["stage"] >= 3:
+				out.append(Vector3(pl["at"].x, 0, pl["at"].y))
+	return out
+
+
 ## Every prop is a thing in the garden: what it is, where, how big, whether the shovel can clear it and what it
 ## is worth as scrap. Some junk is worth keeping - some visitors like it (scripts/garden/garden_game.gd).
 func _thing(kind: String, node: Node3D, at: Vector2, radius: float, value: int, junk := true) -> void:
@@ -275,6 +337,9 @@ func _thing(kind: String, node: Node3D, at: Vector2, radius: float, value: int, 
 func _build_props() -> void:
 	var r := _rng
 	GardenProps.broken_fence(self, -16.0, 16.0, -11.0, r, Vector2(0.5, 4.5))
+	GardenProps.stone_wall(self, Vector3(7.2, 0, -10.2), Vector3(9.6, 0, 5.0), r)      # the old field wall down the side
+	obstacles.append([Vector2(8.0, -5.0), 0.6])
+	obstacles.append([Vector2(8.8, 0.0), 0.6])
 	_thing("lawn_chair", GardenProps.lawn_chair(self, Vector3(-5.2, 0, -3.2), 28), Vector2(-5.0, -3.2), 1.3, 6)
 	_thing("grill", GardenProps.rusty_grill(self, Vector3(5.8, 0, -4.5), -20), Vector2(6.3, -4.3), 1.6, 9)
 	_thing("sprinkler", GardenProps.broken_sprinkler(self, Vector3(-1.8, 0, 3.6), 10), Vector2(-1.8, 3.6), 0.8, 5)
@@ -325,20 +390,20 @@ func _build_grass() -> void:
 	for i in range(22000):
 		var x := _rng.randf_range(-19, 19)
 		var z := _rng.randf_range(-11, 11)
-		if _blocked(Vector2(x, z), 0.12):
+		if _blocked(Vector2(x, z), 0.12) or _in_puddle(Vector2(x, z)):
 			continue
 		var bald := _bald_noise.get_noise_2d((x + 30.0) / 60.0 * 512.0, (z + 30.0) / 60.0 * 512.0)
 		if bald > 0.4 and _rng.randf() < 0.8:
 			continue
 		var cell := _rng.randi_range(0, 7)
 		var roll := _rng.randf()
-		if roll < 0.035:
+		if roll < 0.012:
 			cell = 8          # dandelion
-		elif roll < 0.06:
+		elif roll < 0.03:
 			cell = 9          # clover
-		elif roll < 0.075:
+		elif roll < 0.038:
 			cell = 10         # daisy
-		elif roll < 0.11:
+		elif roll < 0.07:
 			cell = 11         # seed heads
 		var s := _rng.randf_range(0.32, 0.6) * (1.5 if cell == 11 else (1.25 if cell >= 8 else 1.0))   # ankle-high to a pet
 		var t := Transform3D(Basis.from_euler(Vector3(0, _rng.randf_range(0, TAU), 0)).scaled(Vector3(s, s, s)), Vector3(x, 0, z))
@@ -357,6 +422,19 @@ func _build_grass() -> void:
 	add_child(node)
 
 
+## The sprinkler's puddle (garden_props.gd: offset 0.9, 0.4 from the sprinkler, 2.6 x 1.8, turned 20°).
+func _in_puddle(p: Vector2) -> bool:
+	for t in things:
+		if t["kind"] == "sprinkler":
+			var node: Node3D = t["node"]
+			var puddle := node.get_node_or_null("Puddle") as Node3D
+			if puddle != null:
+				var local := puddle.global_transform.affine_inverse() * Vector3(p.x, 0, p.y)
+				if Vector2(local.x / 1.15, local.z / 0.8).length() < 1.0:
+					return true
+	return false
+
+
 func _blocked(p: Vector2, margin: float) -> bool:
 	for o in obstacles:
 		if p.distance_to(o[0]) < float(o[1]) + margin:
@@ -372,6 +450,37 @@ func _spawn_pets() -> void:
 	roster = CharacterArtProfile.roster()
 
 
+var _shadow_mat: StandardMaterial3D
+
+
+## A soft dark pool on the grass under a pet: it sits on the lawn instead of hovering over it.
+func _contact_shadow(node: Node3D, p: CharacterArtProfile) -> void:
+	if _shadow_mat == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(0, 0, 0, 0.5))
+		g.set_color(1, Color(0, 0, 0, 0.0))
+		var tex := GradientTexture2D.new()
+		tex.gradient = g
+		tex.fill = GradientTexture2D.FILL_RADIAL
+		tex.fill_from = Vector2(0.5, 0.5)
+		tex.fill_to = Vector2(0.5, 0.0)
+		_shadow_mat = StandardMaterial3D.new()
+		_shadow_mat.albedo_texture = tex
+		_shadow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_shadow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_shadow_mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	var r: Vector3 = p.regions["BODY"]["radii"]
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(r.x * 2.6 + 0.6, r.z * 2.6 + 0.4)
+	var s := MeshInstance3D.new()
+	s.mesh = plane
+	s.material_override = _shadow_mat
+	s.position = Vector3(0.2, 0.02, 0)
+	s.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	s.name = "ContactShadow"
+	node.add_child(s)
+
+
 ## A pet's node, built the first time it comes by (a garden of thirty pets only pays for the ones in it).
 func node_for(p: CharacterArtProfile) -> HedgePetNode:
 	if _nodes.has(p.pet_name):
@@ -385,6 +494,7 @@ func node_for(p: CharacterArtProfile) -> HedgePetNode:
 	node.set_detail("MEDIUM")
 	node.visible = false
 	node.position = GAP + Vector3(0, 0, -6)
+	_contact_shadow(node, p)
 	pets.append(node)
 	_nodes[p.pet_name] = node
 	_wander[node] = {"target": node.position, "wait": _rng.randf_range(0.5, 3.0), "mode": "away"}
@@ -447,13 +557,31 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 			set_pet_mode(node, "away")
 			return
 		w["wait"] = float(w["wait"]) - delta
+		# standing: turn three-quarters toward the viewer, so you see faces, not backs
+		var face: float = w.get("face", 0.0)
+		node.rotation.y = lerp_angle(node.rotation.y, -PI * 0.5 + face, clampf(delta * 2.0, 0.0, 1.0))
+		if w.get("fav", "") != "":
+			emote(node, str(w["fav"]))                   # got to a favourite thing: enjoy it
+			w["fav"] = ""
 		if float(w["wait"]) <= 0.0:
+			var fav: Dictionary = game.favourite(node) if game != null and _rng.randf() < 0.55 else {}
+			if not fav.is_empty():
+				var at: Vector3 = fav["at"]
+				var off := Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)).normalized() * (float(fav["radius"]) + 0.45)
+				var spot := Vector2(at.x + off.x, at.z + off.z)
+				if BOUNDS.has_point(spot) and not _path_blocked(Vector2(node.position.x, node.position.z), spot):
+					w["target"] = Vector3(spot.x, 0, spot.y)
+					w["fav"] = fav["emote"]
+					w["wait"] = _rng.randf_range(5.0, 10.0)
+					w["face"] = _rng.randf_range(-0.9, 0.9)
+					return
 			for attempt in range(12):
 				var p := Vector2(_rng.randf_range(BOUNDS.position.x, BOUNDS.end.x), _rng.randf_range(BOUNDS.position.y, BOUNDS.end.y))
 				if not _blocked(p, 0.9) and not _path_blocked(Vector2(node.position.x, node.position.z), p):
 					w["target"] = Vector3(p.x, 0, p.y)
 					break
 			w["wait"] = _rng.randf_range(2.0, 6.0)
+			w["face"] = [-0.8, 0.8].pick_random() + _rng.randf_range(-0.3, 0.3)
 		return
 	var speed := 1.1 * (0.6 if node.profile.species == "tortoise" else 1.0)
 	var heading := atan2(-to.z, to.x)
@@ -463,6 +591,22 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 		node.walking = move_toward(node.walking, 1.0, delta * 3.0)
 	else:
 		node.walking = move_toward(node.walking, 0.3, delta * 3.0)
+
+
+## A little thought above a pet's head (an emoji), rising and fading.
+func emote(node: Node3D, text: String) -> void:
+	var l := Label3D.new()
+	l.text = text
+	l.font_size = 72
+	l.pixel_size = 0.004
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.position = node.position + Vector3(0, 1.7 * node.scale.y * 2.0, 0)
+	add_child(l)
+	var tw := create_tween()
+	tw.tween_property(l, "position:y", l.position.y + 0.7, 1.6).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 1.6).set_delay(0.6)
+	tw.tween_callback(l.queue_free)
 
 
 func _path_blocked(a: Vector2, b: Vector2) -> bool:
