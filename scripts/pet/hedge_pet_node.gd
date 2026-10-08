@@ -36,7 +36,7 @@ var _materials := {}
 func setup(p: CharacterArtProfile) -> void:
 	profile = p
 	for child in get_children():
-		if child.name != "ContactShadow":                # the garden's, not ours
+		if child.name != "ContactShadow" and not child is CPUParticles3D:   # the garden's shadow; a leaf burst in flight
 			child.queue_free()
 	foliage_nodes.clear()
 	eyes.clear()
@@ -58,11 +58,81 @@ func setup(p: CharacterArtProfile) -> void:
 
 
 ## Regrow this pet in another plant (SpeciesBuilder.PLANTS): new leaves, palette and bloom; same shape and face.
-func set_plant(plant: String) -> void:
+## Animated (default): the old leaves fall away in a little burst, the pet squashes, and the new plant grows in.
+func set_plant(plant: String, animate := true) -> void:
+	if not animate or Motion.speed <= 0.0 or not is_inside_tree():
+		_regrow(plant)
+		return
+	_leaf_burst()
+	var rest := scale
+	var t := Motion.shed_leaves(self)
+	t.tween_callback(func() -> void:
+		Motion.swap(self, rest, func() -> void:
+			_regrow(plant)
+			leaf_growth = 0.0
+			Motion.grow_leaves(self)))
+
+
+## Restart as `profile` (another pet: the viewer's ‹ ›) with the same transition as a regraft.
+func become(p: CharacterArtProfile) -> void:
+	if Motion.speed <= 0.0 or not is_inside_tree():
+		setup(p)
+		return
+	var rest := scale
+	var t := Motion.shed_leaves(self)
+	t.tween_callback(func() -> void:
+		Motion.swap(self, rest, func() -> void:
+			var level := detail
+			setup(p)
+			set_detail(level, true)
+			leaf_growth = 0.0
+			Motion.grow_leaves(self)))
+
+
+func _regrow(plant: String) -> void:
 	var level := detail
 	setup(SpeciesBuilder.restyle(profile, plant))
-	set_detail(level)
+	set_detail(level, true)
 	tap()
+
+
+## A handful of the current leaves flying off (hides the moment one plant becomes another).
+func _leaf_burst() -> void:
+	if leaves_mat == null:
+		return
+	var sheet: Texture2D = leaves_mat.get_shader_parameter("leaf_sheet")
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = sheet
+	m.uv1_scale = Vector3(1.0 / 16.0, 0.5, 1.0)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	m.alpha_scissor_threshold = 0.4
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.vertex_color_use_as_albedo = true
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.amount = 28
+	p.lifetime = 1.1
+	p.explosiveness = 0.9
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = (profile.regions["BODY"]["radii"] as Vector3).x * 0.8
+	p.direction = Vector3.UP
+	p.spread = 70.0
+	p.initial_velocity_min = 1.2
+	p.initial_velocity_max = 2.6
+	p.gravity = Vector3(0, -5.0, 0)
+	p.angle_max = 360.0
+	p.angular_velocity_min = -300.0
+	p.angular_velocity_max = 300.0
+	p.scale_amount_min = profile.leaf_size * 0.6
+	p.scale_amount_max = profile.leaf_size * 1.0
+	p.color = profile.palette["matcha"]
+	var quad := QuadMesh.new()
+	quad.material = m
+	p.mesh = quad
+	p.position = profile.regions["BODY"]["center"]
+	p.emitting = true
+	add_child(p)
+	p.finished.connect(p.queue_free)
 
 
 ## A tap: a hop, a shiver through the leaves, a heart.
@@ -322,7 +392,7 @@ func rebuild_foliage() -> void:
 		for c in built["clusters"]:
 			cluster_debug.append({"position": c["position"], "parent": parent, "normal": c["normal"], "color": c["color"]})
 	_add_multimesh(pet, _tendrils(), "TENDRILS")
-	set_detail(detail)
+	set_detail(detail, true)
 
 
 ## Leaves grown on a rotated region follow its rotation (about the region's centre).
@@ -408,12 +478,34 @@ func _leaf_param(name: String, value: Variant) -> void:
 
 
 ## Detail levels (mobile first): fewer, bigger leaves keep the masses whole; interior ink fades.
-func set_detail(level: String) -> void:
+## Smooth: the leaves of the new level grow in / shrink away (scripts/anim/motion.gd). instant = true for captures.
+func set_detail(level: String, instant := false) -> void:
 	detail = level
 	var l: Dictionary = profile.lod[level]
-	_leaf_param("lod_keep", float(l["leaves"]))
-	_leaf_param("lod_scale", float(l["scale"]))
-	leaves_mat.set_shader_parameter("detail_ink", float(l["ink"]))
+	var goal := Vector3(float(l["leaves"]), float(l["scale"]), float(l["ink"]))
+	if instant or Motion.speed <= 0.0 or leaves_mat == null:
+		_lod = goal
+		_apply_lod()
+		return
+	var t := Motion.channel(self, "lod")
+	t.tween_method(func(v: Vector3) -> void:
+		_lod = v
+		_apply_lod(), _lod, goal, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## How grown-in the foliage is: 0 bare (just the green mass), 1 full. Motion.grow_leaves / shed_leaves animate it.
+var leaf_growth := 1.0:
+	set(v):
+		leaf_growth = v
+		if leaves_mat != null:
+			_apply_lod()
+var _lod := Vector3(1.0, 1.0, 1.0)         # kept rank, leaf scale, interior ink of the current detail level
+
+
+func _apply_lod() -> void:
+	_leaf_param("lod_keep", lerpf(-0.3, _lod.x, leaf_growth))
+	_leaf_param("lod_scale", _lod.y)
+	leaves_mat.set_shader_parameter("detail_ink", _lod.z)
 
 
 ## Foliage presets for the acceptance captures.

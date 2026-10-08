@@ -47,7 +47,6 @@ var _save := 5.0
 var _ui: CanvasLayer
 var _coin_label: Label
 var _toast: Label
-var _toast_t := 0.0
 var _tool_buttons := {}
 var _seed_row: GridContainer
 var _journal: PanelContainer
@@ -117,9 +116,7 @@ func _process(delta: float) -> void:
 	if _save <= 0.0:
 		_save = 8.0
 		save()
-	if _toast_t > 0.0:
-		_toast_t -= delta
-		_toast.modulate.a = clampf(_toast_t, 0.0, 1.0)
+
 
 
 const MAX_GUESTS := 3              # peeking + visiting at once: a garden is visited, not mobbed
@@ -182,7 +179,7 @@ func _node(p: CharacterArtProfile) -> HedgePetNode:
 func _apply_mode(node: HedgePetNode, at_once := false) -> void:
 	var state: String = pet_state[node.profile.pet_name]
 	var mode: String = {"away": "away", "noticed": "peek", "visiting": "roam", "resident": "roam"}[state]
-	if garden.pet_mode(node) == "roam" and mode == "away" and not at_once:
+	if garden.pet_mode(node) in ["roam", "peek"] and mode == "away" and not at_once:   # walk off, never blink out
 		mode = "leave"
 	if garden.pet_mode(node) != mode:
 		garden.set_pet_mode(node, mode, at_once)
@@ -237,8 +234,10 @@ func _drop_gift(node: HedgePetNode) -> void:
 	l.pixel_size = 0.005
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	var at := node.position + Vector3(randf_range(-0.5, 0.5), 0.0, randf_range(0.3, 0.7))
-	l.position = at + Vector3(0, 0.25, 0)
+	l.position = at + Vector3(0, 1.1, 0)
 	garden.add_child(l)
+	Motion.appear(l, Vector3.ONE, Motion.FAST)
+	Motion.drop(l, 0.25)
 	gifts.append({"at": at, "node": l, "value": g[1], "age": 0.0})
 	garden.emote(node, "🎁")
 
@@ -247,7 +246,8 @@ func _tend_gifts(delta: float) -> void:
 	for g in gifts.duplicate():
 		g["age"] += delta
 		var l: Label3D = g["node"]
-		l.position.y = 0.25 + 0.07 * sin(g["age"] * 3.0)
+		if g["age"] > Motion._d(Motion.SLOW) + 0.05:   # landed: a gentle bob, eased in
+			l.position.y = 0.25 + 0.07 * sin((g["age"] - 0.65) * 3.0) * clampf(g["age"] - 0.65, 0.0, 1.0)
 		if g["age"] > 100.0:
 			l.modulate.a = clampf((120.0 - g["age"]) / 20.0, 0.0, 1.0)
 		if g["age"] > 120.0:
@@ -261,10 +261,7 @@ func _collect_gift(p2: Vector2) -> bool:
 			coins += int(g["value"])
 			gifts.erase(g)
 			var l: Label3D = g["node"]
-			var tw := garden.create_tween()
-			tw.tween_property(l, "position:y", 1.6, 0.5).set_ease(Tween.EASE_OUT)
-			tw.parallel().tween_property(l, "modulate:a", 0.0, 0.5)
-			tw.tween_callback(l.queue_free)
+			Motion.float_away(l, 1.2, 0.6, 0.1)
 			toast("%s 🪙 +%d" % [l.text, g["value"]])
 			_refresh()
 			return true
@@ -388,10 +385,7 @@ func _clear(t: Dictionary) -> void:
 	garden.things.erase(t)
 	cleared += 1
 	coins += int(t["value"])
-	var node: Node3D = t["node"]
-	var tw := garden.create_tween()
-	tw.tween_property(node, "scale", Vector3(0.01, 0.01, 0.01), 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tw.tween_callback(node.queue_free)
+	Motion.vanish(t["node"], true, Motion.BASE)
 	toast("🪏 Cleared the %s. 🪙 +%d" % [_thing_name(t["kind"]), t["value"]])
 	_refresh()
 
@@ -400,6 +394,7 @@ func _dig(p: Vector2) -> Dictionary:
 	var bed := {"at": p, "node": null, "plant": null}
 	var node := GardenProps.part(garden, GardenProps.blob(Vector3(0.7, 0.06, 0.6), "pebble"), GardenProps.mat("seedbed", Color("6a5038")), Vector3(p.x, 0.0, p.y), Vector3(0, randf() * 360.0, 0), 0.0)
 	node.name = "Seedbed"
+	Motion.appear(node, Vector3.ONE)
 	bed["node"] = node
 	seedbeds.append(bed)
 	return bed
@@ -415,9 +410,18 @@ func _plant(species: String, bed: Dictionary, stage: int, water := 0.6, progress
 	return pl
 
 
+const STAGE_SIZE := [0.3, 0.32, 0.55, 0.62]
+
+
+## A plant's look for its stage. The new stage grows out of the old one (no pop): the old shrinks away underneath
+## while the new scales up from the old one's size.
 func _build_plant(pl: Dictionary) -> void:
-	if pl["node"] != null:
-		pl["node"].queue_free()
+	var old: Node3D = pl["node"]
+	var from_scale := 0.01
+	if old != null:
+		var old_stage: int = maxi(0, int(pl["stage"]) - 1)
+		from_scale = float(STAGE_SIZE[old_stage]) / float(STAGE_SIZE[pl["stage"]])
+		Motion.vanish(old, true, Motion.BASE)
 	var at := Vector3(pl["at"].x, 0.0, pl["at"].y)
 	var stage: int = pl["stage"]
 	var holder := Node3D.new()
@@ -432,6 +436,9 @@ func _build_plant(pl: Dictionary) -> void:
 		var bush: Node3D = garden._bush(at + Vector3(0, size * 0.75, 0), Vector3(size, size * 0.85, size), SEEDS[pl["species"]]["sheet"], palette, Color(SpeciesBuilder.PALETTES[look[0]][6]), 0.22 + size * 0.2, 1.6, "dome", 1.0 if stage == 3 else 0.0)
 		bush.reparent(holder)
 	pl["node"] = holder
+	holder.scale = Vector3.ONE * from_scale
+	var t := Motion.channel(holder, "scale")
+	t.tween_property(holder, "scale", Vector3.ONE, Motion._d(Motion.SLOW)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _splash(at: Vector3) -> void:
@@ -441,10 +448,7 @@ func _splash(at: Vector3) -> void:
 	drop.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	drop.position = at + Vector3(0, 0.8, 0)
 	garden.add_child(drop)
-	var tw := garden.create_tween()
-	tw.tween_property(drop, "position", at + Vector3(0, 1.6, 0), 0.8)
-	tw.parallel().tween_property(drop, "modulate:a", 0.0, 0.8)
-	tw.tween_callback(drop.queue_free)
+	Motion.float_away(drop, 0.8, 0.8, 0.2)
 
 
 # ------------------------------------------------------------------ words
@@ -475,20 +479,57 @@ func _pet_line(pet: HedgePetNode) -> String:
 
 
 # ------------------------------------------------------------------ ui
+const TOAST_AT := Vector2(90, 140)
+const SEEDS_AT := Vector2(68, 1560)
+const JOURNAL_AT := Vector2(90, 260)
+var _shown_coins := -1
+var _seeds_shown := false
+var _journal_open := false
+
+
+## A message: slides in, stays a few seconds, fades. A new one replaces it smoothly.
 func toast(text: String) -> void:
+	var t := Motion.channel(_toast, "fade")
+	if _toast.visible and _toast.modulate.a > 0.05:             # one is showing: let it go first, then the new one
+		t.tween_property(_toast, "modulate:a", 0.0, Motion._d(Motion.FAST * 0.8))
+		t.tween_callback(func() -> void: _show_toast(text))
+	else:
+		_show_toast(text)
+
+
+func _show_toast(text: String) -> void:
 	_toast.text = text
-	_toast_t = 4.0
-	_toast.modulate.a = 1.0
+	Motion.slide_in(_toast, TOAST_AT, Vector2(0, -18))
+	var t := Motion.channel(_toast, "hold")
+	t.tween_interval(Motion._d(3.4))
+	t.tween_property(_toast, "modulate:a", 0.0, Motion._d(Motion.SLOW))
 
 
+## Bring the HUD to the current state, every change eased (scripts/anim/motion.gd).
 func _refresh() -> void:
-	_coin_label.text = "🪙 %d" % coins
+	if _shown_coins < 0:
+		_shown_coins = coins
+		_coin_label.text = "🪙 %d" % coins
+	elif coins != _shown_coins:
+		Motion.count(_coin_label, _shown_coins, coins, func(v: int) -> void:
+			_shown_coins = v
+			_coin_label.text = "🪙 %d" % v)
+		Motion.pulse(_coin_label, 1.25 if coins > _shown_coins else 0.9)
 	for t in _tool_buttons:
-		_tool_buttons[t].modulate = Color(1, 1, 1, 1.0 if t == tool else 0.55)
-	_seed_row.visible = tool == "seeds" or tool == "shears"
+		var b: Button = _tool_buttons[t]
+		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if t == tool else 0.55, Motion._d(Motion.FAST))
+		Motion.scale_to(b, 1.12 if t == tool else 1.0)
+	var want_seeds := tool == "seeds" or tool == "shears"
+	if want_seeds != _seeds_shown:
+		_seeds_shown = want_seeds
+		if want_seeds:
+			Motion.slide_in(_seed_row, SEEDS_AT, Vector2(0, 26))
+		else:
+			Motion.fade(_seed_row, 0.0, Motion.FAST)
 	for b in _seed_row.get_children():
-		b.modulate = Color(1, 1, 1, 1.0 if b.name == seed_choice else 0.55)
-	if _journal.visible:
+		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if b.name == seed_choice else 0.55, Motion._d(Motion.FAST))
+		Motion.scale_to(b, 1.08 if b.name == seed_choice else 1.0)
+	if _journal_open:
 		_fill_journal()
 
 
@@ -550,7 +591,12 @@ func _build_ui() -> void:
 	var jb := _button("📖", "Journal: who might come, and what they like", 52)
 	jb.position = Vector2(930, 10)
 	jb.pressed.connect(func() -> void:
-		_journal.visible = not _journal.visible
+		_journal_open = not _journal_open
+		if _journal_open:
+			_fill_journal()
+			Motion.slide_in(_journal, JOURNAL_AT, Vector2(0, 40))
+		else:
+			Motion.fade(_journal, 0.0, Motion.FAST)
 		_refresh())
 	_ui.add_child(jb)
 	# a message line
@@ -597,6 +643,7 @@ func _build_ui() -> void:
 			seed_choice = sp
 			_refresh())
 		_seed_row.add_child(b)
+	_seed_row.visible = false
 	_ui.add_child(_seed_row)
 	_journal = PanelContainer.new()
 	_journal.add_theme_stylebox_override("panel", style)

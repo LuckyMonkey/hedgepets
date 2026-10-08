@@ -9,6 +9,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	Motion.speed = 0.0                   # captures and checks: every transition instant, results deterministic
 	var world := Node3D.new()
 	root.add_child(world)
 	var env := Environment.new()

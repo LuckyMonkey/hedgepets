@@ -17,8 +17,9 @@ func _init() -> void:
 
 
 func _run() -> void:
+	Motion.speed = 0.0                   # captures and checks: every transition instant, results deterministic
 	DirAccess.make_dir_recursive_absolute(OUT)
-	var scene: Node = (load(ProjectSettings.get_setting("application/run/main_scene")) as PackedScene).instantiate()
+	var scene: Node = (load("res://main3d.tscn") as PackedScene).instantiate()
 	root.add_child(scene)
 	scene.set_process_input(false)   # captures must not be turned by a live mouse on the window
 	for i in range(10):

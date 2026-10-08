@@ -12,6 +12,7 @@ func _fail(msg: String) -> void:
 
 
 func _run() -> void:
+	Motion.speed = 0.0                   # captures and checks: every transition instant, results deterministic
 	OS.set_environment("HEDGEPETS_FRESH", "1")
 	var garden: Node = (load("res://garden.tscn") as PackedScene).instantiate()
 	root.add_child(garden)

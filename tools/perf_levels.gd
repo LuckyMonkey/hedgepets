@@ -6,7 +6,8 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var scene: Node = (load(ProjectSettings.get_setting("application/run/main_scene")) as PackedScene).instantiate()
+	Motion.speed = 0.0                   # captures and checks: every transition instant, results deterministic
+	var scene: Node = (load("res://main3d.tscn") as PackedScene).instantiate()
 	root.add_child(scene)
 	for i in range(10):
 		await process_frame

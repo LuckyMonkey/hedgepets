@@ -52,7 +52,9 @@ func _load_pet(index: int) -> void:
 		pet_node = HedgePetNode.new()
 		pet_node.name = "HedgePet"
 		add_child(pet_node)
-	pet_node.setup(p)
+		pet_node.setup(p)
+	else:
+		pet_node.become(p)                     # squash, swap, the new pet's leaves grow in (Motion)
 	name_tag.text = p.pet_name
 	_show_plant()
 	note.text = "a %s · adopted %s · tap, drag to turn" % [p.species, p.adopted]
@@ -67,13 +69,15 @@ func _load_pet(index: int) -> void:
 func next_plant() -> void:
 	var plants: Array = SpeciesBuilder.PLANTS.keys()
 	var i := plants.find(SpeciesBuilder.plant_of(profile))
-	pet_node.set_plant(plants[(i + 1) % plants.size()])
-	_show_plant()
+	var next: String = plants[(i + 1) % plants.size()]
+	pet_node.set_plant(next)
+	_show_plant(next)
+	Motion.pulse(plant_button, 1.08)
 
 
-func _show_plant() -> void:
+func _show_plant(plant := "") -> void:
 	if plant_button != null and profile != null:
-		plant_button.text = "🍃 made of %s" % SpeciesBuilder.plant_of(profile)
+		plant_button.text = "🍃 made of %s" % (plant if plant != "" else SpeciesBuilder.plant_of(profile))
 
 
 func rebuild_foliage() -> void:
@@ -81,7 +85,7 @@ func rebuild_foliage() -> void:
 
 
 func set_detail(level: String) -> void:
-	pet_node.set_detail(level)
+	pet_node.set_detail(level, true)
 
 
 func set_foliage(preset: String) -> void:
@@ -157,8 +161,22 @@ func _place_camera() -> void:
 	var elevation := clampf(asin(dir.normalized().y) + _pitch, 0.05, 1.3)
 	var flat := Vector2(dir.x, dir.z).normalized()
 	var d := Vector3(flat.x * cos(elevation), sin(elevation), flat.y * cos(elevation))
-	camera.position = target + d * distance * _zoom
-	camera.look_at(target, Vector3.UP)
+	_cam_goal_pos = target + d * distance * _zoom
+	_cam_goal_look = target
+	if _cam_snap or Motion.speed <= 0.0:
+		_cam_pos = _cam_goal_pos
+		_cam_look = _cam_goal_look
+		camera.position = _cam_pos
+		camera.look_at(_cam_look, Vector3.UP)
+		_cam_snap = false
+
+
+var _cam_goal_pos := Vector3.ZERO
+var _cam_goal_look := Vector3.ZERO
+var _cam_pos := Vector3.ZERO
+var _cam_look := Vector3.ZERO
+var _cam_springs := [{}, {}]
+var _cam_snap := true                      # the first framing is placed, not eased
 
 
 # ------------------------------------------------------------------ regions
@@ -208,6 +226,12 @@ func _build_ui() -> void:
 
 
 func _process(delta: float) -> void:
+	# the camera eases to its goal (a pet switch, a view change, zoom): position and rotation together
+	var dragging := _press_at != Vector2.INF and _dragged
+	_cam_pos = Motion.spring(_cam_pos, _cam_goal_pos, _cam_springs[0], 0.05 if dragging else 0.22, delta)
+	_cam_look = Motion.spring(_cam_look, _cam_goal_look, _cam_springs[1], 0.05 if dragging else 0.22, delta)
+	camera.position = _cam_pos
+	camera.look_at(_cam_look, Vector3.UP)
 	if _press_at == Vector2.INF:
 		_yaw += _yaw_velocity * delta
 		_yaw_velocity *= pow(0.008, delta)

@@ -26,9 +26,10 @@ varying vec3 v_world;
 
 void vertex() {
 	v_cell = INSTANCE_CUSTOM.x;
-	if (INSTANCE_CUSTOM.w > lod_keep) {
-		VERTEX = vec3(0.0);                                  // dropped at this detail level
-	}
+	// leaves above the kept rank shrink to their stalk over a soft band, so detail changes and leaves growing in
+	// or falling away are smooth, never a pop
+	float keep = clamp((lod_keep - INSTANCE_CUSTOM.w) / 0.25 + 1.0, 0.0, 1.0);
+	VERTEX *= keep * keep * (3.0 - 2.0 * keep);
 	vec3 world = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	v_world = world;
 	VERTEX.xy *= lod_scale;

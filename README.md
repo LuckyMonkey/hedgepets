@@ -8,7 +8,7 @@ A tiny Godot 4.7 (GL Compatibility, portrait 1080 × 1920) garden-creature lab. 
 ## The garden (the main scene, `garden.tscn`)
 
 A messy back garden: clear junk 🪏, plant and water 🌱💧, and pets peek through the broken fence, visit, then move in
-when the garden suits them. **[docs/GARDEN.md](docs/GARDEN.md).**
+when the garden suits them. **[docs/GARDEN.md](docs/GARDEN.md).** Transitions: **[docs/MOTION.md](docs/MOTION.md)**.
 
 ## Gerald in 3D (the pet viewer, `main3d.tscn`)
 

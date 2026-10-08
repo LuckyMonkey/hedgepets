@@ -17,6 +17,13 @@ var obstacles: Array = []                         # fixed: [Vector2 centre (x, z
 var things: Array = []                            # the garden's props: {id, kind, node, at (Vector2), radius, junk, value}
 var _target := Vector3(0.0, 0.0, -0.5)
 var _distance := 12.5
+## The camera eases toward these (Motion.approach): input moves the goal, never the camera itself; a drag that ends
+## moving keeps gliding a little.
+var _goal_target := Vector3(0.0, 0.0, -0.5)
+var _goal_distance := 12.5
+var _pan_velocity := Vector3.ZERO
+var _cam_pan := {}
+var _cam_zoom := {}
 var _press_at := Vector2.INF
 var _dragged := false
 var _rng := RandomNumberGenerator.new()
@@ -491,7 +498,7 @@ func node_for(p: CharacterArtProfile) -> HedgePetNode:
 	node.setup(p)
 	node.scale = Vector3.ONE * PET_SCALE
 	node.rotation.y = _rng.randf_range(-PI, PI)
-	node.set_detail("MEDIUM")
+	node.set_detail("MEDIUM", true)
 	node.visible = false
 	node.position = GAP + Vector3(0, 0, -6)
 	_contact_shadow(node, p)
@@ -509,16 +516,19 @@ func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 	w["mode"] = mode
 	match mode:
 		"away":
-			node.visible = false
-			node.position = GAP + Vector3(0, 0, -6)
+			if node.visible and not at_once:             # out through the gap: shrink away, then park outside
+				Motion.vanish(node, false).tween_callback(func() -> void: node.position = GAP + Vector3(0, 0, -6))
+			else:
+				node.visible = false
+				node.position = GAP + Vector3(0, 0, -6)
 		"peek":
-			node.visible = true
 			if was == "away":
 				node.position = GAP + Vector3(_rng.randf_range(-1.0, 1.0), 0, -4.0)
+				Motion.appear(node, Vector3.ONE * PET_SCALE, Motion.SLOW)
 			w["target"] = GAP + Vector3(_rng.randf_range(-1.2, 1.2), 0, -0.7)
 		"roam":
-			node.visible = true
 			if was == "away":
+				Motion.appear(node, Vector3.ONE * PET_SCALE, Motion.SLOW)
 				node.position = GAP + Vector3(0, 0, 1.5)
 				if at_once:                              # already living here when the garden opens
 					for k in range(20):
@@ -539,6 +549,16 @@ func pet_mode(node: HedgePetNode) -> String:
 func _process(delta: float) -> void:
 	for node in pets:
 		_walk(node, delta)
+	if _press_at == Vector2.INF and _pan_velocity.length() > 0.01:     # glide after a fling
+		_goal_target = _clamp_target(_goal_target + _pan_velocity * delta)
+		_pan_velocity *= pow(0.03, delta)
+	_target = Motion.spring(_target, _goal_target, _cam_pan, 0.07 if _dragged else 0.22, delta)   # tight under a finger
+	_distance = Motion.spring(_distance, _goal_distance, _cam_zoom, 0.16, delta)
+	_place_camera()
+
+
+func _clamp_target(t: Vector3) -> Vector3:
+	return Vector3(clampf(t.x, -12.0, 12.0), 0.0, clampf(t.z, -9.0, 8.0))
 
 
 ## Wander: stand a while, look around, pick a free spot, walk there with a little step, turning to face the way.
@@ -603,10 +623,9 @@ func emote(node: Node3D, text: String) -> void:
 	l.no_depth_test = true
 	l.position = node.position + Vector3(0, 1.7 * node.scale.y * 2.0, 0)
 	add_child(l)
-	var tw := create_tween()
-	tw.tween_property(l, "position:y", l.position.y + 0.7, 1.6).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(l, "modulate:a", 0.0, 1.6).set_delay(0.6)
-	tw.tween_callback(l.queue_free)
+	l.scale = Vector3.ONE * 0.01
+	Motion.appear(l, Vector3.ONE, Motion.FAST)
+	Motion.float_away(l, 0.7, 1.6, 0.6)
 
 
 func _path_blocked(a: Vector2, b: Vector2) -> bool:
@@ -634,14 +653,14 @@ func _build_tilt_shift() -> void:
 # ------------------------------------------------------------------ input: pan, zoom, tap a pet
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
-		_distance = clampf(_distance * (0.92 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.08), 8.0, 34.0)
-		_place_camera()
+		_goal_distance = clampf(_goal_distance * (0.88 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.12), 8.0, 34.0)
 		return
 	var pressed: bool = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) or (event is InputEventScreenTouch and event.pressed)
 	var released: bool = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed) or (event is InputEventScreenTouch and not event.pressed)
 	if pressed:
 		_press_at = event.position
 		_dragged = false
+		_pan_velocity = Vector3.ZERO
 	elif released and _press_at != Vector2.INF:
 		if not _dragged:
 			_tap(event.position)
@@ -650,11 +669,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.position.distance_to(_press_at) > 10.0:
 			_dragged = true
 		if _dragged:
-			var k := _distance * 0.0016
-			_target += Vector3(-event.relative.x * k, 0.0, -event.relative.y * k)
-			_target.x = clampf(_target.x, -12.0, 12.0)
-			_target.z = clampf(_target.z, -9.0, 8.0)
-			_place_camera()
+			var k := _goal_distance * 0.0016
+			var move := Vector3(-event.relative.x * k, 0.0, -event.relative.y * k)
+			_goal_target = _clamp_target(_goal_target + move)
+			_pan_velocity = _pan_velocity.lerp(move * 60.0, 0.5)
 
 
 func _tap(at: Vector2) -> void:

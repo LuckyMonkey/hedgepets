@@ -7,6 +7,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	Motion.speed = 0.0                   # captures and checks: every transition instant, results deterministic
 	DirAccess.make_dir_recursive_absolute("/tmp/hedgepets-views")
 	var scene: Node = (load("res://garden.tscn") as PackedScene).instantiate()
 	root.add_child(scene)
@@ -14,6 +15,7 @@ func _run() -> void:
 	scene.set_process_unhandled_input(false)
 	if OS.get_environment("DIST") != "":
 		scene._distance = float(OS.get_environment("DIST"))
+		scene._goal_distance = scene._distance
 		scene._place_camera()
 	for i in range(int(OS.get_environment("FRAMES")) if OS.get_environment("FRAMES") != "" else 90):
 		await process_frame
