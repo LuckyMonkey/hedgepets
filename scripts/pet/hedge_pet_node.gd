@@ -226,6 +226,64 @@ func _flower_node(region_name: String, dir: Vector3) -> Node3D:
 	return holder
 
 
+## Eye styles: how much white, and where. "none" is the plain glossy oval; the others add a little white without
+## going cartoon or creepy (tools: the eye sample sheet, res://eye_samples.tscn). Picked style: EYE_STYLE.
+const EYE_STYLES := {
+	"none": {},
+	"crescent": {"sclera": Color("f2ede0"), "k": 0.92, "off": Vector2(0.0, 0.17)},
+	"warm crescent": {"sclera": Color("ddcfae"), "k": 0.9, "off": Vector2(0.04, 0.17)},
+	"corner": {"sclera": Color("f2ede0"), "k": 0.92, "off": Vector2(0.17, 0.03)},
+	"thin rim": {"sclera": Color("efe9da"), "k": 0.93, "off": Vector2.ZERO},
+	"almond": {"sclera": Color("f2ede0"), "shape": Vector2(1.18, 0.9), "k": 0.7, "off": Vector2(0.0, 0.04)},
+	"brown iris": {"sclera": Color("e6dcc6"), "k": 0.9, "off": Vector2(0.0, 0.14), "iris": Color("4a2e1c"), "pupil": 0.55},
+	"soft lid": {"sclera": Color("f2ede0"), "k": 0.9, "off": Vector2(0.0, 0.16), "lid": true},
+	"big shine": {"shine": 1.5},
+}
+static var EYE_STYLE := "none"
+var eye_style := ""                      # this pet's style ("" = EYE_STYLE)
+
+
+func _build_eye(holder: Node3D, name: String, nose_side: float) -> void:
+	var st: Dictionary = EYE_STYLES.get(eye_style if eye_style != "" else EYE_STYLE, {})
+	var s := profile.eye_size
+	var ink := 0.035 * s / 0.155
+	var shape: Vector2 = st.get("shape", Vector2.ONE)
+	var to_nose := signf(nose_side) if nose_side != 0.0 else 1.0
+	var iris_parent: Node3D = holder
+	var iris_at := Vector3(0, 0, -s * 0.28)
+	var iris_r := Vector3(s * 0.88, s * 1.12, s * 0.55)
+	if st.has("sclera"):
+		# the white: a slightly bigger oval behind; the iris sits a touch in front, offset so the white shows
+		# where the style wants it (below, toward the back corner, all round)
+		var sclera := _ellipsoid(holder, Vector3(0, 0, -s * 0.3), Vector3(s * 0.95 * shape.x, s * 1.15 * shape.y, s * 0.5), "sclera", ink)
+		sclera.material_override = (sclera.material_override as StandardMaterial3D).duplicate()
+		(sclera.material_override as StandardMaterial3D).albedo_color = st["sclera"]
+		var k: float = st["k"]
+		var off: Vector2 = st["off"]
+		iris_at = Vector3(off.x * s * to_nose, off.y * s, -s * 0.24)
+		iris_r = Vector3(s * 0.95 * k, s * 1.15 * k * minf(1.0, shape.y + 0.1), s * 0.5)
+		ink = 0.0
+	var eye := _ellipsoid(holder, iris_at, iris_r, "eye", ink)
+	eye.name = name
+	if st.has("iris"):
+		eye.material_override = (eye.material_override as StandardMaterial3D).duplicate()
+		(eye.material_override as StandardMaterial3D).albedo_color = st["iris"]
+		_ellipsoid(eye, Vector3(0, 0, s * 0.12), iris_r * Vector3(st["pupil"], st["pupil"], 0.6), "eye")
+	var shine: float = st.get("shine", 1.0)
+	# both eyes catch the light on the same side (as if lit from one direction), not mirrored
+	var lit := -1.0 if holder.basis.x.z >= 0.0 else 1.0
+	var gx := -0.28 * s * lit
+	_ellipsoid(eye, Vector3(gx - iris_at.x * 0.0, 0.4 * s, s * 0.24), Vector3(0.27, 0.32, 0.06) * s * shine, "glint")
+	_ellipsoid(eye, Vector3(-gx * 0.85, -0.32 * s, s * 0.24), Vector3(0.11, 0.11, 0.04) * s * shine, "glint")
+	if shine > 1.2:
+		_ellipsoid(eye, Vector3(0.05 * s, 0.55 * s, s * 0.24), Vector3(0.07, 0.07, 0.03) * s, "glint")
+	if st.get("lid", false):
+		# a soft upper lid of leaf-green resting over the top of the eye: calm, not staring
+		var lid := _ellipsoid(holder, Vector3(0, s * 0.62, -s * 0.12), Vector3(s * 1.04 * shape.x, s * 0.42, s * 0.56), "sage", 0.0)
+		lid.material_override = (lid.material_override as StandardMaterial3D).duplicate()
+		(lid.material_override as StandardMaterial3D).albedo_color = profile.palette["muted_ivy"]
+
+
 ## A tap: a hop, a shiver through the leaves, a heart.
 func tap() -> void:
 	sleeping = false
@@ -257,6 +315,10 @@ func _mat(kind: String, region := {}) -> Material:
 			m.albedo_color = profile.palette["muted_ivy"].darkened(0.15) if region.get("foliage", false) else profile.palette["muted_ivy"]
 		"ear_inner":
 			m.albedo_color = profile.palette["muted_ivy"].darkened(0.18)
+		"sclera":
+			m.albedo_color = Color("f4efe2")
+			m.roughness = 0.35
+			m.metallic_specular = 0.5
 		"eye":
 			m.albedo_color = Color("1a120c")
 			m.roughness = 0.22
@@ -375,15 +437,13 @@ func _build_face() -> void:
 			continue
 		var holder := Node3D.new()
 		holder.position = _anchor(name)
-		holder.basis = Basis(Quaternion(Vector3.FORWARD, -HedgeAnatomy.anchor_normal(profile, name)))
+		# a steady frame on the face: +z out of the face, +y up, so "white below" or "toward the nose" means the
+		# same on every pet and both eyes
+		var n := HedgeAnatomy.anchor_normal(profile, name).normalized()
+		var up := (Vector3.UP - n * n.dot(Vector3.UP)).normalized()
+		holder.basis = Basis(up.cross(n), up, n)
 		head.add_child(holder)
-		var s := profile.eye_size
-		# a soft vertical oval set into the leaves, glossy deep brown-black; a big sheen up toward the light and a
-		# small second sparkle below it; a fine ink line round it (the drawing's eye, not a marble)
-		var eye := _ellipsoid(holder, Vector3(0, 0, -s * 0.28), Vector3(s * 0.88, s * 1.12, s * 0.55), "eye", 0.035 * s / 0.155)
-		eye.name = name
-		_ellipsoid(eye, Vector3(-0.3 * s, 0.4 * s, s * 0.22), Vector3(0.27, 0.32, 0.06) * s, "glint")
-		_ellipsoid(eye, Vector3(0.26 * s, -0.34 * s, s * 0.22), Vector3(0.11, 0.11, 0.04) * s, "glint")
+		_build_eye(holder, name, Vector3.RIGHT.dot(holder.basis.x))
 		eyes.append(holder)
 	if profile.anchors.has("NOSE"):
 		_ellipsoid(head, _anchor("NOSE"), f.get("nose", Vector3(0.1, 0.08, 0.12)), "nose", 0.012)
