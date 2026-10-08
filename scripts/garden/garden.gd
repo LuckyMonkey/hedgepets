@@ -66,6 +66,7 @@ var _leaf_mats := {}
 var _bald_noise: FastNoiseLite
 
 
+var walk_stats := {"arrived": 0, "close_enough": 0, "gave_up": 0, "most_in_a_row": 0}   # tools/stuck_check.gd
 var boot_ms := {}                                 # how long each part of building the garden took (tools/boot_time.gd)
 
 
@@ -708,21 +709,22 @@ func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 			if was == "away":
 				node.position = g["out"].lerp(g["peek"], 0.55) + side * _rng.randf_range(-1.0, 1.0)
 				Motion.appear(node, Vector3.ONE * PET_SCALE, Motion.SLOW)
-			w["target"] = g["peek"] + side * _rng.randf_range(-1.2, 1.2)
+			w["target"] = _fit(g["peek"] + side * _rng.randf_range(-1.2, 1.2), node, w)
 		"roam":
 			if was == "away":
 				Motion.appear(node, Vector3.ONE * PET_SCALE, Motion.SLOW)
-				node.position = g["peek"].lerp(g["inside"], 0.5)
+				node.position = _fit(g["peek"].lerp(g["inside"], 0.5), node, w)
 				if at_once:                              # already living here when the garden opens
 					for k in range(20):
 						var spot := Vector2(_rng.randf_range(-3, 3), _rng.randf_range(-2, 3))
 						if not _blocked(spot, 0.8):
 							node.position = Vector3(spot.x, 0, spot.y)
 							break
-			w["target"] = g["inside"] + side * _rng.randf_range(-1.0, 1.0)
+			w["target"] = _fit(g["inside"] + side * _rng.randf_range(-1.0, 1.0), node, w)
 			w["wait"] = 0.5
 		"leave":
 			w["target"] = g["out"].lerp(g["peek"], 0.2)
+			w["best_d"] = INF
 
 
 func pet_mode(node: HedgePetNode) -> String:
@@ -755,6 +757,10 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 	var to: Vector3 = w["target"] - node.position
 	to.y = 0.0
 	if to.length() < 0.15:
+		if w["mode"] == "roam" and float(w.get("best_d", INF)) != INF:
+			walk_stats["arrived"] += 1                  # reached the spot it was going for
+			w["give_ups"] = 0
+		w["best_d"] = INF
 		node.walking = move_toward(node.walking, 0.0, delta * 3.0)
 		if w["mode"] == "peek":
 			node.rotation.y = lerp_angle(node.rotation.y, _heading(node.position, CENTER), clampf(delta * 3.0, 0.0, 1.0))   # looking in
@@ -773,37 +779,52 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 			var fav: Dictionary = game.favourite(node) if game != null and _rng.randf() < 0.55 else {}
 			if not fav.is_empty():
 				var at: Vector3 = fav["at"]
-				var off := Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)).normalized() * (float(fav["radius"]) + 0.45)
-				var spot := Vector2(at.x + off.x, at.z + off.z)
-				if BOUNDS.has_point(spot) and not _path_blocked(Vector2(node.position.x, node.position.z), spot):
+				# beside it, where this pet actually fits (its own size, not a fixed margin)
+				var off := Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)).normalized() * (float(fav["radius"]) * 0.8 + pet_radius(node) + 0.3)
+				var spot := free_spot(Vector2(at.x + off.x, at.z + off.z), pet_radius(node))
+				if BOUNDS.has_point(spot) and not _path_blocked(Vector2(node.position.x, node.position.z), spot, pet_radius(node)):
 					w["target"] = Vector3(spot.x, 0, spot.y)
+					w["best_d"] = INF
 					w["fav"] = fav["emote"]
 					w["wait"] = _rng.randf_range(5.0, 10.0)
 					w["face"] = _rng.randf_range(-0.9, 0.9)
 					return
-			for attempt in range(12):
-				var p := Vector2(_rng.randf_range(BOUNDS.position.x, BOUNDS.end.x), _rng.randf_range(BOUNDS.position.y, BOUNDS.end.y))
-				if not _blocked(p, 0.9) and not _path_blocked(Vector2(node.position.x, node.position.z), p):
-					w["target"] = Vector3(p.x, 0, p.y)
-					break
+			_pick_target(node, w)
 			w["wait"] = _rng.randf_range(2.0, 6.0)
 			w["face"] = [-0.8, 0.8].pick_random() + _rng.randf_range(-0.3, 0.3)
 		return
 	var speed := 1.1 * (0.6 if node.profile.species == "tortoise" else 1.0)
-	var dir := _steer(node, to.normalized())
+	# steering is smoothed so avoidance can't flip sides every frame (no spinning in place)
+	var want := _steer(node, to.normalized())
+	var dir: Vector3 = (w.get("dir", want) as Vector3).lerp(want, clampf(delta * 5.0, 0.0, 1.0))
+	dir = dir.normalized() if dir.length() > 0.01 else want
+	w["dir"] = dir
 	var heading := atan2(-dir.z, dir.x)
 	node.rotation.y = lerp_angle(node.rotation.y, heading, clampf(delta * 4.0, 0.0, 1.0))
-	if absf(angle_difference(node.rotation.y, heading)) < 0.6:
-		var before := node.position
-		node.position += dir * minf(speed * delta, to.length())
-		node.walking = move_toward(node.walking, 1.0, delta * 3.0)
-		# boxed in (a hauled chair parked across its path): give up on this spot after a while
-		w["stuck_t"] = float(w.get("stuck_t", 0.0)) + delta if node.position.distance_to(before) < speed * delta * 0.3 else 0.0
-		if float(w["stuck_t"]) > 2.5 and w["mode"] == "roam":
-			w["target"] = node.position
-			w["stuck_t"] = 0.0
+	# keep shuffling forward while turning, slower the more it has to turn
+	var align := clampf(1.0 - absf(angle_difference(node.rotation.y, heading)) / 1.4, 0.15, 1.0)
+	node.position += dir * minf(speed * align * delta, to.length())
+	node.walking = move_toward(node.walking, 0.3 + 0.7 * align, delta * 3.0)
+	# progress, not movement: if it hasn't got 0.25 m closer in 1.5 s it is blocked (by a pet on the spot, junk parked
+	# in the way, a corner). Near the goal that counts as arriving; far from it, pick somewhere else.
+	var d := to.length()
+	if d < float(w.get("best_d", INF)) - 0.25:
+		w["best_d"] = d
+		w["stall"] = 0.0
 	else:
-		node.walking = move_toward(node.walking, 0.3, delta * 3.0)
+		w["stall"] = float(w.get("stall", 0.0)) + delta
+	if float(w["stall"]) > 1.5:
+		w["stall"] = 0.0
+		w["best_d"] = INF
+		if d < pet_radius(node) + 1.2 or w["mode"] != "roam":
+			w["target"] = node.position                 # close enough: stop here (peek / leave also end here)
+			walk_stats["close_enough"] += 1
+			w["give_ups"] = 0
+		else:
+			_pick_target(node, w)
+			walk_stats["gave_up"] += 1
+			w["give_ups"] = int(w.get("give_ups", 0)) + 1
+			walk_stats["most_in_a_row"] = maxi(walk_stats["most_in_a_row"], w["give_ups"])
 
 
 # ------------------------------------------------------------------ collisions
@@ -881,14 +902,52 @@ func emote(node: Node3D, text: String) -> void:
 	Motion.float_away(l, 0.7, 1.6, 0.6)
 
 
+## A random free spot it can walk straight to (falls back to staying put).
+func _pick_target(node: HedgePetNode, w: Dictionary) -> void:
+	var pr := pet_radius(node)
+	var from := Vector2(node.position.x, node.position.z)
+	for attempt in range(16):
+		var p := Vector2(_rng.randf_range(BOUNDS.position.x, BOUNDS.end.x), _rng.randf_range(BOUNDS.position.y, BOUNDS.end.y))
+		if not _blocked(p, pr + 0.4) and not _path_blocked(from, p, pr):
+			w["target"] = Vector3(p.x, 0, p.y)
+			w["best_d"] = INF
+			return
+	w["target"] = node.position
+
+
+## The nearest point to `p` where a pet of radius `pr` fits: pushed out of every solid it lands in (a few passes,
+## since getting out of one can put it in another). Pets don't count: they move.
+## A gate spot moved to where this pet fits (and its progress tracking reset for the new goal).
+func _fit(v: Vector3, node: HedgePetNode, w: Dictionary) -> Vector3:
+	var p := free_spot(Vector2(v.x, v.z), pet_radius(node))
+	w["best_d"] = INF
+	w["stall"] = 0.0
+	return Vector3(p.x, 0, p.y)
+
+
+func free_spot(p: Vector2, pr: float) -> Vector2:
+	for pass_i in range(4):
+		var moved := false
+		for c in colliders(null, false):
+			var off: Vector2 = p - c[0]
+			var need := float(c[1]) + pr + 0.15
+			if off.length() < need:
+				p = (c[0] as Vector2) + (off.normalized() if off.length() > 0.001 else Vector2.RIGHT) * need
+				moved = true
+		if not moved:
+			break
+	return p
+
+
 ## The yaw that points a pet (it faces +x) from `from` toward `to`.
 func _heading(from: Vector3, to: Vector3) -> float:
 	return atan2(-(to.z - from.z), to.x - from.x)
 
 
-func _path_blocked(a: Vector2, b: Vector2) -> bool:
-	for k in range(1, 8):
-		if _blocked(a.lerp(b, float(k) / 8.0), 0.7):
+func _path_blocked(a: Vector2, b: Vector2, pr := 0.7) -> bool:
+	var steps := maxi(4, int(a.distance_to(b) / 0.5))
+	for k in range(1, steps + 1):
+		if _blocked(a.lerp(b, float(k) / steps), pr):
 			return true
 	return false
 

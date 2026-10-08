@@ -41,6 +41,13 @@ and leaf piles you walk over). Pets steer around what's ahead, give up on a spot
 out of anything they end up in, including junk you haul into them. Hauled junk stops against trunks, walls and other
 things. `tools/collision_check.gd`: a dozen pets roam for 40 s and never sit inside anything.
 
+**Never stuck.** Every place a pet heads for (a random spot, beside a favourite thing, a gate's first steps) is
+moved to where *that* pet fits (`free_spot`, by its own radius), and straight-line paths are checked at its size.
+Steering is smoothed so it can't flip sides every frame, and pets shuffle forward while turning (no spinning in
+place). Progress, not motion, decides when it's blocked: no 0.25 m closer in 1.5 s means "close enough" near the goal,
+or a new goal far from it. `tools/stuck_check.gd`: 12 pets for 90 s, no stuck stretch over 4 s, under 15% of walks
+abandoned, never more than 3 in a row (Gerald alone: none).
+
 **Camera vs trees.** Everything in the garden dissolves right in front of the camera (an ordered dither,
 `shaders/near_fade.gdshaderinc`, and StandardMaterial's pixel-dither distance fade), so the camera can pass a trunk or
 through a crown without a screenful of leaves.
