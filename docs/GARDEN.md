@@ -20,12 +20,13 @@ Each pet has three sets of wishes in its profile (`CharacterArtProfile.wants`, w
 - **visit**: it comes in and wanders around,
 - **resident**: it moves in (🪙 +10), and while its wishes stay met it brings 🪙 2 every 30 s.
 
-Pets: 32 and counting. The hand-made seven (`pets/*.tres`: Gerald, Bramble, Clover, Hazel, Juniper, Rascal,
-Spruce) and 25 New England animals from data (`pets/species.json`, built by `scripts/art/species_builder.gd`): red
+Pets: 47. The hand-made seven (`pets/*.tres`: Gerald, Bramble, Clover, Hazel, Juniper, Smudge,
+Spruce) and 40 New England animals from data (`pets/species.json`, built by `scripts/art/species_builder.gd`): red
 fox, eastern chipmunk, white-tailed fawn, black bear cub, striped skunk, opossum, woodchuck, porcupine, river otter,
 bobcat, spring peeper, red eft, garter snake, wild turkey, black-capped chickadee, northern cardinal, blue jay,
 American robin, mallard, barred owl, little brown bat, star-nosed mole, snowshoe hare, deer mouse, monarch
-caterpillar. Some want each other: `has_<species>` counts residents (the jay wants the chipmunk to argue with).
+caterpillar. Names are our own: nothing that echoes another game's or show's characters (checked 2026-10-08; e.g. no Hoot,
+Waddle, Chip, Woody, Ruby, Rascal). The roster is closed for now: polish before more animals. Some want each other: `has_<species>` counts residents (the jay wants the chipmunk to argue with).
 
 Pacing: at most 3 guests (peeking or visiting) at once, and a new face at the fence at most every 14 s. A pet's
 node is only built the first time it comes by.
@@ -47,6 +48,12 @@ over a lawn with fine blade grain (`shaders/lawn.gdshader`, `tools/make_lawn_det
 ivy, clover, fern, jasmine, and `tools/make_leaf_styles.py`: oak (acorns), pine (cones), sage (lilac sprigs), maple
 (winged seeds), boxwood, willow (catkins), rose, lavender; the
 cell-13 bloom is tinted by `CharacterArtProfile.flower_color`.
+
+Plants as fonts: the leaf sheets are baked from glyph fonts in `assets/fonts` (`tools/generate_hedgeink.py`, then
+`tools/bake_leaf_sprites.py <name>`). HedgeMoss (star-moss tufts, feather moss, spore capsules as blooms) and HedgeHolly
+(spined leaves, red berries) are the newest. Any pet can be regrown in any plant: 🍃 / F in the viewer, ✂️ shears in
+the garden (regraft a pet in the chosen seed's plant for its price; saved). `SpeciesBuilder.PLANTS` gives each plant
+its palette and bloom; `tools/capture_plants.gd` -> docs/acceptance/plants.png.
 
 📖 is the journal. Progress autosaves to `user://garden.json`.
 

@@ -6,8 +6,10 @@ For each plant profile (assets/fonts/<font>_geometry.json) this writes assets/sp
 toward the edges for a little depth); row 1 is the ink (white strokes, tinted with the ink colour). Every cell maps
 glyph units x -0.6..0.6, y -0.05..1.15 (y up, the stalk at y = 0) onto CELL pixels.
 
-    python3 tools/bake_leaf_sprites.py
+    python3 tools/bake_leaf_sprites.py [hedgemoss hedgeholly ...]   (no names = every font; note make_ivy_sprites.py
+                                                                     redraws hedgeivy.png afterwards)
 """
+import sys
 import glob
 import json
 import os
@@ -29,7 +31,10 @@ def to_px(point, scale):
 def main():
     masks = [Image.open(p).convert('L').resize((CELL, CELL)) for p in sorted(glob.glob(os.path.join(ROOT, 'assets/watercolor/mask_*.png')))]
     os.makedirs(os.path.join(ROOT, 'assets/sprites'), exist_ok=True)
+    only = set(sys.argv[1:])
     for path in sorted(glob.glob(os.path.join(ROOT, 'assets/fonts/*_geometry.json'))):
+        if only and os.path.basename(path).replace('_geometry.json', '') not in only:
+            continue
         glyphs = json.load(open(path))['glyphs']
         sheet = Image.new('RGBA', (CELL * len(glyphs), CELL * 2), (0, 0, 0, 0))
         for index, glyph in enumerate(glyphs):

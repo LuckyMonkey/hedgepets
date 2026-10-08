@@ -4,7 +4,7 @@ x -0.6..0.6, y -0.05..1.15, stalk at y = 0; see make_ivy_sprites.py):
 
     hedgeoak    lobed oak leaves; cell 13 an acorn          (Hazel the squirrel)
     hedgepine   needle sprays;    cell 13 a little cone      (Spruce the moose)
-    hedgesage   soft felted ovals; cell 13 a sprig of bloom  (Rascal the raccoon)
+    hedgesage   soft felted ovals; cell 13 a sprig of bloom  (Smudge the raccoon)
     hedgemaple  pointed five-lobed leaves; cell 13 winged seeds
     hedgeboxwood little oval leaves in threes; cell 13 a tiny floret cluster
     hedgewillow long narrow leaves in fans; cell 13 a fuzzy catkin

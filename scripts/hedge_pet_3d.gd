@@ -13,6 +13,7 @@ var sun: DirectionalLight3D
 var fill: DirectionalLight3D
 var name_tag: Label
 var note: Label
+var plant_button: Button
 var auto_detail := true
 var _yaw := 0.0
 var _yaw_velocity := 0.0
@@ -53,12 +54,26 @@ func _load_pet(index: int) -> void:
 		add_child(pet_node)
 	pet_node.setup(p)
 	name_tag.text = p.pet_name
+	_show_plant()
 	note.text = "a %s · adopted %s · tap, drag to turn" % [p.species, p.adopted]
 	_yaw = 0.0
 	_yaw_velocity = 0.0
 	_pitch = 0.0
 	_zoom = 1.0
 	set_view(_view)
+
+
+## Cycle the pet through every plant (fonts and leaf sheets): HedgeMoss, HedgeHolly, ivy, oak...
+func next_plant() -> void:
+	var plants: Array = SpeciesBuilder.PLANTS.keys()
+	var i := plants.find(SpeciesBuilder.plant_of(profile))
+	pet_node.set_plant(plants[(i + 1) % plants.size()])
+	_show_plant()
+
+
+func _show_plant() -> void:
+	if plant_button != null and profile != null:
+		plant_button.text = "🍃 made of %s" % SpeciesBuilder.plant_of(profile)
 
 
 func rebuild_foliage() -> void:
@@ -166,6 +181,15 @@ func _build_ui() -> void:
 	note.position = Vector2(90, 1578)
 	note.size = Vector2(900, 40)
 	layer.add_child(note)
+	plant_button = Button.new()
+	plant_button.flat = true
+	plant_button.add_theme_font_size_override("font_size", 30)
+	plant_button.add_theme_color_override("font_color", Color(0.36, 0.27, 0.19, 0.85))
+	plant_button.position = Vector2(340, 1630)
+	plant_button.size = Vector2(400, 70)
+	plant_button.tooltip_text = "Grow this pet in another plant (F)"
+	plant_button.pressed.connect(next_plant)
+	layer.add_child(plant_button)
 	for side in [-1, 1]:
 		var b := Button.new()
 		b.text = "‹" if side < 0 else "›"
@@ -208,6 +232,8 @@ func _input(event: InputEvent) -> void:
 					add_child(dbg)
 				else:
 					dbg.queue_free()
+			KEY_F:
+				next_plant()
 			KEY_LEFT:
 				_load_pet(pet_index - 1)
 			KEY_RIGHT:

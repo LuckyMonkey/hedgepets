@@ -1,10 +1,10 @@
 [gd_resource type="Resource" script_class="CharacterArtProfile" format=3]
 
-[ext_resource type="Script" path="res://scripts/art/character_art_profile.gd" id="1_ffj8u"]
+[ext_resource type="Script" path="res://scripts/art/character_art_profile.gd" id="1_rcnl5"]
 
 [resource]
-script = ExtResource("1_ffj8u")
-pet_name = "Rascal"
+script = ExtResource("1_rcnl5")
+pet_name = "Smudge"
 species = "raccoon"
 adopted = "October 8, 2026"
 seed = 6060

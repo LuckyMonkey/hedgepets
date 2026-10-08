@@ -24,6 +24,8 @@ const SEEDS := {
 	"willow": {"icon": "🎋", "price": 6, "sheet": "hedgewillow"},
 	"rose": {"icon": "🌹", "price": 6, "sheet": "hedgerose"},
 	"lavender": {"icon": "🪻", "price": 5, "sheet": "hedgelavender"},
+	"moss": {"icon": "🍃", "price": 3, "sheet": "hedgemoss"},
+	"holly": {"icon": "🎄", "price": 7, "sheet": "hedgeholly"},
 }
 const STAGE_SECONDS := 18.0        # watered growth time per stage
 const WATER_SECONDS := 40.0        # how long one watering lasts
@@ -36,6 +38,7 @@ var tool := "hand"
 var seed_choice := "ivy"
 var seedbeds: Array = []           # {at: Vector2, node, plant (or null)}
 var plants: Array = []             # {species, at, stage, water, progress, node, bed}
+var pet_plant := {}                # pet name -> the plant it was regrafted in with ✂️ (SpeciesBuilder.PLANTS)
 var pet_state := {}                # pet name -> "away" | "noticed" | "visiting" | "resident"
 var _since := {}                   # pet name -> seconds its current step's wishes have been unmet
 var _income := INCOME_SECONDS
@@ -59,7 +62,7 @@ func setup(g: Node3D) -> void:
 	_load()
 	for p: CharacterArtProfile in garden.roster:
 		if pet_state[p.pet_name] != "away":
-			_apply_mode(garden.node_for(p), true)
+			_apply_mode(_node(p), true)
 	_refresh()
 	toast("Tidy the garden, plant things, and see who comes by.")
 
@@ -165,8 +168,17 @@ func _visitors() -> void:
 		if next != state:
 			_since[name] = 0.0
 			pet_state[name] = next
-			_apply_mode(garden.node_for(p))
+			_apply_mode(_node(p))
 			_refresh()
+
+
+## The pet's node in the garden, grown in whatever plant you last regrafted it in.
+func _node(p: CharacterArtProfile) -> HedgePetNode:
+	var node: HedgePetNode = garden.node_for(p)
+	var want: String = pet_plant.get(p.pet_name, "")
+	if want != "" and SpeciesBuilder.plant_of(node.profile) != want:
+		node.set_plant(want)
+	return node
 
 
 func _apply_mode(node: HedgePetNode, at_once := false) -> void:
@@ -240,6 +252,22 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 			coins -= price
 			_plant(seed_choice, bed, 0)
 			_refresh()
+			return true
+		"shears":
+			if pet == null:
+				toast("Tap a pet to regraft it in %s %s (🪙 %d)." % [SEEDS[seed_choice]["icon"], seed_choice, SEEDS[seed_choice]["price"]])
+				return true
+			var price: int = SEEDS[seed_choice]["price"]
+			if SpeciesBuilder.plant_of(pet.profile) == seed_choice:
+				toast("%s is already %s." % [pet.profile.pet_name, seed_choice])
+			elif coins < price:
+				toast("Regrafting in %s costs 🪙 %d." % [seed_choice, price])
+			else:
+				coins -= price
+				pet_plant[pet.profile.pet_name] = seed_choice
+				pet.set_plant(seed_choice)
+				toast("✂️ %s is growing in %s now." % [pet.profile.pet_name, seed_choice])
+				_refresh()
 			return true
 		"water":
 			var pl = _plant_at(p2)
@@ -330,9 +358,9 @@ func _build_plant(pl: Dictionary) -> void:
 		GardenProps.part(holder, GardenProps.blob(Vector3(0.25, 0.12, 0.25), "dome"), GardenProps.mat("mound", Color("5c432e")), at, Vector3.ZERO, 0.0)
 	else:
 		var size: float = [0.0, 0.32, 0.55, 0.62][stage]
-		var palette := {"deep_forest": Color("2f4a2a"), "muted_ivy": Color("4a6b36"), "matcha": Color("6e8c42"),
-			"warm_yellow_green": Color("889a44"), "soft_sage": Color("72886a"), "pale_highlight": Color("b9c58a")}
-		var bush: Node3D = garden._bush(at + Vector3(0, size * 0.75, 0), Vector3(size, size * 0.85, size), SEEDS[pl["species"]]["sheet"], palette, Color("34502a"), 0.22 + size * 0.2, 1.6, "dome", 1.0 if stage == 3 else 0.0)
+		var look: Array = SpeciesBuilder.PLANTS[pl["species"]]
+		var palette := SpeciesBuilder.palette_of(look[0])
+		var bush: Node3D = garden._bush(at + Vector3(0, size * 0.75, 0), Vector3(size, size * 0.85, size), SEEDS[pl["species"]]["sheet"], palette, Color(SpeciesBuilder.PALETTES[look[0]][6]), 0.22 + size * 0.2, 1.6, "dome", 1.0 if stage == 3 else 0.0)
 		bush.reparent(holder)
 	pl["node"] = holder
 
@@ -388,7 +416,7 @@ func _refresh() -> void:
 	_coin_label.text = "🪙 %d" % coins
 	for t in _tool_buttons:
 		_tool_buttons[t].modulate = Color(1, 1, 1, 1.0 if t == tool else 0.55)
-	_seed_row.visible = tool == "seeds"
+	_seed_row.visible = tool == "seeds" or tool == "shears"
 	for b in _seed_row.get_children():
 		b.modulate = Color(1, 1, 1, 1.0 if b.name == seed_choice else 0.55)
 	if _journal.visible:
@@ -471,7 +499,7 @@ func _build_ui() -> void:
 	bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	bar.position = Vector2(60, 1770)
 	bar.size = Vector2(960, 120)
-	bar.add_theme_constant_override("separation", 40)
+	bar.add_theme_constant_override("separation", 14)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	panel.position = Vector2(120, 1760)
@@ -479,7 +507,7 @@ func _build_ui() -> void:
 	_ui.add_child(panel)
 	panel.add_child(bar)
 	for t: Array in [["hand", "✋", "Hand: pet them, look at things"], ["shovel", "🪏", "Shovel: clear junk for coins, or dig a seedbed"],
-			["seeds", "🌱", "Seeds: plant in a seedbed"], ["water", "💧", "Water: watered plants grow"]]:
+			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["water", "💧", "Water: watered plants grow"]]:
 		var b := _button(t[1], t[2])
 		var key: String = t[0]
 		b.pressed.connect(func() -> void:
@@ -488,8 +516,8 @@ func _build_ui() -> void:
 		bar.add_child(b)
 		_tool_buttons[key] = b
 	_seed_row = GridContainer.new()
-	_seed_row.columns = 6
-	_seed_row.position = Vector2(84, 1560)
+	_seed_row.columns = 7
+	_seed_row.position = Vector2(68, 1560)
 	_seed_row.add_theme_constant_override("h_separation", 8)
 	_seed_row.add_theme_constant_override("v_separation", 6)
 	for sp in SEEDS:
@@ -520,7 +548,7 @@ func _build_ui() -> void:
 func save() -> void:
 	if OS.get_environment("HEDGEPETS_FRESH") != "":
 		return                                           # captures and checks never touch the player's garden
-	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state}
+	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state, "plants": pet_plant}
 	var present := {}
 	for t in garden.things:
 		present[t["id"]] = true
@@ -558,6 +586,7 @@ func _load() -> void:
 		var pl = b.get("plant")
 		if pl != null:
 			_plant(str(pl["species"]), bed, int(pl["stage"]), float(pl["water"]), float(pl["progress"]))
+	pet_plant = data.get("plants", {})
 	var saved: Dictionary = data.get("pets", {})
 	for name in saved:
 		if pet_state.has(name):

@@ -33,7 +33,42 @@ const PALETTES := {
 	"dark": ["1a2622", "263630", "34483e", "485a4a", "3a4a44", "6a7e70", "18221e"],
 	"bark": ["3e3020", "5a4630", "76603e", "8f7a4c", "6e6450", "b0a070", "34281a"],
 	"blue": ["24365a", "34507a", "4a6c98", "6a88b0", "6a7a90", "a8c0dc", "1e2c48"],
+	"moss": ["2e4a1e", "4a6e26", "6e9430", "8eac3a", "6a8a4a", "c4d870", "2e4418"],
+	"holly": ["14301e", "1e4228", "2a5a34", "3e7040", "3a5a44", "7aa070", "142a1a"],
 }
+## Every plant a pet can be made of (a leaf sheet baked from a font or drawn by tools/make_leaf_styles.py), with the
+## look it brings: its palette, the colour of its bloom (cell 13) and how much it blooms.
+const PLANTS := {
+	"ivy": ["green", "fffaf0", 0.35], "clover": ["spring", "fffaf0", 0.3], "fern": ["green", "fffaf0", 0.15],
+	"jasmine": ["green", "fffaf0", 0.7], "oak": ["autumn", "a8743a", 0.5], "pine": ["pine", "8a5a34", 0.25],
+	"sage": ["silver", "c8b4e6", 0.3], "maple": ["crimson", "b0502a", 0.3], "boxwood": ["green", "f6f0e0", 0.2],
+	"willow": ["spring", "e6e0b0", 0.3], "rose": ["green", "e86a7a", 0.6], "lavender": ["lavender", "9a7ad0", 0.7],
+	"moss": ["moss", "c86a3a", 0.5], "holly": ["holly", "d42a2a", 0.6],
+}
+
+
+static func palette_of(name: String) -> Dictionary:
+	var pal: Array = PALETTES[name]
+	var out := {}
+	for i in range(FAMILIES.size()):
+		out[FAMILIES[i]] = _c(pal[i])
+	return out
+
+
+## The same pet grown in another plant: a copy of its profile with that plant's leaves, palette and bloom.
+static func restyle(p: CharacterArtProfile, plant: String) -> CharacterArtProfile:
+	var q: CharacterArtProfile = p.duplicate(true)
+	var look: Array = PLANTS[plant]
+	q.leaf_sheet = "hedge" + plant
+	q.palette = palette_of(look[0])
+	q.inner_mass = _c(PALETTES[look[0]][6])
+	q.flower_color = _c(look[1])
+	q.flowering = float(look[2])
+	return q
+
+
+static func plant_of(p: CharacterArtProfile) -> String:
+	return p.leaf_sheet.trim_prefix("hedge")
 const FAMILIES := ["deep_forest", "muted_ivy", "matcha", "warm_yellow_green", "soft_sage", "pale_highlight"]
 
 
@@ -259,7 +294,7 @@ static func build(spec: Dictionary) -> CharacterArtProfile:
 	if "bib" in extras:
 		R["BIB"] = _part(Vector3(0.5, -0.62, 0) * h, Vector3(0.42, 0.32, 0.52) * h, dark, {"parent": "HEAD", "outline": 0.0})
 	if "crest" in extras:
-		R["CREST"] = _part(Vector3(-0.3, 0.95, 0) * h, Vector3(0.3, 0.42, 0.1) * h, skin,
+		R["CREST"] = _part(Vector3(-0.3, 0.95, 0) * h, Vector3(0.3, 0.42, 0.1) * h, _c(spec.get("crest_color", spec.get("skin", "9aa47e"))),
 			{"parent": "HEAD", "rotation": Vector3(0, 0, 32), "shape": {"exponent": 2.0, "taper": -0.8, "taper_axis": "y"}})
 	if "wattle" in extras:
 		R["WATTLE"] = _part(Vector3(0.82, -0.6, 0) * h, Vector3(0.11, 0.32, 0.11) * h, Color("c83a2a"), {"parent": "HEAD"})

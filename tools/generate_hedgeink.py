@@ -258,10 +258,126 @@ def add_fern_frond(parts: dict, offset: Point = (0.0, 0.0), scale: float = 1.0, 
         add_leaf(parts, LEAF_NARROW, (side * 0.025, u), 0.34 * scale, side * 1.04 + angle)
 
 
+def add_moss_rosette(parts: dict, offset: Point = (0.0, 0.0), scale: float = 1.0, angle: float = 0.0, height: float = 0.55, leaves: int = 9) -> None:
+    """Star moss: a short stem crowned with a rosette of tiny pointed leaves."""
+    add_stem(parts, [(0.0, 0.0), (0.02, height * 0.5), (0.0, height)], offset, scale, angle)
+    for index in range(leaves):
+        a = math.tau * index / leaves + 0.3
+        tip = (math.sin(a) * 0.05, height + math.cos(a) * 0.02)
+        contour, veins = leaf_shape(0.2, 0.7, 0.0, 0.0, 0.0, 0.6 + index)
+        part = translate(contour, (0.0, 0.0), 0.3, 0.0)
+        part = translate(part, (0.0, 0.0), 1.0, a * 0.55 - math.pi * 0.0 if False else (a - math.pi) * 0.5)
+        part = translate(part, tip)
+        parts["fill"].append(translate(part, offset, scale, angle))
+        parts["ink"].append(translate(part, offset, scale, angle))
+
+
+def add_feather_moss(parts: dict, offset: Point = (0.0, 0.0), scale: float = 1.0, angle: float = 0.0) -> None:
+    """Feather moss: a curving stem with tiny alternate leaflets, like a fern a hundred times smaller."""
+    stem = [(0.12 * math.sin(math.pi * u * 0.8), u * 0.95) for u in [i / 16 for i in range(17)]]
+    add_stem(parts, stem, offset, scale, angle)
+    for index in range(12):
+        u = 0.15 + index * 0.065
+        x = 0.12 * math.sin(math.pi * u * 0.8 / 0.95)
+        side = -1.0 if index % 2 == 0 else 1.0
+        contour, _ = leaf_shape(0.22, 0.7, 0.0, 0.0, 0.0, index)
+        leaf = translate(contour, (x, u), 0.16 * (1.15 - u * 0.6), side * 1.1)
+        parts["fill"].append(translate(leaf, offset, scale, angle))
+        parts["ink"].append(translate(leaf, offset, scale, angle))
+
+
+def add_sporophyte(parts: dict, offset: Point = (0.0, 0.0), scale: float = 1.0, angle: float = 0.0, height: float = 0.85) -> None:
+    """A moss's 'flower': a hair-thin stalk with a capsule on top."""
+    add_stem(parts, [(0.0, 0.0), (0.015, height * 0.5), (0.03, height)], offset, scale, angle)
+    capsule = translate(ellipse((0.03, height + 0.06), (0.045, 0.085), 14), offset, scale, angle)
+    parts["fill"].append(capsule)
+    parts["ink"].append(capsule)
+
+
+def holly_leaf_shape(width: float, spikes: int, bend: float, phase: float) -> tuple[list[Point], list[list[Point]]]:
+    """A glossy holly leaf: an oval with sharp spines along the edge and a spined tip."""
+    left: list[Point] = []
+    right: list[Point] = []
+    centerline: list[Point] = []
+    samples = 60
+    for index in range(samples):
+        u = index / (samples - 1)
+        center_x = bend * math.sin(math.pi * u)
+        base = width * (math.sin(math.pi * min(1.0, u * 1.02)) ** 0.75)
+        wave = abs(math.sin(math.pi * spikes * u + phase))
+        spike = 1.0 + 0.32 * wave ** 6 - 0.12 * (1.0 - wave)       # sharp points, scooped between
+        left.append((center_x - base * spike, u))
+        right.append((center_x + base * spike, u))
+        centerline.append((center_x, u))
+    left.append((bend * 0.0, 1.05))
+    return left + list(reversed(right)), [centerline]
+
+
+def add_holly_leaf(parts: dict, width: float = 0.3, spikes: int = 3, bend: float = 0.03, phase: float = 0.4, offset: Point = (0.0, 0.0), scale: float = 1.0, angle: float = 0.0) -> None:
+    contour, veins = holly_leaf_shape(width, spikes, bend, phase)
+    parts["fill"].append(translate(contour, offset, scale, angle))
+    parts["ink"].append(translate(contour, offset, scale, angle))
+    parts["ink"].extend(translate(vein, offset, scale, angle) for vein in veins)
+
+
+def add_berries(parts: dict, centers: Sequence[Point], radius: float) -> None:
+    for center in centers:
+        parts["fill"].append(circle(center, radius, 16))
+        parts["ink"].append(parts["fill"][-1])
+
+
+def build_moss_holly_glyphs(species: str) -> list[dict]:
+    """HedgeMoss and HedgeHolly: the same 16 semantic slots (0-7 leaves and clusters, 8-11 stems, 12 bud, 13 the
+    bloom, 14 berries, 15 seed), with their own plant."""
+    glyphs: list[dict] = []
+    moss = species == "HedgeMoss"
+
+    def slot(name: str, category: str, draw) -> None:
+        item = glyph(name, category)
+        draw(item)
+        glyphs.append(item)
+
+    if moss:
+        slot("leaf_simple", "leaf", lambda i: add_moss_rosette(i))
+        slot("leaf_narrow", "leaf", lambda i: add_moss_rosette(i, height=0.75, leaves=7))
+        slot("leaf_round", "leaf", lambda i: add_moss_rosette(i, height=0.42, leaves=11))
+        slot("leaf_pointed", "leaf", lambda i: add_feather_moss(i))
+        slot("leaf_bent", "leaf", lambda i: add_feather_moss(i, angle=0.25))
+        slot("leaf_pair", "cluster", lambda i: (add_moss_rosette(i, (-0.14, 0.0), 0.9, 0.18), add_moss_rosette(i, (0.14, 0.0), 0.8, -0.2)))
+        slot("leaf_pair_alternating", "cluster", lambda i: (add_feather_moss(i, (-0.08, 0.0), 0.9, 0.2), add_moss_rosette(i, (0.16, 0.0), 0.7, -0.25)))
+        slot("three_leaf_cluster", "cluster", lambda i: [add_moss_rosette(i, (x, 0.0), sc, a) for x, sc, a in ((-0.2, 0.7, 0.3), (0.0, 0.95, 0.0), (0.2, 0.75, -0.3))])
+    else:
+        slot("leaf_simple", "leaf", lambda i: add_holly_leaf(i))
+        slot("leaf_narrow", "leaf", lambda i: add_holly_leaf(i, 0.24, 4, -0.03, 1.1))
+        slot("leaf_round", "leaf", lambda i: add_holly_leaf(i, 0.34, 3, 0.05, 2.0))
+        slot("leaf_pointed", "leaf", lambda i: add_holly_leaf(i, 0.27, 3, -0.06, 0.9))
+        slot("leaf_bent", "leaf", lambda i: add_holly_leaf(i, 0.3, 4, 0.11, 1.7))
+        slot("leaf_pair", "cluster", lambda i: (add_stem(i, stem_curve("curved")), add_holly_leaf(i, 0.26, 3, 0.03, 0.4, (0.0, 0.3), 0.7, 0.8), add_holly_leaf(i, 0.26, 3, -0.03, 1.4, (0.0, 0.45), 0.7, -0.7)))
+        slot("leaf_pair_alternating", "cluster", lambda i: (add_holly_leaf(i, 0.28, 3, 0.03, 0.4, (0.0, 0.0), 0.9, 0.0), add_berries(i, ((-0.1, 0.18), (0.04, 0.24), (0.12, 0.14)), 0.065)))
+        slot("three_leaf_cluster", "cluster", lambda i: [add_holly_leaf(i, 0.26, 3, 0.02, ph, (0.0, 0.08), 0.75, a) for a, ph in ((-0.8, 0.3), (0.0, 1.2), (0.8, 2.1))])
+    slot("stem_segment", "stem", lambda i: add_stem(i, stem_curve("straight")))
+    slot("curved_stem", "stem", lambda i: add_stem(i, stem_curve("curved")))
+    slot("branch_fork", "branch", lambda i: (add_stem(i, [(0.0, 0.0), (0.0, 0.96)]), add_stem(i, [(0.0, 0.45), (-0.28, 0.82)])))
+    slot("tendril", "stem", lambda i: add_stem(i, stem_curve("tendril")))
+    if moss:
+        slot("bud", "bud", lambda i: add_sporophyte(i, height=0.45))
+        slot("simple_flower", "flower", lambda i: [add_sporophyte(i, (x, 0.0), 1.0, a, h) for x, a, h in ((-0.1, 0.25, 0.7), (0.0, 0.0, 0.85), (0.1, -0.22, 0.75))])
+        slot("berry_cluster", "berry", lambda i: [add_sporophyte(i, (x, 0.0), 1.0, a, 0.6) for x, a in ((-0.06, 0.15), (0.06, -0.15))])
+        slot("seed_pod", "seed", lambda i: add_sporophyte(i, height=0.95))
+    else:
+        slot("bud", "bud", lambda i: add_berries(i, ((0.0, 0.62),), 0.1))
+        slot("simple_flower", "flower", lambda i: (add_stem(i, [(0.0, 0.0), (0.0, 0.5)]), add_berries(i, ((-0.11, 0.6), (0.08, 0.68), (0.13, 0.5), (-0.02, 0.45)), 0.09)))
+        slot("berry_cluster", "berry", lambda i: add_berries(i, ((-0.13, 0.64), (0.08, 0.76), (0.18, 0.57)), 0.095))
+        slot("seed_pod", "seed", lambda i: add_berries(i, ((0.0, 0.6), (0.1, 0.48)), 0.08))
+    return glyphs
+
+
 def build_species_glyphs(species: str) -> list[dict]:
     """Build the shared semantic slots with species-specific geometry."""
     if species == "HedgeInk":
         return build_glyphs()
+    if species in ("HedgeMoss", "HedgeHolly"):
+        return build_moss_holly_glyphs(species)
 
     glyphs: list[dict] = []
     if species == "HedgeIvy":
@@ -640,7 +756,8 @@ def build_font(glyphs: list[dict], family: str) -> bytes:
 
 
 def main() -> None:
-    families = ["HedgeInk", "HedgeIvy", "HedgeJasmine", "HedgeClover", "HedgeFern"]
+    import sys
+    families = sys.argv[1:] or ["HedgeInk", "HedgeIvy", "HedgeJasmine", "HedgeClover", "HedgeFern", "HedgeMoss", "HedgeHolly"]
     for family in families:
         glyphs = build_species_glyphs(family)
         geometry_path = FONT_DIR / f"{family.lower()}_geometry.json"

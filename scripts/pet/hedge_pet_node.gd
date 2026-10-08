@@ -56,6 +56,14 @@ func setup(p: CharacterArtProfile) -> void:
 	rebuild_foliage()
 
 
+## Regrow this pet in another plant (SpeciesBuilder.PLANTS): new leaves, palette and bloom; same shape and face.
+func set_plant(plant: String) -> void:
+	var level := detail
+	setup(SpeciesBuilder.restyle(profile, plant))
+	set_detail(level)
+	tap()
+
+
 ## A tap: a hop, a shiver through the leaves, a heart.
 func tap() -> void:
 	joy = 1.0

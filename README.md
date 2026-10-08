@@ -16,7 +16,7 @@ when the garden suits them. **[docs/GARDEN.md](docs/GARDEN.md).**
 
 **Pets:** Gerald (beaver, ivy), Clover (sitting bunny, clover, a cotton tail of blossom), Juniper (hedgehog, fern),
 Bramble (tortoise, a flowering jasmine shell), Spruce (moose, pine, wooden paddle antlers), Hazel (squirrel, autumn oak
-with acorns, a huge tail), Rascal (raccoon, silvery sage, a mask and a ringed tail), plus 25 New England animals
+with acorns, a huge tail), Smudge (raccoon, silvery sage, a mask and a ringed tail), plus 40 New England animals
 made from data (`pets/species.json` via `scripts/art/species_builder.gd`; see docs/GARDEN.md) - each a profile in `pets/*.tres` on the same renderer. Switch with ‹ ›
 or the arrow keys. **Drag** to turn the pet (turntable with momentum), drag up/down to tilt, **wheel** to zoom, **tap**
 for a hop and a heart.

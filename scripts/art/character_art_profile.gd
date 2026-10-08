@@ -449,10 +449,10 @@ static func hazel() -> CharacterArtProfile:
 	return p
 
 
-## Rascal: a raccoon of silvery sage, with a dark mask, a ringed tail and dark mittens. He likes the junk best of all.
-static func rascal() -> CharacterArtProfile:
+## Smudge: a raccoon of silvery sage, with a dark mask, a ringed tail and dark mittens. He likes the junk best of all.
+static func smudge() -> CharacterArtProfile:
 	var p := CharacterArtProfile.new()
-	p.pet_name = "Rascal"
+	p.pet_name = "Smudge"
 	p.species = "raccoon"
 	p.adopted = "October 8, 2026"
 	p.seed = 6060
