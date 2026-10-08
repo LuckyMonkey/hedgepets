@@ -1,0 +1,223 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/hedge_pet.gd" id="1_pet"]
+[ext_resource type="Script" path="res://scripts/growth_renderer.gd" id="2_growth"]
+[ext_resource type="Script" path="res://scripts/hedge_ink_specimen.gd" id="3_specimen"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.988235, 0.972549, 0.929412, 0.96)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.196078, 0.239216, 0.152941, 0.3)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+content_margin_left = 28.0
+content_margin_top = 22.0
+content_margin_right = 28.0
+content_margin_bottom = 22.0
+
+[node name="HedgePets" type="Node2D"]
+
+[node name="Paper" type="ColorRect" parent="."]
+offset_right = 1080.0
+offset_bottom = 1920.0
+mouse_filter = 2
+color = Color(0.968627, 0.945098, 0.890196, 1)
+
+[node name="HedgePet" type="Node2D" parent="."]
+position = Vector2(540, 900)
+script = ExtResource("1_pet")
+draw_features = false
+
+[node name="GrowthRenderer" type="Node2D" parent="."]
+script = ExtResource("2_growth")
+growth = 0.90
+amplitude = 110.0
+frequency = 1.0
+leaf_spacing = 50.0
+overflow = 0.80
+shoot_count = 8
+profile_id = "ivy"
+
+[node name="FeatureInk" type="Node2D" parent="."]
+z_index = 10
+position = Vector2(540, 900)
+script = ExtResource("1_pet")
+features_only = true
+
+[node name="DebugPanel" type="Panel" parent="."]
+offset_left = 64.0
+offset_top = 1500.0
+offset_right = 1016.0
+offset_bottom = 1876.0
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="DebugPanel"]
+layout_mode = 0
+offset_right = 896.0
+offset_bottom = 332.0
+theme_override_constants/separation = 4
+
+[node name="HeaderRow" type="HBoxContainer" parent="DebugPanel/VBox"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="DebugPanel/VBox/HeaderRow"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.14902, 0.184314, 0.113725, 1)
+theme_override_font_sizes/font_size = 24
+text = "RENDERER LAB  /  HedgeInk"
+
+[node name="PlantOption" type="OptionButton" parent="DebugPanel/VBox/HeaderRow"]
+custom_minimum_size = Vector2(150, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "Ivy"
+
+[node name="SpecimenButton" type="Button" parent="DebugPanel/VBox"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "OPEN GLYPH SPECIMEN"
+
+[node name="GrowthRow" type="HBoxContainer" parent="DebugPanel/VBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Label" type="Label" parent="DebugPanel/VBox/GrowthRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.196078, 0.239216, 0.152941, 1)
+theme_override_font_sizes/font_size = 21
+vertical_alignment = 1
+text = "GROWTH"
+
+[node name="GrowthSlider" type="HSlider" parent="DebugPanel/VBox/GrowthRow"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.90
+
+[node name="AmplitudeRow" type="HBoxContainer" parent="DebugPanel/VBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Label" type="Label" parent="DebugPanel/VBox/AmplitudeRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.196078, 0.239216, 0.152941, 1)
+theme_override_font_sizes/font_size = 21
+vertical_alignment = 1
+text = "AMPLITUDE"
+
+[node name="AmplitudeSlider" type="HSlider" parent="DebugPanel/VBox/AmplitudeRow"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 190.0
+step = 1.0
+value = 110.0
+
+[node name="FrequencyRow" type="HBoxContainer" parent="DebugPanel/VBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Label" type="Label" parent="DebugPanel/VBox/FrequencyRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.196078, 0.239216, 0.152941, 1)
+theme_override_font_sizes/font_size = 21
+vertical_alignment = 1
+text = "FREQUENCY"
+
+[node name="FrequencySlider" type="HSlider" parent="DebugPanel/VBox/FrequencyRow"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.3
+max_value = 2.5
+step = 0.01
+value = 1.0
+
+[node name="SpacingRow" type="HBoxContainer" parent="DebugPanel/VBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Label" type="Label" parent="DebugPanel/VBox/SpacingRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.196078, 0.239216, 0.152941, 1)
+theme_override_font_sizes/font_size = 21
+vertical_alignment = 1
+text = "LEAF SPACING"
+
+[node name="SpacingSlider" type="HSlider" parent="DebugPanel/VBox/SpacingRow"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 24.0
+max_value = 120.0
+step = 1.0
+value = 50.0
+
+[node name="OverflowRow" type="HBoxContainer" parent="DebugPanel/VBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Label" type="Label" parent="DebugPanel/VBox/OverflowRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.196078, 0.239216, 0.152941, 1)
+theme_override_font_sizes/font_size = 21
+vertical_alignment = 1
+text = "OVERFLOW"
+
+[node name="OverflowSlider" type="HSlider" parent="DebugPanel/VBox/OverflowRow"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.01
+value = 0.80
+
+[connection signal="value_changed" from="DebugPanel/VBox/GrowthRow/GrowthSlider" to="GrowthRenderer" method="_on_growth_changed"]
+[connection signal="value_changed" from="DebugPanel/VBox/AmplitudeRow/AmplitudeSlider" to="GrowthRenderer" method="_on_amplitude_changed"]
+[connection signal="value_changed" from="DebugPanel/VBox/FrequencyRow/FrequencySlider" to="GrowthRenderer" method="_on_frequency_changed"]
+[connection signal="value_changed" from="DebugPanel/VBox/SpacingRow/SpacingSlider" to="GrowthRenderer" method="_on_spacing_changed"]
+[connection signal="value_changed" from="DebugPanel/VBox/OverflowRow/OverflowSlider" to="GrowthRenderer" method="_on_overflow_changed"]
+[connection signal="pressed" from="DebugPanel/VBox/SpecimenButton" to="SpecimenPanel" method="_on_toggle_pressed"]
+
+[node name="SpecimenPanel" type="Control" parent="."]
+z_index = 20
+offset_left = 30.0
+offset_top = 54.0
+offset_right = 1050.0
+offset_bottom = 1484.0
+mouse_filter = 0
+visible = false
+script = ExtResource("3_specimen")
+
+[node name="CloseButton" type="Button" parent="SpecimenPanel"]
+offset_left = 850.0
+offset_top = 24.0
+offset_right = 982.0
+offset_bottom = 72.0
+theme_override_font_sizes/font_size = 18
+text = "CLOSE"
+
+[connection signal="pressed" from="SpecimenPanel/CloseButton" to="SpecimenPanel" method="_on_close_pressed"]
