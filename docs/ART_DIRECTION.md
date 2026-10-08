@@ -22,6 +22,39 @@ Hierarchy: **BUSH -> CLUSTERS -> LEAVES**. Clusters are spread evenly (jittered 
 (`cluster_min_gap`, the negative space), coloured as one pigment family, then filled with a big crown leaf and smaller
 leaves around it. The inner leafy mass shows in the gaps on purpose.
 
+## Primitives (`scripts/art/hedge_anatomy.gd`)
+
+Every region is a **blob**: a superellipsoid `|x/a|^n + |y/(b*s)|^n + |z/(c*s)|^n = 1` with `s = 1 + taper * x/a`.
+`exponent` n (2 ellipsoid, 2.5-4 cushion/slab), `taper` (+ grows toward the front, - toward the back),
+`flat_bottom` (cut at -flat*b so it sits on the ground). Surface points by bisection along a direction, normals from
+the gradient, meshes from `HedgeAnatomy.build_mesh()`; foliage, anchors and the debug view all use the true shape.
+A region's `shape` is a dictionary of numbers or a preset name:
+
+![primitives](acceptance/primitives.png)
+
+| Preset | Numbers | Use |
+|---|---|---|
+| ellipsoid | - | plain |
+| bean | n 2.15, taper -0.14, flat 0.88 | Gerald's body: fuller behind, sits flat |
+| pear | n 2.0, taper -0.35, flat 0.9 | a sitting body |
+| egg | n 2.0, taper 0.2 | heads |
+| cushion | n 2.8 | muzzles, snouts |
+| paddle | n 4.0 (flat radii) | beaver tails, fins, leaves |
+| dome | n 2.6, flat 0.12 | feet, caps |
+| teardrop | n 2.0, taper 0.75 | ears, buds |
+| pebble | n 2.3, taper -0.1, flat 0.5 | stones, toes, seeds |
+
+Gerald: BODY bean (1.34 x 0.95 x 1.04), HEAD a big round head (0.84 x 0.78 x 0.80, baby proportions, close to the
+body), MUZZLE cushion, TAIL paddle (exponent 4), EARS small cups, FEET flat domes (terracotta).
+
+## Silhouette ink
+
+`shaders/leaf_ink_shell.gdshader` is the leaves' next pass: each leaf gets a slightly larger ink copy just behind it,
+drawn only where the leaf lies on the creature's outline (its surface faces sideways to the camera), so the ink is
+thick at the silhouette and absent inside. `shell` 0.12 (line weight), threshold 0.74, `strength` from
+`silhouette_ink`. Appendages keep their inverted-hull outline (widths are world units since the primitives are
+built at true size: muzzle 0.016, tail 0.025, ears 0.018, feet 0.016).
+
 ## Regions (`profile.regions`)
 
 Each: `center`, `radii` (ellipsoid), `parent` ("" or "HEAD"), `foliage`, `density`, `leaf_scale`, `max_displacement`,

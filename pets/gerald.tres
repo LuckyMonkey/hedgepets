@@ -6,7 +6,7 @@
 script = ExtResource("1_sf8kk")
 regions = {
 "BODY": {
-"center": Vector3(0, 1, 0),
+"center": Vector3(0, 0.95, 0),
 "density": 1.3,
 "foliage": true,
 "growth_up": 0.45,
@@ -14,10 +14,15 @@ regions = {
 "material": "foliage",
 "max_displacement": 0.26,
 "parent": "",
-"radii": Vector3(1.48, 0.95, 1.06)
+"radii": Vector3(1.34, 0.95, 1.04),
+"shape": {
+"exponent": 2.15,
+"flat_bottom": 0.88,
+"taper": -0.14
+}
 },
 "EARS": {
-"center": Vector3(-0.1, 0.55, 0.42),
+"center": Vector3(-0.12, 0.66, 0.46),
 "density": 0.0,
 "foliage": false,
 "growth_up": 0.0,
@@ -25,7 +30,10 @@ regions = {
 "material": "ear",
 "max_displacement": 0.0,
 "parent": "HEAD",
-"radii": Vector3(0.13, 0.15, 0.06)
+"radii": Vector3(0.12, 0.17, 0.07),
+"shape": {
+"exponent": 2.3
+}
 },
 "FEET": {
 "center": Vector3(0, 0, 0),
@@ -36,21 +44,29 @@ regions = {
 "material": "terracotta",
 "max_displacement": 0.0,
 "parent": "",
-"radii": Vector3(0.21, 0.13, 0.19)
+"radii": Vector3(0.23, 0.16, 0.2),
+"shape": {
+"exponent": 2.6,
+"flat_bottom": 0.12
+}
 },
 "HEAD": {
-"center": Vector3(1.52, 1.3, 0),
+"center": Vector3(1.3, 1.4, 0),
 "density": 2.3,
 "foliage": true,
 "growth_up": 0.3,
-"leaf_scale": 0.65,
+"leaf_scale": 0.62,
 "material": "foliage",
 "max_displacement": 0.11,
 "parent": "",
-"radii": Vector3(0.74, 0.66, 0.68)
+"radii": Vector3(0.84, 0.78, 0.8),
+"shape": {
+"exponent": 2.1,
+"taper": -0.05
+}
 },
 "MUZZLE": {
-"center": Vector3(0.58, -0.17, 0),
+"center": Vector3(0.7, -0.22, 0),
 "density": 0.0,
 "foliage": false,
 "growth_up": 0.0,
@@ -58,10 +74,14 @@ regions = {
 "material": "moss",
 "max_displacement": 0.0,
 "parent": "HEAD",
-"radii": Vector3(0.34, 0.27, 0.36)
+"radii": Vector3(0.34, 0.27, 0.37),
+"shape": {
+"exponent": 2.4,
+"taper": -0.15
+}
 },
 "TAIL": {
-"center": Vector3(-1.86, 0.3, 0.1),
+"center": Vector3(-1.62, 0.16, 0.08),
 "density": 0.0,
 "foliage": false,
 "growth_up": 0.0,
@@ -69,7 +89,10 @@ regions = {
 "material": "tail",
 "max_displacement": 0.0,
 "parent": "",
-"radii": Vector3(0.82, 0.09, 0.5)
+"radii": Vector3(0.74, 0.075, 0.56),
+"shape": {
+"exponent": 4.0
+}
 }
 }
 anchors = {
@@ -82,11 +105,11 @@ anchors = {
 "on": "HEAD"
 },
 "EYE_LEFT": {
-"dir": Vector3(0.66, 0.36, 0.52),
+"dir": Vector3(0.76, 0.36, 0.46),
 "on": "HEAD"
 },
 "EYE_RIGHT": {
-"dir": Vector3(0.66, 0.36, -0.52),
+"dir": Vector3(0.76, 0.36, -0.46),
 "on": "HEAD"
 },
 "MOUTH": {
@@ -132,4 +155,4 @@ protected_zones = {
 "strength": 1.0
 }
 }
-feet = Array[Vector3]([Vector3(0.95, 0, 0.6), Vector3(0.95, 0, -0.6), Vector3(-0.78, 0, 0.68), Vector3(-0.78, 0, -0.68)])
+feet = Array[Vector3]([Vector3(0.82, 0, 0.56), Vector3(0.82, 0, -0.56), Vector3(-0.66, 0, 0.62), Vector3(-0.66, 0, -0.62)])

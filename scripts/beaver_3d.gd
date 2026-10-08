@@ -21,6 +21,7 @@ var camera: Camera3D
 var sun: DirectionalLight3D
 var fill: DirectionalLight3D
 var leaves_mat: ShaderMaterial
+var shell_mat: ShaderMaterial               # the silhouette ink (the leaves' next pass)
 var foliage_nodes: Array[MultiMeshInstance3D] = []
 var cluster_debug: Array = []                 # [{position (local to its region's parent), parent, normal, color}]
 var eyes: Array[Node3D] = []
@@ -134,7 +135,7 @@ func _mat(kind: String) -> Material:
 		"moss":
 			m.albedo_color = profile.palette["matcha"].darkened(0.08)
 		"terracotta":
-			m.albedo_color = Color("94654a")
+			m.albedo_color = Color("87634c")
 		"ear":
 			m.albedo_color = profile.palette["muted_ivy"]
 		"ear_inner":
@@ -186,26 +187,45 @@ func _ellipsoid(parent: Node3D, center: Vector3, radii: Vector3, kind: String, o
 	return node
 
 
+## A region's own primitive (scripts/art/hedge_anatomy.gd): bean, cushion, paddle, dome... at its centre.
+func _primitive(parent: Node3D, region: Dictionary, center: Vector3, kind: String, outline := 0.0, scale := 1.0) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	node.mesh = HedgeAnatomy.build_mesh(region)
+	node.position = center
+	node.scale = Vector3.ONE * scale
+	node.material_override = _mat(kind)
+	parent.add_child(node)
+	if outline > 0.0 and profile.outline_strength > 0.0:
+		var hull := ShaderMaterial.new()
+		hull.shader = load("res://shaders/ink_hull.gdshader")
+		hull.set_shader_parameter("ink", Color(profile.ink_color.r, profile.ink_color.g, profile.ink_color.b))
+		hull.set_shader_parameter("width", outline * profile.outline_strength)
+		node.material_overlay = hull
+	return node
+
+
 func _build_regions() -> void:
 	var r: Dictionary = profile.regions
 	# the inner leafy masses: the green that shows between clusters, on purpose
-	_ellipsoid(pet, r["BODY"]["center"], r["BODY"]["radii"] * 0.97, "inner").name = "BODY"
-	_ellipsoid(head, Vector3.ZERO, r["HEAD"]["radii"] * 0.97, "inner").name = "HEAD"
-	_ellipsoid(head, r["MUZZLE"]["center"], r["MUZZLE"]["radii"], "moss", 0.04).name = "MUZZLE"
-	# the tail: one simple paddle, engraved, low and behind; no leaves on it so it stays a beaver tail
-	var tail := _ellipsoid(pet, r["TAIL"]["center"], r["TAIL"]["radii"], "tail", 0.08)
+	_primitive(pet, r["BODY"], r["BODY"]["center"], "inner", 0.0, 0.97).name = "BODY"
+	_primitive(head, r["HEAD"], Vector3.ZERO, "inner", 0.0, 0.97).name = "HEAD"
+	_primitive(head, r["MUZZLE"], r["MUZZLE"]["center"], "moss", 0.016).name = "MUZZLE"
+	# the tail: one rounded-rectangle paddle, engraved, low and behind; no leaves on it so it stays a beaver tail
+	var tail := _primitive(pet, r["TAIL"], r["TAIL"]["center"], "tail", 0.025)
 	tail.name = "TAIL"
 	tail.rotation_degrees = Vector3(0, 6, 7)
 	# ears: small rounded leaf-cups on top of the head
 	for side: float in [1.0, -1.0]:
 		var c: Vector3 = r["EARS"]["center"] * Vector3(1, 1, side)
-		var ear := _ellipsoid(head, c, r["EARS"]["radii"], "ear", 0.16)
+		var ear := _primitive(head, r["EARS"], c, "ear", 0.018)
 		ear.rotation_degrees = Vector3(-24.0 * side, -20.0 * side, 0)
-		_ellipsoid(head, c + Vector3(0.03, 0.0, 0.0), r["EARS"]["radii"] * Vector3(0.6, 0.62, 0.9), "ear_inner")
-	# feet: little terracotta nubs, short and compact, visible under the foliage
+		var inner := _primitive(ear, r["EARS"], Vector3(0.03, -0.01, 0.0), "ear_inner", 0.0, 0.62)
+		inner.scale.z = 0.9
+	# feet: flat-bottomed terracotta domes, short and compact, sitting on the ground
+	var foot_r: Dictionary = r["FEET"]
+	var lift: float = foot_r["radii"].y * float(foot_r["shape"].get("flat_bottom", 1.0))
 	for f in profile.feet:
-		var foot := _ellipsoid(pet, f + Vector3(0, r["FEET"]["radii"].y * 0.9, 0), r["FEET"]["radii"], "terracotta", 0.12)
-		foot.name = "FOOT"
+		_primitive(pet, foot_r, f + Vector3(0, lift, 0), "terracotta", 0.016).name = "FOOT"
 
 
 ## Engraved crosshatch for the paddle tail: warm wood with a restrained diamond pattern.
@@ -318,7 +338,14 @@ func rebuild_foliage() -> void:
 		leaves_mat.shader = load("res://shaders/leaf.gdshader")
 		leaves_mat.set_shader_parameter("leaf_sheet", ImageTexture.create_from_image(image))
 		leaves_mat.set_shader_parameter("leaf_normals", ImageTexture.create_from_image(normals))
-	leaves_mat.set_shader_parameter("ink_color", Color(profile.ink_color.r, profile.ink_color.g, profile.ink_color.b))
+		shell_mat = ShaderMaterial.new()
+		shell_mat.shader = load("res://shaders/leaf_ink_shell.gdshader")
+		shell_mat.set_shader_parameter("leaf_sheet", leaves_mat.get_shader_parameter("leaf_sheet"))
+		leaves_mat.next_pass = shell_mat
+	_leaf_param("ink_color", Color(profile.ink_color.r, profile.ink_color.g, profile.ink_color.b))
+	shell_mat.set_shader_parameter("strength", profile.silhouette_ink / 0.85)
+	shell_mat.set_shader_parameter("body_radius", (profile.regions["BODY"]["radii"] as Vector3).length() / sqrt(3.0))
+	shell_mat.set_shader_parameter("head_radius", (profile.regions["HEAD"]["radii"] as Vector3).length() / sqrt(3.0))
 	leaves_mat.set_shader_parameter("silhouette_ink", profile.silhouette_ink)
 	leaves_mat.set_shader_parameter("interior_ink", profile.interior_ink)
 	var key_dir := -sun.global_transform.basis.z
@@ -368,7 +395,7 @@ func _tendrils() -> Array:
 	for v in range(profile.tendrils):
 		var a := rng.randf_range(-2.6, 2.6)
 		var d := Vector3(cos(a), rng.randf_range(-0.1, 0.2), sin(a)).normalized()
-		var p := HedgeAnatomy.surface_point(body["center"], body["radii"], d)
+		var p := HedgeAnatomy.shape_point(body, body["center"], d)
 		var out := Vector3(d.x, 0.0, d.z).normalized()
 		for k in range(3):
 			p += out * 0.10 + Vector3(0, -0.12, 0)
@@ -382,12 +409,19 @@ func _tendrils() -> Array:
 	return items
 
 
+## Set a uniform on the leaves and their ink shell together.
+func _leaf_param(name: String, value: Variant) -> void:
+	leaves_mat.set_shader_parameter(name, value)
+	if shell_mat != null:
+		shell_mat.set_shader_parameter(name, value)
+
+
 ## Detail levels (mobile first): fewer, bigger leaves keep the masses whole; interior ink fades; flowers go at FAR.
 func set_detail(level: String) -> void:
 	detail = level
 	var l: Dictionary = profile.lod[level]
-	leaves_mat.set_shader_parameter("lod_keep", float(l["leaves"]))
-	leaves_mat.set_shader_parameter("lod_scale", float(l["scale"]))
+	_leaf_param("lod_keep", float(l["leaves"]))
+	_leaf_param("lod_scale", float(l["scale"]))
 	leaves_mat.set_shader_parameter("detail_ink", float(l["ink"]))
 
 
@@ -459,7 +493,7 @@ func _process(delta: float) -> void:
 	for eye in eyes:
 		eye.scale.y = 1.0 - 0.88 * sin(_blink * PI)
 	_look = _look.lerp(_look_target, clampf(delta * 3.0, 0.0, 1.0))
-	head.rotation = Vector3(0.0, -_look.x * profile.look_strength, -_look.y * profile.look_strength * 0.5 + sin(time * 0.9) * 0.015)
+	head.rotation = Vector3(sin(time * 0.37) * 0.05, -_look.x * profile.look_strength, -_look.y * profile.look_strength * 0.5 + sin(time * 0.9) * 0.015)   # a gentle, curious tilt
 	if hop > 0.0 or _hop_v != 0.0:
 		_hop_v -= 9.0 * delta
 		hop += _hop_v * delta
@@ -473,7 +507,9 @@ func _process(delta: float) -> void:
 		_gust = 1.0
 		_next_gust = _rng.randf_range(7.0, 14.0)
 	_gust = maxf(0.0, _gust - delta * 0.8)
-	leaves_mat.set_shader_parameter("gust", joy * 1.2 + _gust * 0.5)
+	_leaf_param("gust", joy * 1.2 + _gust * 0.5)
+	shell_mat.set_shader_parameter("body_center", pet.to_global(profile.regions["BODY"]["center"]))
+	shell_mat.set_shader_parameter("head_center", head.global_position)
 	heart.modulate.a = clampf(joy * 1.4, 0.0, 1.0)
 	heart.position.y = 1.1 + (1.0 - joy) * 0.5
 	_auto_detail()

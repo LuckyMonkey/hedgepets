@@ -41,7 +41,7 @@ static func build(profile: CharacterArtProfile, region_name: String, head_center
 		d = (d + Vector3(rng.randf_range(-0.12, 0.12), rng.randf_range(-0.12, 0.12), rng.randf_range(-0.12, 0.12))).normalized()
 		if d.y < -0.42:
 			continue                                             # nothing grows on the underside
-		var p := HedgeAnatomy.surface_point(c, r, d)
+		var p := HedgeAnatomy.shape_point(region, c, d)
 		var head_local := (p - c) if is_head else (p - head_center)
 		if HedgeAnatomy.protection(profile, head_local) > 0.72:
 			continue                                             # no cluster is centred on the face
@@ -62,8 +62,8 @@ static func build(profile: CharacterArtProfile, region_name: String, head_center
 	# ---- level 3: leaves in each cluster
 	for ci in range(dirs.size()):
 		var cd: Vector3 = dirs[ci]
-		var cp := HedgeAnatomy.surface_point(c, r, cd)
-		var cn := HedgeAnatomy.surface_normal(c, r, cp)
+		var cp := HedgeAnatomy.shape_point(region, c, cd)
+		var cn := HedgeAnatomy.shape_normal(region, c, cp)
 		var family := _family(profile, cn, key_dir, rng)
 		clusters.append({"position": cp, "normal": cn, "color": family})
 		var count := int(profile.leaves_per_cluster * (0.75 if is_head else 1.0))
@@ -73,10 +73,10 @@ static func build(profile: CharacterArtProfile, region_name: String, head_center
 			var t1 := cn.cross(UP if absf(cn.y) < 0.95 else Vector3.RIGHT).normalized()
 			var t2 := cn.cross(t1).normalized()
 			var d := (cd + (t1 * offset.x + t2 * offset.y) * profile.cluster_spread).normalized()
-			var p := HedgeAnatomy.surface_point(c, r, d)
+			var p := HedgeAnatomy.shape_point(region, c, d)
 			if not is_head and p.y < 0.2:
 				continue                                         # nothing touches the ground
-			var n := HedgeAnatomy.surface_normal(c, r, p)
+			var n := HedgeAnatomy.shape_normal(region, c, p)
 			var head_local := (p - c) if is_head else (p - head_center)
 			var protect := HedgeAnatomy.protection(profile, head_local)
 			if not crown and rng.randf() > profile.coverage:

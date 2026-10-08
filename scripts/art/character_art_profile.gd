@@ -72,7 +72,7 @@ extends Resource
 @export var shadow_strength := 0.32         # how dark cast shadows get on the paper
 
 ## Expression.
-@export var eye_size := 0.145
+@export var eye_size := 0.155
 @export var blink_interval := Vector2(2.4, 5.5)
 @export var look_strength := 0.22
 @export var hop_height := 0.38
@@ -87,23 +87,31 @@ extends Resource
 
 static func gerald() -> CharacterArtProfile:
 	var p := CharacterArtProfile.new()
+	# Primitives (scripts/art/hedge_anatomy.gd): BODY a pear-bean that sits flat; HEAD big and round (baby
+	# proportions); MUZZLE a soft cushion; TAIL a rounded-rectangle paddle; EARS small cups; FEET flat-bottomed domes.
 	p.regions = {
-		"BODY": {"center": Vector3(0.0, 1.0, 0.0), "radii": Vector3(1.48, 0.95, 1.06), "parent": "", "foliage": true,
-			"density": 1.3, "leaf_scale": 1.0, "max_displacement": 0.26, "growth_up": 0.45, "material": "foliage"},
-		"HEAD": {"center": Vector3(1.52, 1.30, 0.0), "radii": Vector3(0.74, 0.66, 0.68), "parent": "", "foliage": true,
-			"density": 2.3, "leaf_scale": 0.65, "max_displacement": 0.11, "growth_up": 0.3, "material": "foliage"},
-		"MUZZLE": {"center": Vector3(0.58, -0.17, 0.0), "radii": Vector3(0.34, 0.27, 0.36), "parent": "HEAD", "foliage": false,
-			"density": 0.0, "leaf_scale": 0.25, "max_displacement": 0.0, "growth_up": 0.0, "material": "moss"},
-		"TAIL": {"center": Vector3(-1.86, 0.30, 0.10), "radii": Vector3(0.82, 0.09, 0.50), "parent": "", "foliage": false,
-			"density": 0.0, "leaf_scale": 0.4, "max_displacement": 0.0, "growth_up": 0.0, "material": "tail"},
-		"EARS": {"center": Vector3(-0.10, 0.55, 0.42), "radii": Vector3(0.13, 0.15, 0.06), "parent": "HEAD", "foliage": false,
-			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "ear"},
-		"FEET": {"center": Vector3.ZERO, "radii": Vector3(0.21, 0.13, 0.19), "parent": "", "foliage": false,
-			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "terracotta"},
+		"BODY": {"center": Vector3(0.0, 0.95, 0.0), "radii": Vector3(1.34, 0.95, 1.04), "parent": "", "foliage": true,
+			"density": 1.3, "leaf_scale": 1.0, "max_displacement": 0.26, "growth_up": 0.45, "material": "foliage",
+			"shape": {"exponent": 2.15, "taper": -0.14, "flat_bottom": 0.88}},
+		"HEAD": {"center": Vector3(1.30, 1.40, 0.0), "radii": Vector3(0.84, 0.78, 0.80), "parent": "", "foliage": true,
+			"density": 2.3, "leaf_scale": 0.62, "max_displacement": 0.11, "growth_up": 0.3, "material": "foliage",
+			"shape": {"exponent": 2.1, "taper": -0.05}},
+		"MUZZLE": {"center": Vector3(0.70, -0.22, 0.0), "radii": Vector3(0.34, 0.27, 0.37), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.25, "max_displacement": 0.0, "growth_up": 0.0, "material": "moss",
+			"shape": {"exponent": 2.4, "taper": -0.15}},
+		"TAIL": {"center": Vector3(-1.62, 0.16, 0.08), "radii": Vector3(0.74, 0.075, 0.56), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.4, "max_displacement": 0.0, "growth_up": 0.0, "material": "tail",
+			"shape": {"exponent": 4.0}},                                  # a rounded-rectangle paddle
+		"EARS": {"center": Vector3(-0.12, 0.66, 0.46), "radii": Vector3(0.12, 0.17, 0.07), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "ear",
+			"shape": {"exponent": 2.3}},
+		"FEET": {"center": Vector3.ZERO, "radii": Vector3(0.23, 0.16, 0.2), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "terracotta",
+			"shape": {"exponent": 2.6, "flat_bottom": 0.12}},
 	}
 	p.anchors = {
-		"EYE_LEFT": {"dir": Vector3(0.66, 0.36, 0.52), "on": "HEAD"},
-		"EYE_RIGHT": {"dir": Vector3(0.66, 0.36, -0.52), "on": "HEAD"},
+		"EYE_LEFT": {"dir": Vector3(0.76, 0.36, 0.46), "on": "HEAD"},
+		"EYE_RIGHT": {"dir": Vector3(0.76, 0.36, -0.46), "on": "HEAD"},
 		"NOSE": {"dir": Vector3(1.0, 0.25, 0.0), "on": "MUZZLE"},
 		"MOUTH": {"dir": Vector3(0.82, -0.50, 0.0), "on": "MUZZLE"},
 		"TEETH": {"dir": Vector3(0.92, -0.62, 0.0), "on": "MUZZLE"},
@@ -119,5 +127,5 @@ static func gerald() -> CharacterArtProfile:
 		"CHEEK_LEFT": {"radius": 0.34, "strength": 0.6},
 		"CHEEK_RIGHT": {"radius": 0.34, "strength": 0.6},
 	}
-	p.feet = [Vector3(0.95, 0.0, 0.60), Vector3(0.95, 0.0, -0.60), Vector3(-0.78, 0.0, 0.68), Vector3(-0.78, 0.0, -0.68)]
+	p.feet = [Vector3(0.82, 0.0, 0.56), Vector3(0.82, 0.0, -0.56), Vector3(-0.66, 0.0, 0.62), Vector3(-0.66, 0.0, -0.62)]
 	return p

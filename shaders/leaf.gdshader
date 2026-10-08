@@ -22,31 +22,17 @@ varying float v_twist;
 varying float v_rim;
 varying vec3 v_world;
 
-float wind_at(float x, float t) {
-	float breeze = 0.25 + 0.10 * sin(t * 0.7);
-	float front = fract(t * 0.23 - x / 7.0);              // a gust rolls across him every ~4 s
-	float g = pow(max(0.0, sin(front * PI)), 6.0) * (0.75 + 0.25 * sin(t * 0.31));
-	return breeze + g;
-}
+#include "res://shaders/leaf_common.gdshaderinc"
 
 void vertex() {
 	v_cell = INSTANCE_CUSTOM.x;
 	if (INSTANCE_CUSTOM.w > lod_keep) {
 		VERTEX = vec3(0.0);                                  // dropped at this detail level
 	}
-	float phase = INSTANCE_CUSTOM.y;
-	float reach = INSTANCE_CUSTOM.z;
 	vec3 world = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	v_world = world;
 	VERTEX.xy *= lod_scale;
-	float w = wind_at(world.x, TIME) + gust;
-	float tip = 1.0 - UV.y;
-	float flutter = (sin(TIME * (5.0 + phase) + phase * 3.0) * 0.6 + sin(TIME * (11.0 + phase * 2.0)) * 0.4) * 0.07 * w * reach;
-	float bend = w * 0.18 * reach;
-	v_twist = max(0.0, sin(TIME * (2.6 + phase * 0.5) + phase * 5.0)) * clamp(w - 0.3, 0.0, 1.0) * reach;
-	VERTEX.z += (bend + flutter) * tip * 0.45;
-	VERTEX.x += flutter * tip * 0.22;
-	VERTEX.x *= 1.0 - 0.45 * v_twist;
+	v_twist = leaf_deform(VERTEX, UV, INSTANCE_CUSTOM, world, TIME, gust);
 	// how edge-on this leaf is to the camera: leaves on the silhouette get the strong ink
 	vec3 leaf_normal = normalize((MODEL_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
 	vec3 to_camera = normalize(CAMERA_POSITION_WORLD - world);
