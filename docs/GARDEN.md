@@ -9,12 +9,33 @@ like a tabletop model.
 
 | Tool | Does |
 |---|---|
-| ✋ hand | pet a pet (it hops and says how it feels), look at things |
-| 🪏 shovel | clear junk for coins (each thing has a scrap value); dig a seedbed on bare lawn |
+| ✋ hand | tap: pet a pet, look at things. Press and drag on junk: yank it loose, haul it (see Yard work) |
+| 🪏 shovel | dig a seedbed on bare lawn; scoop up a leaf pile or something you built (junk is too heavy: haul it) |
 | 🌱 seeds | 17 plants: ivy, Boston ivy, Virginia creeper, variegated ivy, clover, fern, sage, jasmine, oak, pine, maple, boxwood, willow, rose, lavender, moss, holly |
 | ✂️ shears | regraft a pet in the chosen seed's plant (its price) |
 | 🧺 build | bird feeder 8, bird bath 10, log pile 6, nest box 7, pumpkin 3, crate of apples 5 (shovel them back for half) |
 | 💧 water | a watered plant grows: mound → sprout → bush → flowering (~18 s a stage; water lasts ~40 s) |
+
+## Yard work (`scripts/garden/garden_grab.gd`)
+
+Everything is heavier than it looks, in pounds: stick 2, pot 15, branch 15, chair 25, tire 25, rocks 20-130, grill
+90, and of what you can build, bird bath 120, log pile 80.
+
+- **Yank.** Most junk is stuck: bedded in the lawn, sunk in mud, rusted in place. Hold and pull. Strain builds (a ring
+  at your finger, yellow to red), the thing leans toward you and shakes. A steady pull works on light things; heavy
+  ones need **jerks** (fast flicks count for nearly three times a steady pull), and a big rock won't come for a
+  steady pull at all. Ease off and the strain relaxes. At full strain it tears free: dirt flies, it hops, and it
+  leaves a bare patch where it lay.
+- **Haul.** Once free it follows your hand on a spring that's stiffer the lighter it is: light things lift and swing,
+  heavy ones scrape along the ground, tilted, slow, kicking up dust. Let go and it thuds down there.
+- **Sell.** Drop junk in the green wheelbarrow by the garden gate: it's hauled off for its scrap value and counts as
+  cleared.
+- **Fix.** The tipped lawn chair rights itself when you yank it free. Work the rusty grill in circles while you hold
+  it and the rust scrubs off (three turns): a clean grill sells for 12 more.
+
+Moved, loosened, righted and scrubbed things are saved. `tools/grab_check.gd --fixed-fps 60` drives all of it like
+a real hand: a stick yanked and sold, a 132 lb rock that holds against a steady pull but comes with jerks, the chair,
+the grill.
 
 Each pet has three sets of wishes in its profile (`CharacterArtProfile.wants`, with journal `hints`):
 

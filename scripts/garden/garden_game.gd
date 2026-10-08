@@ -71,9 +71,16 @@ var _journal: PanelContainer
 var _journal_text: RichTextLabel
 
 
+var grab: Node                       # scripts/garden/garden_grab.gd: yank, haul, sell, fix
+
+
 func setup(g: Node3D) -> void:
 	garden = g
 	_build_ui()
+	grab = preload("res://scripts/garden/garden_grab.gd").new()
+	grab.name = "Grab"
+	add_child(grab)
+	grab.setup(garden, self, _ui)
 	for p: CharacterArtProfile in garden.roster:
 		pet_state[p.pet_name] = "resident" if p.starts_resident else "away"
 	_load()
@@ -357,6 +364,9 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 		"shovel":
 			var t = _thing_at(p2)
 			if t != null:
+				if grab.grabbable(t) and not t.get("placed", false):
+					toast("Too heavy to shovel. Grab it with ✋, yank it loose, haul it to the wheelbarrow 🛒.")
+					return true
 				if not t["junk"]:
 					toast("That stays.")
 					return true
@@ -552,7 +562,7 @@ func _splash(at: Vector3) -> void:
 # ------------------------------------------------------------------ words
 func _thing_name(kind: String) -> String:
 	return {"lawn_chair": "lawn chair", "grill": "rusty grill", "sprinkler": "broken sprinkler", "tire": "old tire",
-		"pot": "flowerpot", "branch": "branch", "stick": "stick", "rock": "rock", "leaf_pile": "leaf pile"}.get(kind, kind)
+		"pot": "flowerpot", "wheelbarrow": "wheelbarrow", "branch": "branch", "stick": "stick", "rock": "rock", "leaf_pile": "leaf pile"}.get(kind, kind)
 
 
 func _thing_line(t: Dictionary) -> String:
@@ -588,8 +598,8 @@ var _journal_open := false
 
 ## A message: slides in, stays a few seconds, fades. A new one replaces it smoothly.
 func toast(text: String) -> void:
-	var t := Motion.channel(_toast, "fade")
 	if _toast.visible and _toast.modulate.a > 0.05:             # one is showing: let it go first, then the new one
+		var t := Motion.channel(_toast, "fade")
 		t.tween_property(_toast, "modulate:a", 0.0, Motion._d(Motion.FAST * 0.8))
 		t.tween_callback(func() -> void: _show_toast(text))
 	else:
@@ -737,7 +747,7 @@ func _build_ui() -> void:
 	panel.size = Vector2(840, 130)
 	_ui.add_child(panel)
 	panel.add_child(bar)
-	for t: Array in [["hand", "✋", "Hand: pet them, look at things"], ["shovel", "🪏", "Shovel: clear junk for coins, or dig a seedbed"],
+	for t: Array in [["hand", "✋", "Hand: tap to pet and look; press and drag junk to yank it loose and haul it"], ["shovel", "🪏", "Shovel: dig a seedbed, scoop up a leaf pile or something you built"],
 			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["build", "🧺", "Build: put a feeder, bath, logs, pumpkins... in the garden"], ["water", "💧", "Water: watered plants grow"]]:
 		var b := _button(t[1], t[2])
 		var key: String = t[0]
@@ -795,6 +805,7 @@ func save() -> void:
 	if OS.get_environment("HEDGEPETS_FRESH") != "":
 		return                                           # captures and checks never touch the player's garden
 	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state, "plants": pet_plant,
+		"moved": _moved_state(),
 		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["x"], "z": b["z"], "yaw": b["yaw"]})}
 	var present := {}
 	for t in garden.things:
@@ -811,6 +822,15 @@ func save() -> void:
 
 
 var _all_ids: Array = []
+
+
+## Things you've worked on (moved, yanked loose, righted, scrubbed): saved by id.
+func _moved_state() -> Dictionary:
+	var out := {}
+	for t in garden.things:
+		if t.has("lb") and (t.get("moved", false) or float(t.get("stuck", 1.0)) <= 0.0 or float(t.get("scrub", 0.0)) > 0.0 or not t.get("tipped", true)) and not t.get("placed", false):
+			out[t["id"]] = {"x": t["node"].position.x, "z": t["node"].position.z, "stuck": t["stuck"], "tipped": t.get("tipped", false), "scrub": t.get("scrub", 0.0)}
+	return out
 
 
 func _load() -> void:
@@ -833,6 +853,22 @@ func _load() -> void:
 		var pl = b.get("plant")
 		if pl != null:
 			_plant(str(pl["species"]), bed, int(pl["stage"]), float(pl["water"]), float(pl["progress"]))
+	var moved: Dictionary = data.get("moved", {})
+	for t in garden.things:
+		if moved.has(t["id"]):
+			grab.grabbable(t)
+			var m: Dictionary = moved[t["id"]]
+			var node: Node3D = t["node"]
+			node.position = Vector3(float(m["x"]), 0, float(m["z"]))
+			t["at"] = Vector2(node.position.x, node.position.z) + t.get("offset", Vector2.ZERO)
+			t["stuck"] = float(m.get("stuck", 0.0))
+			t["moved"] = true
+			if not m.get("tipped", true) and t.get("tipped", false):
+				grab.set_chair_upright(t)
+			if m.has("scrub"):
+				t["scrub"] = float(m["scrub"])
+				t["rusty"] = t["scrub"] < 1.0
+				grab.set_rust(t, clampf(t["scrub"], 0.0, 1.0))
 	pet_plant = data.get("plants", {})
 	discovered = data.get("discovered", {})
 	for b in data.get("placed", []):

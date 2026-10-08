@@ -558,3 +558,19 @@ static func open_gate(parent: Node3D, hinge: Vector3, width: float, swing_deg: f
 	for k in range(6):
 		part(r, box(Vector3(0.09, 1.15, 0.05)), paint, Vector3(0.1 + k * (width - 0.2) / 5.0, 0.6, 0.02), Vector3.ZERO, 0.006)
 	return r
+
+
+## A battered green wheelbarrow by the gate: where hauled junk goes.
+static func wheelbarrow(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "Wheelbarrow", at, yaw)
+	var tray := mat("barrow", Color("4a6a4a"))
+	var steel := mat("steel", Color("5a5550"))
+	part(r, blob(Vector3(0.75, 0.32, 0.5), {"exponent": 3.0, "taper": 0.2}), tray, Vector3(0, 0.62, 0), Vector3(180, 0, 0), 0.014)
+	var wheel := TorusMesh.new()
+	wheel.inner_radius = 0.12
+	wheel.outer_radius = 0.26
+	part(r, wheel, mat("tyre", Color("2a2622")), Vector3(0.82, 0.26, 0), Vector3(90, 0, 0), 0.01)
+	for side: float in [-1.0, 1.0]:
+		part(r, cyl(0.03, 0.03, 1.9, 6), steel, Vector3(-0.1, 0.5, side * 0.3), Vector3(0, 0, 82), 0.006)
+		part(r, cyl(0.03, 0.03, 0.5, 6), steel, Vector3(-0.35, 0.25, side * 0.3), Vector3(0, 0, -10), 0.006)
+	return r

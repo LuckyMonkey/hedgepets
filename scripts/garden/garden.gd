@@ -832,6 +832,7 @@ const TURN_PER_PX := 0.0025
 const ZOOM_MIN := 4.5
 const ZOOM_MAX := 24.0
 var _touches := {}                 # touch index -> position
+var _grabbing := false             # this press landed on junk (garden_grab.gd)
 var _pinch := 0.0
 
 
@@ -874,13 +875,21 @@ func _unhandled_input(event: InputEvent) -> void:
 	if pressed:
 		_press_at = event.position
 		_dragged = false
+		_grabbing = game != null and game.grab.begin(event.position)     # on a piece of junk: work it, don't turn
 	elif released and _press_at != Vector2.INF:
-		if not _dragged:
+		if _grabbing:
+			if not game.grab.end(event.position):
+				_tap(event.position)
+		elif not _dragged:
 			_tap(event.position)
 		_press_at = Vector2.INF
+		_grabbing = false
 	elif (event is InputEventMouseMotion or event is InputEventScreenDrag) and _press_at != Vector2.INF:
 		if event.position.distance_to(_press_at) > 10.0:
 			_dragged = true
+		if _grabbing:
+			game.grab.move(event.position)
+			return
 		if _dragged:
 			_goal_yaw -= event.relative.x * TURN_PER_PX
 			_goal_elev = clampf(_goal_elev + event.relative.y * 0.002, deg_to_rad(28), deg_to_rad(72))
