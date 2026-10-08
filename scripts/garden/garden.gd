@@ -187,6 +187,7 @@ func _leaf_material(sheet: String) -> ShaderMaterial:
 	m.set_shader_parameter("leaf_normals", ImageTexture.create_from_image(normals))
 	m.set_shader_parameter("interior_ink", 0.2)
 	m.set_shader_parameter("silhouette_ink", 0.5)
+	m.set_shader_parameter("near_fade", GardenProps.NEAR_FADE)
 	_leaf_mats[sheet] = m
 	return m
 
@@ -717,6 +718,8 @@ func pet_mode(node: HedgePetNode) -> String:
 func _process(delta: float) -> void:
 	for node in pets:
 		_walk(node, delta)
+		if node.visible:
+			_separate(node, delta)
 	if is_processing_unhandled_input():
 		_keys(delta)
 	_target = Motion.spring(_target, _goal_target, _cam_pan, 0.12, delta)
@@ -773,13 +776,80 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 			w["face"] = [-0.8, 0.8].pick_random() + _rng.randf_range(-0.3, 0.3)
 		return
 	var speed := 1.1 * (0.6 if node.profile.species == "tortoise" else 1.0)
-	var heading := atan2(-to.z, to.x)
+	var dir := _steer(node, to.normalized())
+	var heading := atan2(-dir.z, dir.x)
 	node.rotation.y = lerp_angle(node.rotation.y, heading, clampf(delta * 4.0, 0.0, 1.0))
 	if absf(angle_difference(node.rotation.y, heading)) < 0.6:
-		node.position += to.normalized() * minf(speed * delta, to.length())
+		var before := node.position
+		node.position += dir * minf(speed * delta, to.length())
 		node.walking = move_toward(node.walking, 1.0, delta * 3.0)
+		# boxed in (a hauled chair parked across its path): give up on this spot after a while
+		w["stuck_t"] = float(w.get("stuck_t", 0.0)) + delta if node.position.distance_to(before) < speed * delta * 0.3 else 0.0
+		if float(w["stuck_t"]) > 2.5 and w["mode"] == "roam":
+			w["target"] = node.position
+			w["stuck_t"] = 0.0
 	else:
 		node.walking = move_toward(node.walking, 0.3, delta * 3.0)
+
+
+# ------------------------------------------------------------------ collisions
+## Pets are round: this one's footprint radius in the garden.
+func pet_radius(node: HedgePetNode) -> float:
+	var r: Vector3 = node.profile.regions["BODY"]["radii"]
+	return maxf(r.x, r.z) * node.scale.x * 0.85
+
+
+## Everything solid on the lawn as circles [centre, radius]: trunks and walls, junk and things you built (not sticks
+## or leaf piles - pets walk over those), and the other pets.
+func colliders(skip: Variant = null, with_pets := true) -> Array:
+	var out: Array = []
+	for o in obstacles:
+		out.append([o[0], float(o[1])])
+	for t in things:
+		if t["kind"] in ["stick", "leaf_pile"] or (skip is Dictionary and t == skip):
+			continue
+		out.append([t["at"], float(t["radius"]) * 0.8])
+	for n in pets:
+		if with_pets and n.visible and n != skip:
+			out.append([Vector2(n.position.x, n.position.z), pet_radius(n)])
+	return out
+
+
+## Walk around whatever is ahead instead of into it: each nearby solid in front pushes the heading sideways.
+func _steer(node: HedgePetNode, want: Vector3) -> Vector3:
+	var p := Vector2(node.position.x, node.position.z)
+	var w2 := Vector2(want.x, want.z)
+	var avoid := Vector2.ZERO
+	var pr := pet_radius(node)
+	for c in colliders(node):
+		var off: Vector2 = p - c[0]
+		var gap := off.length() - float(c[1]) - pr
+		if gap > 1.4 or off.length() < 0.001:
+			continue
+		if w2.dot(-off.normalized()) <= 0.0:
+			continue                                   # behind or beside: no need
+		var side := Vector2(-off.y, off.x).normalized()
+		if side.dot(w2) < 0.0:
+			side = -side                               # go round on the side we're already heading
+		avoid += (off.normalized() * 0.5 + side) * (1.4 - gap) / 1.4
+	var d := (w2 + avoid * 1.6).normalized()
+	return Vector3(d.x, 0, d.y)
+
+
+## Nothing overlaps: a pet inside a solid (walked in, or had a wheelbarrow-full of junk hauled into it) is pushed
+## out, gently, every frame.
+func _separate(node: HedgePetNode, delta: float) -> void:
+	var p := Vector2(node.position.x, node.position.z)
+	var pr := pet_radius(node)
+	var push := Vector2.ZERO
+	for c in colliders(node):
+		var off: Vector2 = p - c[0]
+		var depth := float(c[1]) + pr - off.length()
+		if depth > 0.0:
+			push += (off.normalized() if off.length() > 0.001 else Vector2.RIGHT) * depth
+	if push != Vector2.ZERO:
+		var step := push * clampf(delta * 12.0, 0.0, 1.0)
+		node.position += Vector3(step.x, 0, step.y)
 
 
 ## A little thought above a pet's head (an emoji), rising and fading.

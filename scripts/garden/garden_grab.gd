@@ -8,7 +8,9 @@ extends Node
 ##          it tears free: a burst of dirt, a hop, a bare patch where it was.
 ##   HAUL   a free thing follows your hand on a heavy spring: light things lift and swing, heavy ones scrape along
 ##          the ground, slow, tilted, kicking up dust. Let go and it thuds down where you leave it.
-##   SELL   drop junk in the wheelbarrow by the garden gate: hauled off for its scrap value, and it counts as cleared.
+##   BIN    drop junk in the trash barrel by the garden gate. It only holds 100 lb (a big rock won't go in at all).
+##          Tap it to call a pickup: it costs a fee, the hauler pays scrap for what's inside, and the next pickup
+##          can't come for a few minutes. You can't clear the whole yard at once.
 ##   FIX    the tipped lawn chair rights itself when you yank it free. The rusty grill scrubs clean if you work it in
 ##          circles while you hold it; a clean grill sells for more.
 ##
@@ -23,11 +25,17 @@ const PHYS := {
 	"nest_box": {"lb": 25, "stuck": 0.0}, "apples": {"lb": 35, "stuck": 0.0},
 }
 const AREA := Rect2(-13.0, -10.4, 26.0, 19.8)        # where things can be hauled to
-const BARROW_REACH := 1.7
+const BARREL_CAP := 100.0
+const PICKUP_FEE := 8
+const PICKUP_COOLDOWN := 180.0      # seconds between pickups (real time, so it runs while the game is closed)
 
 var garden: Node3D
 var game: Node
-var barrow: Dictionary = {}
+var barrel: Dictionary = {}
+var contents: Array = []            # {kind, lb, value} in the barrel
+var next_pickup := 0.0              # unix time
+var _pickup_armed := 0.0            # a first tap shows the status; a second within a few seconds calls the pickup
+var _tag: Label3D
 var held = null                     # the thing (garden.things entry) under your hand
 var active := false                 # dragging (not just pressed)
 var strain := 0.0
@@ -50,8 +58,15 @@ func setup(g: Node3D, gm: Node, ui: CanvasLayer) -> void:
 	for t in garden.things:
 		_init_thing(t)
 	var at := Vector3(3.2, 0, 7.6)
-	garden._thing("wheelbarrow", GardenProps.wheelbarrow(garden, at, 200.0), Vector2(at.x, at.z), 0.9, 0, false)
-	barrow = garden.things[-1]
+	garden._thing("barrel", GardenProps.trash_barrel(garden, at, 200.0), Vector2(at.x, at.z), 0.6, 0, false)
+	barrel = garden.things[-1]
+	_tag = Label3D.new()
+	_tag.font_size = 44
+	_tag.pixel_size = 0.004
+	_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_tag.outline_size = 10
+	_tag.position = at + Vector3(0, 1.75, 0)
+	garden.add_child(_tag)
 	ring = preload("res://scripts/garden/strain_ring.gd").new()
 	ui.add_child(ring)
 
@@ -129,8 +144,8 @@ func end(screen: Vector2) -> bool:
 		var tw := Motion.channel(node, "lean")
 		tw.tween_property(node, "basis", _base, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 		return true
-	if t["junk"] and node.position.distance_to(barrow["node"].position) < BARROW_REACH:
-		_sell(t)
+	if t["junk"] and _at_barrel(t):
+		_bin(t)
 		return true
 	_drop(t)
 	return true
@@ -152,6 +167,7 @@ func _thing_near(p: Vector2):
 # ------------------------------------------------------------------ the work
 func _process(delta: float) -> void:
 	_t += delta
+	_tend_tag(delta)
 	if held == null or not active:
 		return
 	var t: Dictionary = held
@@ -220,17 +236,32 @@ func _haul(t: Dictionary, g: Vector3, delta: float) -> void:
 	_vel.y = 0.0
 	_vel = _vel.limit_length(9.0 / sqrt(lb * 0.5 + 1.0))
 	var pos := node.position + _vel * delta
+	# solid: it stops against trunks, walls and other things (pets get shoved aside by garden._separate)
+	var pr := float(t["radius"]) * 0.8
+	for c in garden.colliders(t, false):
+		var off := Vector2(pos.x, pos.z) - (c[0] as Vector2)
+		var depth := float(c[1]) + pr - off.length()
+		if depth > 0.0 and off.length() > 0.001:
+			var n := off.normalized()
+			pos.x += n.x * depth
+			pos.z += n.y * depth
+			var v2 := Vector2(_vel.x, _vel.z)
+			v2 -= n * minf(0.0, v2.dot(n))             # lose the speed going into it
+			_vel = Vector3(v2.x, 0, v2.y)
 	var light := lb < 20.0
 	pos.y = lerpf(node.position.y, (0.45 + 0.05 * sin(_t * 5.0)) if light else 0.0, clampf(delta * 8.0, 0.0, 1.0))
 	node.position = pos
+	t["at"] = Vector2(pos.x, pos.z) + t["offset"]       # where pets see it, as it moves
 	var sp := _vel.length()
 	var axis := _vel.normalized().cross(Vector3.DOWN).normalized() if sp > 0.01 else Vector3.RIGHT
 	var tilt := clampf(sp * (0.12 if light else 0.05), 0.0, 0.5) * (1.0 if light else -1.0)
 	node.basis = node.basis.slerp(Basis(axis, tilt) * _base, clampf(delta * 6.0, 0.0, 1.0))
 	if not light:
 		_dust_at(node, sp > 0.4)
-	var near_barrow: bool = t["junk"] and node.position.distance_to(barrow["node"].position) < BARROW_REACH
-	ring.show_ring(_pointer, -1.0, ("🛒 let go to haul it off  🪙 %d" % _value(t)) if near_barrow else "%s  ~%d lb" % [_label(t), int(lb)], false)
+	var words := "%s  ~%d lb" % [_label(t), int(lb)]
+	if t["junk"] and _at_barrel(t):
+		words = ("🗑️ let go to bin it  (%d/%d lb)" % [int(fill_lb() + lb), int(BARREL_CAP)]) if fill_lb() + lb <= BARREL_CAP else ("🗑️ won't fit: room for %d lb" % int(BARREL_CAP - fill_lb()))
+	ring.show_ring(_pointer, -1.0, words, false)
 
 
 func _drop(t: Dictionary) -> void:
@@ -245,21 +276,109 @@ func _drop(t: Dictionary) -> void:
 	t["moved"] = true
 
 
-func _sell(t: Dictionary) -> void:
+func _at_barrel(t: Dictionary) -> bool:
 	var node: Node3D = t["node"]
-	var into: Vector3 = barrow["node"].position + Vector3(0, 0.9, 0)
+	var b: Node3D = barrel["node"]
+	return Vector2(node.position.x - b.position.x, node.position.z - b.position.z).length() < float(t["radius"]) * 0.8 + 1.1
+
+
+func fill_lb() -> float:
+	var n := 0.0
+	for c in contents:
+		n += float(c["lb"])
+	return n
+
+
+## Into the barrel, if it fits; out of the yard (cleared) but not paid for until the pickup.
+func _bin(t: Dictionary) -> void:
+	var node: Node3D = t["node"]
+	var lb := float(t["lb"])
+	if fill_lb() + lb > BARREL_CAP:
+		game.toast("🗑️ It won't fit. The barrel has room for %d lb; that's ~%d lb." % [int(BARREL_CAP - fill_lb()), int(lb)])
+		_drop(t)
+		return
+	var b: Node3D = barrel["node"]
 	var tw := Motion.channel(node, "lean")
-	tw.tween_property(node, "position", into, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tw.parallel().tween_property(node, "scale", Vector3.ONE * 0.2, Motion._d(Motion.BASE))
+	tw.tween_property(node, "position", b.position + Vector3(0, 1.3, 0), Motion._d(Motion.FAST * 1.5)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(node, "scale", Vector3.ONE * 0.45, Motion._d(Motion.FAST * 1.5))
+	tw.tween_property(node, "position", b.position + Vector3(0, 0.7, 0), Motion._d(Motion.FAST)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(node, "scale", Vector3.ONE * 0.05, Motion._d(Motion.FAST))
 	tw.tween_callback(node.queue_free)
 	garden.things.erase(t)
-	game.placed = game.placed.filter(func(b) -> bool: return b["node"] != node)
+	game.placed = game.placed.filter(func(p) -> bool: return p["node"] != node)
+	contents.append({"kind": t["kind"], "lb": lb, "value": _value(t)})
 	game.cleared += 1
-	var v := _value(t)
-	game.coins += v
-	Motion.swap(barrow["node"], Vector3.ONE, func() -> void: pass)    # the barrow takes the weight
-	game.toast("🛒 Hauled off the %s. 🪙 +%d" % [_label(t), v])
+	Motion.swap(b, Vector3.ONE, func() -> void: pass)
+	_show_fill()
+	game.toast("🗑️ Binned the %s. %d/%d lb." % [_label(t), int(fill_lb()), int(BARREL_CAP)])
 	game._refresh()
+
+
+## Tapping the barrel: first tap tells you where things stand, a second tap calls the pickup.
+func barrel_tapped() -> void:
+	var now := Time.get_unix_time_from_system()
+	var wait := next_pickup - now
+	if contents.is_empty():
+		game.toast("🗑️ The barrel's empty. Haul junk here; it holds %d lb." % int(BARREL_CAP))
+	elif wait > 0.0:
+		game.toast("🚛 The pickup can come again in %d:%02d." % [int(wait) / 60, int(wait) % 60])
+	elif now - _pickup_armed > 4.0:
+		_pickup_armed = now
+		game.toast("🗑️ %d/%d lb, scrap ~🪙 %d. Tap again to call the pickup (🪙 %d)." % [int(fill_lb()), int(BARREL_CAP), _scrap(), PICKUP_FEE])
+	elif game.coins < PICKUP_FEE:
+		game.toast("🚛 A pickup costs 🪙 %d." % PICKUP_FEE)
+	else:
+		_pickup()
+
+
+func _scrap() -> int:
+	var v := 0
+	for c in contents:
+		v += int(c["value"])
+	return v
+
+
+func _pickup() -> void:
+	var scrap := _scrap()
+	game.coins += scrap - PICKUP_FEE
+	contents.clear()
+	next_pickup = Time.get_unix_time_from_system() + PICKUP_COOLDOWN
+	_pickup_armed = 0.0
+	var b: Node3D = barrel["node"]
+	var lid: Node3D = b.get_node("Lid")
+	var tw := Motion.channel(lid, "lid")
+	tw.tween_property(lid, "rotation_degrees:z", 75.0, Motion._d(Motion.FAST)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(Motion._d(0.4))
+	tw.tween_callback(_show_fill)
+	Motion.swap(b, Vector3.ONE, func() -> void: pass)
+	game.toast("🚛 The pickup came by. Fee 🪙 %d, scrap 🪙 +%d. Next one in %d min." % [PICKUP_FEE, scrap, int(PICKUP_COOLDOWN / 60.0)])
+	game._refresh()
+
+
+## The lid rides up and the rubbish shows as the barrel fills.
+func _show_fill() -> void:
+	var b: Node3D = barrel["node"]
+	var f := clampf(fill_lb() / BARREL_CAP, 0.0, 1.0)
+	var fill: Node3D = b.get_node("Fill")
+	var lid: Node3D = b.get_node("Lid")
+	Motion.channel(fill, "fill").tween_property(fill, "scale", Vector3(1, maxf(0.01, f * 1.4), 1), Motion._d(Motion.BASE)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	Motion.channel(lid, "lid").tween_property(lid, "rotation_degrees:z", f * 38.0, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+var _tag_t := 0.0
+
+
+func _tend_tag(delta: float) -> void:
+	_tag_t -= delta
+	if _tag_t > 0.0 or _tag == null:
+		return
+	_tag_t = 0.5
+	var wait := next_pickup - Time.get_unix_time_from_system()
+	var text := "🗑️ %d/%d lb" % [int(fill_lb()), int(BARREL_CAP)]
+	if wait > 0.0:
+		text += "  🚛 %d:%02d" % [int(wait) / 60, int(wait) % 60]
+	_tag.text = text
+	_tag.modulate = Color(1, 0.86, 0.7) if fill_lb() >= BARREL_CAP * 0.9 else Color.WHITE
 
 
 func _value(t: Dictionary) -> int:

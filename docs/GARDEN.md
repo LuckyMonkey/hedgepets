@@ -28,13 +28,25 @@ Everything is heavier than it looks, in pounds: stick 2, pot 15, branch 15, chai
   leaves a bare patch where it lay.
 - **Haul.** Once free it follows your hand on a spring that's stiffer the lighter it is: light things lift and swing,
   heavy ones scrape along the ground, tilted, slow, kicking up dust. Let go and it thuds down there.
-- **Sell.** Drop junk in the green wheelbarrow by the garden gate: it's hauled off for its scrap value and counts as
-  cleared.
+- **Bin it.** Drop junk in the **trash barrel** by the garden gate. It only holds **100 lb** (the lid rides up as it
+  fills; a tag over it says how full), so a 132 lb rock never goes in: find it a place instead. Tap the barrel for its
+  status, tap again to **call the pickup**: 🪙 8, the hauler pays scrap for what's inside, and the next pickup can't
+  come for **3 minutes** (real time, so it runs while the game is closed). Fill it well before you call. You can't
+  clear the whole yard at once.
 - **Fix.** The tipped lawn chair rights itself when you yank it free. Work the rusty grill in circles while you hold
   it and the rust scrubs off (three turns): a clean grill sells for 12 more.
 
-Moved, loosened, righted and scrubbed things are saved. `tools/grab_check.gd --fixed-fps 60` drives all of it like
-a real hand: a stick yanked and sold, a 132 lb rock that holds against a steady pull but comes with jerks, the chair,
+**Collisions.** Everything solid is a circle: trunks, walls, junk, things you built, the barrel, every pet (sticks
+and leaf piles you walk over). Pets steer around what's ahead, give up on a spot they're boxed out of, and are pushed
+out of anything they end up in, including junk you haul into them. Hauled junk stops against trunks, walls and other
+things. `tools/collision_check.gd`: a dozen pets roam for 40 s and never sit inside anything.
+
+**Camera vs trees.** Everything in the garden dissolves right in front of the camera (an ordered dither,
+`shaders/near_fade.gdshaderinc`, and StandardMaterial's pixel-dither distance fade), so the camera can pass a trunk or
+through a crown without a screenful of leaves.
+
+Moved, loosened, righted and scrubbed things, and the barrel, are saved. `tools/grab_check.gd --fixed-fps 60` drives all of it like
+a real hand: a stick yanked and binned, a full barrel refusing a rock, a pickup with its fee and cooldown, a 132 lb rock that holds against a steady pull but comes with jerks, the chair,
 the grill.
 
 Each pet has three sets of wishes in its profile (`CharacterArtProfile.wants`, with journal `hints`):

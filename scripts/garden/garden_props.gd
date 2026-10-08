@@ -17,6 +17,7 @@ static func mat(name: String, color: Color, roughness := 1.0) -> StandardMateria
 	m.albedo_color = color
 	m.roughness = roughness
 	m.metallic_specular = 0.0
+	near_fade(m)
 	_mats[name] = m
 	return m
 
@@ -37,7 +38,20 @@ static func rust_mat() -> StandardMaterial3D:
 	m.albedo_texture = ImageTexture.create_from_image(img)
 	m.roughness = 1.0
 	m.metallic_specular = 0.1
+	near_fade(m)
 	_mats["rust"] = m
+	return m
+
+
+## Everything in the garden dissolves right in front of the camera (near_fade.gdshaderinc; StandardMaterial's own
+## pixel-dither distance fade), so the camera never sits inside a trunk or a crown.
+const NEAR_FADE := Vector2(1.0, 3.2)
+
+
+static func near_fade(m: BaseMaterial3D) -> BaseMaterial3D:
+	m.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_DITHER
+	m.distance_fade_min_distance = NEAR_FADE.x
+	m.distance_fade_max_distance = NEAR_FADE.y
 	return m
 
 
@@ -49,6 +63,7 @@ static func hull(width: float) -> ShaderMaterial:
 	h.shader = load("res://shaders/ink_hull.gdshader")
 	h.set_shader_parameter("ink", INK)
 	h.set_shader_parameter("width", width)
+	h.set_shader_parameter("near_fade", NEAR_FADE)
 	_mats[key] = h
 	return h
 
@@ -573,4 +588,27 @@ static func wheelbarrow(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
 	for side: float in [-1.0, 1.0]:
 		part(r, cyl(0.03, 0.03, 1.9, 6), steel, Vector3(-0.1, 0.5, side * 0.3), Vector3(0, 0, 82), 0.006)
 		part(r, cyl(0.03, 0.03, 0.5, 6), steel, Vector3(-0.35, 0.25, side * 0.3), Vector3(0, 0, -10), 0.006)
+	return r
+
+
+## A dented galvanized trash barrel with its lid (child "Lid") and what's in it (child "Fill", scaled with how full).
+static func trash_barrel(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "TrashBarrel", at, yaw)
+	var zinc := mat("zinc", Color("9aa0a2"), 0.55)
+	part(r, cyl(0.42, 0.38, 1.0, 16), zinc, Vector3(0, 0.5, 0), Vector3(0, 0, 2), 0.014)
+	var rib := TorusMesh.new()
+	rib.inner_radius = 0.39
+	rib.outer_radius = 0.44
+	for y: float in [0.22, 0.55, 0.88]:
+		part(r, rib, zinc, Vector3(0, y, 0), Vector3(0, 0, 2), 0.0)
+	part(r, blob(Vector3(0.12, 0.08, 0.12), {"exponent": 2.0}), mat("dent", Color("7e8486")), Vector3(0.36, 0.62, 0.1), Vector3.ZERO, 0.0)
+	var fill := part(r, blob(Vector3(0.36, 0.22, 0.36), "dome"), mat("rubbish", Color("5a4a3a")), Vector3(0, 0.92, 0), Vector3.ZERO, 0.0)
+	fill.name = "Fill"
+	fill.scale = Vector3(1, 0.01, 1)
+	var lid := Node3D.new()
+	lid.name = "Lid"
+	lid.position = Vector3(-0.42, 1.02, 0)              # hinged at the back edge
+	r.add_child(lid)
+	part(lid, cyl(0.46, 0.46, 0.06, 16), zinc, Vector3(0.42, 0.03, 0), Vector3.ZERO, 0.01)
+	part(lid, box(Vector3(0.22, 0.05, 0.06)), mat("handle", Color("2f2b28")), Vector3(0.42, 0.1, 0), Vector3.ZERO, 0.0)
 	return r

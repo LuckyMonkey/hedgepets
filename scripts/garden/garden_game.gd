@@ -358,14 +358,16 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 				toast(_pet_line(pet))
 				return true
 			var t = _thing_at(p2)
-			if t != null:
+			if t != null and t["kind"] == "barrel":
+				grab.barrel_tapped()
+			elif t != null:
 				toast(_thing_line(t))
 			return true
 		"shovel":
 			var t = _thing_at(p2)
 			if t != null:
 				if grab.grabbable(t) and not t.get("placed", false):
-					toast("Too heavy to shovel. Grab it with ✋, yank it loose, haul it to the wheelbarrow 🛒.")
+					toast("Too heavy to shovel. Grab it with ✋, yank it loose, haul it to the trash barrel 🗑️.")
 					return true
 				if not t["junk"]:
 					toast("That stays.")
@@ -562,7 +564,7 @@ func _splash(at: Vector3) -> void:
 # ------------------------------------------------------------------ words
 func _thing_name(kind: String) -> String:
 	return {"lawn_chair": "lawn chair", "grill": "rusty grill", "sprinkler": "broken sprinkler", "tire": "old tire",
-		"pot": "flowerpot", "wheelbarrow": "wheelbarrow", "branch": "branch", "stick": "stick", "rock": "rock", "leaf_pile": "leaf pile"}.get(kind, kind)
+		"pot": "flowerpot", "wheelbarrow": "wheelbarrow", "barrel": "trash barrel", "branch": "branch", "stick": "stick", "rock": "rock", "leaf_pile": "leaf pile"}.get(kind, kind)
 
 
 func _thing_line(t: Dictionary) -> String:
@@ -806,6 +808,7 @@ func save() -> void:
 		return                                           # captures and checks never touch the player's garden
 	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state, "plants": pet_plant,
 		"moved": _moved_state(),
+		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
 		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["x"], "z": b["z"], "yaw": b["yaw"]})}
 	var present := {}
 	for t in garden.things:
@@ -853,6 +856,10 @@ func _load() -> void:
 		var pl = b.get("plant")
 		if pl != null:
 			_plant(str(pl["species"]), bed, int(pl["stage"]), float(pl["water"]), float(pl["progress"]))
+	var bin: Dictionary = data.get("barrel", {})
+	grab.contents = bin.get("contents", [])
+	grab.next_pickup = float(bin.get("next_pickup", 0.0))
+	grab._show_fill()
 	var moved: Dictionary = data.get("moved", {})
 	for t in garden.things:
 		if moved.has(t["id"]):

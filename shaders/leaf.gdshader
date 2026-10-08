@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode cull_disabled, depth_draw_opaque, diffuse_lambert_wrap, specular_disabled;
+#include "res://shaders/near_fade.gdshaderinc"
 
 // One leaf per MultiMesh instance (scripts/art/foliage_builder.gd). The quad's bottom edge is the stalk.
 // INSTANCE_CUSTOM: x = sprite cell (0-7 leaves, 13 flower), y = wind phase, z = wind reach, w = rank in its
@@ -41,6 +42,7 @@ void vertex() {
 }
 
 void fragment() {
+	near_fade_discard(VERTEX, FRAGCOORD.xy);
 	float cell = floor(v_cell + 0.5);
 	vec2 uv_fill = vec2((cell + UV.x) / cells, UV.y * 0.5);
 	vec2 uv_ink = vec2((cell + UV.x) / cells, 0.5 + UV.y * 0.5);

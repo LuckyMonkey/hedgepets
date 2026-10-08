@@ -69,7 +69,7 @@ func _run() -> void:
 	if stick["stuck"] > 0.0:
 		return _fail("stick never came free")
 	print("stick free")
-	var barrow: Vector3 = grab.barrow["node"].position
+	var barrow: Vector3 = grab.barrel["node"].position
 	var from := screen_of(stick["node"].position)
 	for i in range(150):
 		grab.move(from.lerp(screen_of(barrow), clampf(i / 90.0, 0.0, 1.0)))
@@ -78,9 +78,29 @@ func _run() -> void:
 			root.get_texture().get_image().save_png("/tmp/hedgepets-views/haul_stick.png")
 	grab.end(screen_of(barrow))
 	await frames(40)
-	if of.call("stick").size() != sticks0 - 1 or game.coins <= coins0:
-		return _fail("stick not sold (sticks %d -> %d, coins %d -> %d)" % [sticks0, of.call("stick").size(), coins0, game.coins])
-	print("stick sold, coins %d -> %d" % [coins0, game.coins])
+	if of.call("stick").size() != sticks0 - 1 or grab.contents.size() != 1:
+		return _fail("stick not binned (sticks %d -> %d, barrel %d)" % [sticks0, of.call("stick").size(), grab.contents.size()])
+	print("stick binned: %d/%d lb" % [grab.fill_lb(), grab.BARREL_CAP])
+	# the barrel: too-heavy refused, pickup costs, then a cooldown
+	grab.contents.append({"kind": "tire", "lb": 90.0, "value": 4})
+	var rocks0: Array = of.call("rock")
+	grab._bin(rocks0[0])
+	if not garden.things.has(rocks0[0]):
+		return _fail("an overfull barrel took a rock")
+	print("full barrel refuses a rock")
+	game.coins = 20
+	grab.barrel_tapped()
+	grab.barrel_tapped()
+	if not grab.contents.is_empty() or game.coins != 20 - grab.PICKUP_FEE + 5:
+		return _fail("pickup: contents %d, coins %d" % [grab.contents.size(), game.coins])
+	grab.contents.append({"kind": "stick", "lb": 2.0, "value": 1})
+	grab.barrel_tapped()
+	grab.barrel_tapped()
+	if grab.contents.is_empty():
+		return _fail("a second pickup came during the cooldown")
+	print("pickup: fee and scrap paid, cooldown holds")
+	grab.contents.clear()
+	grab._show_fill()
 	# the biggest rock: a steady pull is not enough; jerks are
 	var rocks: Array = of.call("rock")
 	rocks.sort_custom(func(a, b) -> bool: return a["radius"] > b["radius"])

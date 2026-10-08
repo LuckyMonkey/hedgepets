@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_opaque;
+#include "res://shaders/near_fade.gdshaderinc"
 
 // The ink silhouette of the whole bush. Drawn as the leaf material's next pass: every leaf gets a slightly larger
 // dark copy just behind it, but only where the leaf lies on the creature's outline (its surface faces sideways to
@@ -41,6 +42,7 @@ void vertex() {
 }
 
 void fragment() {
+	near_fade_discard(VERTEX, FRAGCOORD.xy);
 	float cell = floor(v_cell + 0.5);
 	float shape = texture(leaf_sheet, vec2((cell + UV.x) / cells, UV.y * 0.5)).a;
 	if (shape < 0.45 || v_rim * strength < 0.74) {

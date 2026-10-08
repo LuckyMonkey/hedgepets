@@ -13,6 +13,10 @@ func _run() -> void:
 	root.add_child(scene)
 	scene.set_process_input(false)
 	scene.set_process_unhandled_input(false)
+	if OS.get_environment("TARGET") != "":
+		var v: PackedStringArray = OS.get_environment("TARGET").split(",")
+		scene._goal_target = Vector3(float(v[0]), 0, float(v[1]))
+		scene._target = scene._goal_target
 	if OS.get_environment("YAW") != "":
 		scene._yaw = deg_to_rad(float(OS.get_environment("YAW")))
 		scene._goal_yaw = scene._yaw
