@@ -42,10 +42,10 @@ draw_features = false
 position = Vector2(-540, -1262)
 script = ExtResource("2_growth")
 growth = 0.90
-amplitude = 70.0
+amplitude = 95.0
 frequency = 1.0
 leaf_spacing = 50.0
-overflow = 0.32
+overflow = 0.55
 shoot_count = 8
 profile_id = "ivy"
 
@@ -73,7 +73,7 @@ offset_bottom = 1460.0
 theme_override_colors/font_color = Color(0.45, 0.38, 0.30, 0.8)
 theme_override_font_sizes/font_size = 26
 horizontal_alignment = 1
-text = "adopted October 6, 2026  ·  tap me"
+text = "adopted October 6, 2026  ·  tap him"
 
 [node name="DebugPanel" type="Panel" parent="."]
 visible = false

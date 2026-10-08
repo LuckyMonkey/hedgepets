@@ -44,7 +44,7 @@ const MASK_PATHS := [
 const OCCUPANCY_COLUMNS := 36
 const OCCUPANCY_ROWS := 40
 const COMPOSITION_BOUNDS := Rect2(35.0, 360.0, 1010.0, 1120.0)
-const DETAIL_BUDGET_MAX := 480.0
+const DETAIL_BUDGET_MAX := 1800.0
 
 var profiles: Array[PlantProfile] = []
 var profile: PlantProfile
@@ -68,11 +68,42 @@ func _ready() -> void:
 	queue_redraw()
 
 
+const SPRITE_CELL := 160
+var leaf_sheet: Texture2D = null
+var cached_lines: Array = []       # [a, b, color, width] stems, branches and rim stalks
+var _built_signature := ""
+var _time := 0.0
+var _frame_accumulator := 0.0
+const LIGHT := Vector3(-0.52, -0.62, 0.59)   # from the upper left, toward the viewer
+
+
+func _process(delta: float) -> void:
+	_time += delta
+	_frame_accumulator += delta
+	if _frame_accumulator >= 1.0 / 30.0:   # leaves rustle at 30 fps; that is plenty, and cheap
+		_frame_accumulator = 0.0
+		queue_redraw()
+
+
 func _draw() -> void:
 	if profile == null:
 		return
+	var signature := "%s|%s|%s|%s|%s|%s|%s" % [growth, amplitude, frequency, leaf_spacing, overflow, shoot_count, profile_index]
+	if signature != _built_signature:
+		_build()
+		_built_signature = signature
+	for line in cached_lines:
+		draw_line(line[0], line[1], line[2], line[3], true)
+	var gust := _life_value("gust")
+	for mark in composition_marks:
+		_paint_hedge_glyph(mark, gust)
+
+
+## The composition: where every stem and leaf goes. Runs only when a setting changes.
+func _build() -> void:
 	current_shoot_paths.clear()
 	composition_marks.clear()
+	cached_lines.clear()
 	occupancy.clear()
 	remaining_detail_budget = lerpf(36.0, DETAIL_BUDGET_MAX, growth)
 	for index in range(OCCUPANCY_COLUMNS * OCCUPANCY_ROWS):
@@ -82,12 +113,12 @@ func _draw() -> void:
 		var path := _make_shoot_path(shoot_id)
 		if not path.is_empty():
 			current_shoot_paths.append({"id": shoot_id, "points": path})
-
 	# Paint-stack order: invisible curves inform composition, selected stem
 	# fragments sit behind foliage, then accepted marks are depth-sorted.
 	for shoot in current_shoot_paths:
 		_draw_stem_fragments(shoot["id"], shoot["points"])
 	collecting_marks = true
+	_draw_crown_foliage()
 	_draw_major_canopy_clusters()
 	_draw_canopy_mass()
 	_draw_interior_botanical_texture()
@@ -96,9 +127,90 @@ func _draw() -> void:
 	_draw_accent_flowers()
 	_draw_silhouette_foliage()
 	collecting_marks = false
+	_draw_tendrils()
 	composition_marks.sort_custom(Callable(self, "_sort_marks"))
 	for mark in composition_marks:
-		_paint_hedge_glyph(mark)
+		_light_mark(mark)
+		_prepare_mark(mark)
+
+
+## The ivy cover: big shingled leaves over the whole body and the back of the head, pointing out and a little up,
+## parting round the face. Rim leaves are the fullest and catch the most wind (hedgepetsGoal.jpg).
+func _draw_crown_foliage() -> void:
+	var masses := [[Creature.BODY_CENTER, Creature.BODY_RADII, 340.0], [Creature.HEAD_CENTER, Creature.HEAD_RADII, 60.0]]
+	var rng := RandomNumberGenerator.new()   # a real generator: a sine hash over consecutive keys lays leaves on a spiral
+	rng.seed = PET_SEED * 31 + 7
+	for m_index in range(masses.size()):
+		var center: Vector2 = masses[m_index][0]
+		var radii: Vector2 = masses[m_index][1]
+		var count := int(float(masses[m_index][2]) * growth * clampf(profile.interior_density + 0.3, 0.6, 1.4))
+		for index in range(count):
+			var key := 9100 + m_index * 5000 + index * 37
+			var angle := rng.randf() * TAU
+			var r := pow(rng.randf(), 0.55) * 1.02
+			var point := center + Vector2(cos(angle) * radii.x * r, sin(angle) * radii.y * r)
+			if point.y > Creature.FEET_Y - 40.0:
+				continue
+			var face_factor := _face_clear_factor(point)
+			if face_factor < (0.32 if m_index == 0 else 0.55):
+				continue
+			var outward := (point - center).normalized()
+			var tangent := outward.lerp(Vector2.UP, 0.35).normalized().rotated((rng.randf() - 0.5) * 1.0)
+			var glyph_index: int = rng.randi_range(0, 7)
+			if rng.randf() < 0.035 * (1.0 + profile.flower_probability * 6.0):
+				glyph_index = 13
+			var size := lerpf(52.0, 84.0, rng.randf()) * (1.06 if r > 0.85 else 1.0)
+			var side := -1.0 if index % 2 == 0 else 1.0
+			var depth := 3 if r > 0.86 else 2
+			_draw_hedge_glyph(point, tangent, side, glyph_index, size, key, (rng.randf() - 0.5) * 0.5, 1.05 * face_factor, false, depth)
+
+
+## Ivy tendrils: little curls where the vines run off the edge.
+func _draw_tendrils() -> void:
+	for shoot in current_shoot_paths:
+		var points: PackedVector2Array = shoot["points"]
+		if points.size() < 3:
+			continue
+		var end := points[points.size() - 1]
+		if _creature_sdf(end) < 0.0:
+			continue
+		var dir := (end - points[points.size() - 2]).normalized()
+		var curl := PackedVector2Array([end])
+		var turn := 1.0 if int(shoot["id"]) % 2 == 0 else -1.0
+		for i in range(1, 22):
+			var t := float(i) / 21.0
+			dir = dir.rotated(turn * (0.18 + t * 0.32))
+			curl.append(curl[curl.size() - 1] + dir * (7.0 - t * 4.0))
+		for i in range(curl.size() - 1):
+			_line(curl[i], curl[i + 1], Color(STEM_INK, 0.75), 3.0)
+
+
+func _line(a: Vector2, b: Vector2, color: Color, width: float, _antialiased: bool = true) -> void:
+	cached_lines.append([a, b, color, width])
+
+
+func _life_value(key: String) -> float:
+	var pet := get_parent()
+	if pet != null and pet.has_method("life_state"):
+		return float(pet.life_state().get(key, 0.0))
+	return 0.0
+
+
+## Each leaf sits on a round mass: light it by where it faces, and foreshorten the ones turning away at the rim.
+func _light_mark(mark: Dictionary) -> void:
+	var center: Vector2 = mark["center"]
+	var c := _mass_center(center)
+	var radii := Creature.HEAD_RADII if c == Creature.HEAD_CENTER else Creature.BODY_RADII
+	var n2 := (center - c) / radii
+	var r := minf(n2.length(), 1.0)
+	var nz := sqrt(maxf(0.0, 1.0 - r * r))
+	var n3 := Vector3(n2.x, n2.y, nz).normalized() if n2.length() > 0.001 else Vector3(0, 0, 1)
+	var lambert := n3.dot(LIGHT.normalized())
+	mark["light"] = clampf(0.62 + 0.5 * lambert, 0.32, 1.12)
+	mark["turn"] = lerpf(0.58, 1.0, nz)              # rim leaves face away: thinner across
+	mark["radial"] = n2.angle() if n2.length() > 0.001 else 0.0
+	mark["rim"] = smoothstep(0.55, 1.05, r)          # rim leaves catch more wind
+	mark["phase"] = _deterministic_unit(int(mark["mask_key"]) * 7 + 3) * TAU
 
 
 func _make_shoot_path(shoot_id: int) -> PackedVector2Array:
@@ -125,22 +237,22 @@ func _draw_stem_fragments(shoot_id: int, points: PackedVector2Array) -> void:
 		var distance := _creature_sdf(midpoint)
 		var outside := distance > 0.0
 		var reveal := _deterministic_unit(shoot_id * 401 + index * 17 + 19)
-		var visible_threshold := 0.78 if not outside else 0.26
+		var visible_threshold := 0.78 if not outside else 0.30
 		if reveal < visible_threshold:
 			continue
 		var shadow := STEM_SHADOW
 		shadow.a = 0.025 if not outside else 0.06
-		draw_line(a, b, shadow, 9.0 if not outside else 11.0, true)
+		_line(a, b, shadow, 9.0 if not outside else 11.0, true)
 		var stem_color := STEM_INK
 		stem_color.a = (0.075 + 0.04 * overflow) if not outside else (0.20 + 0.12 * overflow)
-		draw_line(a, b, stem_color, 3.0 if not outside else 4.0, true)
+		_line(a, b, stem_color, 3.0 if not outside else 4.0, true)
 
 
 func _draw_canopy_mass() -> void:
 	# A broad middle scale: a few overlapping glyphs imply the many leaves
 	# inside the watercolor wash without turning the renderer into a particle
 	# system. These are deliberately stemless and deterministic.
-	var total := int(116.0 * profile.interior_density * growth)
+	var total := int(170.0 * profile.interior_density * growth)
 	for index in range(total):
 		var sample := _interior_sample(index + 4000)
 		var point: Vector2 = sample[0]
@@ -210,7 +322,7 @@ func _draw_structural_marks(shoot_id: int, points: PackedVector2Array) -> void:
 		var event_roll := _deterministic_unit(key + 57)
 		var glyph_index := _choose_structural_glyph(event_roll, key)
 		var face_factor := _face_clear_factor(leaf_center)
-		if face_factor < 0.24:
+		if face_factor < 0.24 or _creature_sdf(leaf_center) < -36.0:
 			continue
 		_draw_hedge_glyph(leaf_center, tangent, side, glyph_index, leaf_size, key, jitter, lerpf(0.62, 1.0, face_factor), false, 2)
 
@@ -259,7 +371,7 @@ func _draw_branch(shoot_id: int, origin: Vector2, tangent: Vector2, branch_index
 		var branch_midpoint := (points[segment_index] + points[segment_index + 1]) * 0.5
 		if _creature_sdf(branch_midpoint) < -24.0 and _deterministic_unit(key + segment_index * 13) < 0.68:
 			continue
-		draw_line(points[segment_index], points[segment_index + 1], branch_color, 3.0, true)
+		_line(points[segment_index], points[segment_index + 1], branch_color, 3.0, true)
 	var normal := Vector2(-direction.y, direction.x)
 	for index in range(2):
 		var branch_point := points[index + 1]
@@ -297,14 +409,14 @@ func _draw_silhouette_foliage() -> void:
 			var inner_center := anchor - outward * (16.0 + _deterministic_unit(key + 18) * 14.0)
 			var inner_glyph := 5 if index % 2 == 0 else 7
 			_draw_hedge_glyph(inner_center, tangent, -1.0, inner_glyph, size * 0.74, key + 19, 0.0, 0.72, true, 1)
-		draw_line(anchor - outward * 8.0, center, Color(STEM_INK, 0.30), 3.0, true)
+		_line(anchor - outward * 8.0, center, Color(STEM_INK, 0.30), 3.0, true)
 		_draw_hedge_glyph(center, outward, 1.0, glyph_index, size, key, 0.0, 1.15, false, 3)
 		if event_roll > 0.72:
 			_draw_hedge_glyph(center + tangent * 22.0 - outward * 5.0, outward.rotated(0.20), -1.0, 12, size * 0.62, key + 4, 0.0, 1.0, true, 3)
 
 
 func _draw_interior_botanical_texture() -> void:
-	var total := int(280.0 * profile.interior_density * growth)
+	var total := int(400.0 * profile.interior_density * growth)
 	for index in range(total):
 		var sample := _interior_sample(index)
 		var point: Vector2 = sample[0]
@@ -414,7 +526,7 @@ func _queue_mark(center: Vector2, tangent: Vector2, side: float, glyph_index: in
 	var edge_factor := 1.0 - smoothstep(-130.0, 45.0, sdf)
 	var cell := _occupancy_cell(center)
 	var local_occupancy: float = occupancy[cell]
-	var crowd_limit := 2.45 if depth < 2 else 3.25
+	var crowd_limit := 3.6 if depth < 2 else 5.0
 	if local_occupancy > crowd_limit and edge_factor < 0.72:
 		return
 	var score := 0.52 + edge_factor * 0.27 + outside_survival * 0.22 + face_factor * 0.16
@@ -452,64 +564,80 @@ func _queue_mark(center: Vector2, tangent: Vector2, side: float, glyph_index: in
 	})
 
 
-func _paint_hedge_glyph(mark: Dictionary) -> void:
+func _paint_hedge_glyph(mark: Dictionary, gust: float = 0.0) -> void:
+	if not mark.has("polys"):
+		_prepare_mark(mark)
+	_paint_mark(mark, gust)
+
+
+## Everything about a leaf that does not move: its colours and angle, worked out once at build time.
+## Its shape is a baked sprite (assets/sprites/<font>.png, tools/bake_leaf_sprites.py + make_ivy_sprites.py),
+## so painting a frame is two tinted sprite draws per leaf, which the GPU batches.
+func _prepare_mark(mark: Dictionary) -> void:
 	var glyph_index: int = mark["glyph"]
-	var item: Dictionary = glyph_geometry[posmod(glyph_index, glyph_geometry.size())]
-	var tangent: Vector2 = mark["tangent"]
-	var side: float = mark["side"]
+	if glyph_index >= 8 and glyph_index != 13:
+		glyph_index = posmod(glyph_index, 8)
 	var interior: bool = mark["interior"]
 	var depth: int = mark["depth"]
-	var depth_factors := [0.66, 0.84, 1.0, 1.05, 1.10]
-	var strength: float = float(mark["strength"]) * depth_factors[clampi(depth, 0, depth_factors.size() - 1)]
-	var angle := tangent.angle() + PI * 0.5 + side * (0.12 if interior else 0.17) + float(mark["jitter"])
+	var depth_factors := [0.70, 0.86, 1.0, 1.04, 1.08]
+	var strength: float = clampf(float(mark["strength"]) * depth_factors[clampi(depth, 0, depth_factors.size() - 1)], 0.0, 1.0)
 	var mask_key: int = mark["mask_key"]
-	var mask_strength := _mask_value(mask_key)
-	var structural_pigment_boost := 1.42 if depth >= 2 else 1.0
-	var pigment_alpha := (0.34 + mask_strength * 0.52) * strength * structural_pigment_boost
-	# Interior marks carry pigment more than ink; this is what lets the
-	# repeated vocabulary read as layered foliage instead of black wallpaper.
-	var pigment := profile.pigment(mask_key, pigment_alpha)
+	var light: float = mark.get("light", 1.0)
+	var pigment := _lit(profile.pigment(mask_key, 1.0), light)
+	pigment.a = clampf(0.55 + 0.45 * strength, 0.0, 1.0) * (0.85 if interior and depth == 0 else 1.0)
 	if glyph_index == 13:
-		pigment = Color(0.98, 0.95, 0.78, 0.78 * strength)
-	var ink_color := INK
-	var base_ink_alpha := 0.26 if interior and depth == 0 else (0.34 if interior else (0.70 if depth < 4 else 0.84))
-	ink_color.a = base_ink_alpha * strength
-	var local_scale: float = mark["size"]
-	var bend := (sin(float(mask_key) * 0.71 + 0.8) * 0.055) + float(mark["jitter"]) * 0.08
+		pigment = Color(0.99, 0.97, 0.90, 0.95 * strength + 0.05)
+	var ink_color := INK.lerp(Color(0.10, 0.16, 0.08), 0.3)
+	ink_color.a = (0.38 if interior and depth == 0 else (0.55 if interior else 0.85)) * clampf(strength + 0.2, 0.0, 1.0)
+	mark["pigment"] = pigment
+	mark["ink_color"] = ink_color
+	mark["base_angle"] = float(mark["tangent"].angle()) + PI * 0.5 + float(mark["side"]) * (0.12 if interior else 0.17) + float(mark["jitter"])
+	mark["flower"] = glyph_index == 13
+	mark["paint_strength"] = strength
+	var cell := float(SPRITE_CELL)
+	mark["fill_src"] = Rect2(posmod(glyph_index, 16) * cell, 0.0, cell, cell)
+	mark["ink_src"] = Rect2(posmod(glyph_index, 16) * cell, cell, cell, cell)
+	var size: float = mark["size"]
+	mark["dest"] = Rect2(-0.6 * size, -1.15 * size, 1.2 * size, 1.2 * size)
+	mark["polys"] = true
 
-	draw_set_transform(mark["center"], angle, Vector2.ONE)
-	for polygon in item["fill"]:
-		var local_polygon := _local_polygon(polygon, local_scale, bend)
-		var polygon_colors := PackedColorArray()
-		for _point in local_polygon:
-			polygon_colors.append(pigment)
-		var polygon_uvs := _polygon_uvs(polygon)
-		var mask_texture: Texture2D = mask_textures[posmod(mask_key, mask_textures.size())] if not mask_textures.is_empty() else null
-		draw_polygon(local_polygon, polygon_colors, polygon_uvs, mask_texture)
-		var wash_boost := 1.58 if depth >= 2 else 1.0
-		var second_wash := profile.pigment(mask_key + 1, (0.12 + mask_strength * 0.22) * strength * wash_boost)
-		if glyph_index == 13:
-			second_wash = Color(1.0, 0.83, 0.40, 0.22 * strength)
-		draw_colored_polygon(_scale_polygon(local_polygon, 0.82), second_wash)
 
-	# The font and this JSON share the same generated outlines. Use the outline
-	# geometry here so pigment and ink remain perfectly registered; the actual
-	# TTF remains available for the specimen/type-foundry view.
-	var ink_path_limit := 2 if interior else (4 if depth < 4 else 5)
-	for path_index in range(mini(item["ink"].size(), ink_path_limit)):
-		var path: PackedVector2Array = item["ink"][path_index]
-		draw_polyline(_local_path(path, local_scale, bend), ink_color, maxf(1.3, local_scale * (0.048 if interior else 0.055)), true)
-	if glyph_index == 13:
-		# Keep the generated glyph outline as the canonical mark, with a tiny
-		# explicit petal wash so flowers remain readable at phone scale.
-		var flower_center := Vector2(0.0, -local_scale * 0.67)
-		for petal_index in range(5):
-			var petal_angle := TAU * float(petal_index) / 5.0
-			var petal_center := flower_center + Vector2(cos(petal_angle), sin(petal_angle)) * local_scale * 0.16
-			draw_circle(petal_center, local_scale * 0.105, Color(0.99, 0.96, 0.82, 0.82 * strength))
-			draw_arc(petal_center, local_scale * 0.105, 0.0, TAU, 12, ink_color, maxf(1.2, local_scale * 0.032), true)
-		draw_circle(flower_center, local_scale * 0.075, Color(0.62, 0.36, 0.12, 0.95 * strength))
+func _paint_mark(mark: Dictionary, gust: float) -> void:
+	# wind: a slow wave rolls across the hedge, every leaf flutters on its own; rim leaves move most, a tap shivers them all
+	var center: Vector2 = mark["center"]
+	var phase: float = mark.get("phase", 0.0)
+	var rim: float = mark.get("rim", 0.5)
+	var wave := sin(_time * 1.15 - center.x * 0.009 + center.y * 0.003) * 0.6 + sin(_time * 0.43 + center.y * 0.006) * 0.4
+	var flutter := sin(_time * (3.2 + phase * 0.35) + phase) * 0.35 + sin(_time * 7.3 + phase * 2.0) * 0.12 * (0.4 + gust)
+	var sway := (wave * (0.05 + 0.13 * rim) + flutter * (0.04 + 0.10 * rim)) * (1.0 + gust * 2.2)
+	var angle: float = mark["base_angle"] + sway
+	var drift := Vector2(cos(angle), sin(angle)) * sway * (4.0 + 10.0 * rim)
+	draw_set_transform(center + drift, angle, Vector2(mark.get("turn", 1.0), 1.0))
+	if leaf_sheet != null:
+		draw_texture_rect_region(leaf_sheet, mark["dest"], mark["fill_src"], mark["pigment"])
+		draw_texture_rect_region(leaf_sheet, mark["dest"], mark["ink_src"], mark["ink_color"])
+	if mark["flower"]:
+		var size: float = mark["size"]
+		draw_circle(Vector2(0.0, -0.62 * size), size * 0.085, Color(0.86, 0.62, 0.16, 0.95))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _load_leaf_sheet() -> void:
+	leaf_sheet = null
+	if profile == null:
+		return
+	var name: String = profile.geometry_path.get_file().replace("_geometry.json", "")
+	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/%s.png" % name))
+	if image != null and not image.is_empty():
+		leaf_sheet = ImageTexture.create_from_image(image)
+
+
+## Light a pigment: shade toward deep green in shadow, toward warm yellow-green in the light.
+func _lit(color: Color, light: float) -> Color:
+	var a := color.a
+	var lit := color.darkened(clampf(1.0 - light, 0.0, 0.6) * 0.9) if light < 1.0 else color.lerp(Color(0.86, 0.90, 0.52), clampf(light - 1.0, 0.0, 0.2) * 2.0)
+	lit.a = a
+	return lit
 
 
 func _sort_marks(a: Dictionary, b: Dictionary) -> bool:
@@ -572,6 +700,7 @@ func _select_profile(index: int) -> void:
 	shoot_count = profile.primary_shoot_count
 	leaf_font = load(profile.font_path) as Font
 	_load_geometry(profile.geometry_path)
+	_load_leaf_sheet()
 	_update_plant_selector()
 	var specimen := get_node_or_null("../../SpecimenPanel")
 	if specimen != null and specimen.has_method("set_profile"):

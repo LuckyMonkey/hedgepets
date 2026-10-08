@@ -4,21 +4,29 @@ extends RefCounted
 ## Authored creature grammar. Plant composition reads this data but never
 ## needs to know how the face is drawn.
 ##
-## The pet is a chibi hedge: a big round head on a small round body, standing on
-## two little terracotta pot feet. Everything is in viewport pixels (1080 x 1920).
-const HEAD_CENTER := Vector2(540.0, 820.0)
-const HEAD_RADII := Vector2(255.0, 228.0)
-const BODY_CENTER := Vector2(540.0, 1095.0)
-const BODY_RADII := Vector2(232.0, 168.0)
-const FEET_Y := 1262.0                       # where the pots stand; the pet breathes and hops from here
-const EYE_LEFT := Vector2(452.0, 842.0)
-const EYE_RIGHT := Vector2(628.0, 842.0)
-const EYE_RADIUS := 37.0
-const NOSE := Vector2(540.0, 902.0)
-const SPROUT_BASE := Vector2(540.0, 600.0)
+## The pet is a beaver grown over with ivy (hedgepetsGoal.jpg), seen three-quarters from the front-right: a big
+## rounded body, the head forward and to the right, the flat tail behind, four little feet (the far ones smaller).
+## Everything is in viewport pixels (1080 x 1920).
+const BODY_CENTER := Vector2(505.0, 1045.0)
+const BODY_RADII := Vector2(318.0, 212.0)
+const HEAD_CENTER := Vector2(805.0, 925.0)
+const HEAD_RADII := Vector2(172.0, 148.0)
+const TAIL_CENTER := Vector2(170.0, 1125.0)
+const TAIL_RADII := Vector2(150.0, 92.0)
+const EAR := Vector2(742.0, 792.0)
+const FEET_Y := 1262.0                       # the ground: the pet breathes and hops from here
+const EYE := Vector2(842.0, 900.0)
+const EYE_RADIUS := 20.0
+const NOSE := Vector2(955.0, 948.0)
+const TEETH := Vector2(930.0, 998.0)
+# feet: [centre, size, far?]
+const FEET := [
+	[Vector2(338.0, 1236.0), 0.82, true], [Vector2(640.0, 1230.0), 0.84, true],
+	[Vector2(430.0, 1252.0), 1.0, false], [Vector2(742.0, 1246.0), 1.0, false],
+]
 
-## The first sketch (a side-on hedge beaver). Older composition anchors were
-## authored against it; remap_legacy() carries them onto the current shape.
+## The first sketch's layout (the same beaver, drawn flat). Older composition anchors were authored against it;
+## remap_legacy() carries them onto the current proportions.
 const LEGACY_BODY_CENTER := Vector2(515.0, 1055.0)
 const LEGACY_BODY_RADII := Vector2(330.0, 188.0)
 const LEGACY_HEAD_CENTER := Vector2(795.0, 918.0)
@@ -29,24 +37,22 @@ static func body_point(normalized_point: Vector2) -> Vector2:
 	return BODY_CENTER + Vector2(normalized_point.x * BODY_RADII.x, normalized_point.y * BODY_RADII.y)
 
 
-## A point authored on the legacy beaver, moved to the same place on the current
-## body: head points to the head, everything else (body, tail) to the body.
 static func remap_legacy(point: Vector2) -> Vector2:
 	var head_delta := (point - LEGACY_HEAD_CENTER) / LEGACY_HEAD_RADII
 	var body_delta := (point - LEGACY_BODY_CENTER) / LEGACY_BODY_RADII
 	if head_delta.length() < body_delta.length():
-		# the beaver looked right; the new face looks at you, so the head is mirrored to spread round the crown
-		return HEAD_CENTER + Vector2(head_delta.x * HEAD_RADII.x * 0.9, head_delta.y * HEAD_RADII.y)
-	return BODY_CENTER + Vector2(clampf(body_delta.x, -1.25, 1.25) * BODY_RADII.x * 0.82, body_delta.y * BODY_RADII.y)
+		return HEAD_CENTER + head_delta * HEAD_RADII
+	return BODY_CENTER + body_delta * BODY_RADII
 
 
 static func feature_anchors() -> Array[Dictionary]:
-	# Leaves stay clear of the face so the eyes always read.
+	# Leaves keep off the face: the eye, the nose, the teeth, and the fur round the muzzle.
 	return [
-		{"name": "eye_left", "center": EYE_LEFT, "radius": 82.0, "weight": 1.0},
-		{"name": "eye_right", "center": EYE_RIGHT, "radius": 82.0, "weight": 1.0},
-		{"name": "nose", "center": NOSE, "radius": 70.0, "weight": 1.0},
-		{"name": "face", "center": Vector2(540.0, 880.0), "radius": 170.0, "weight": 0.86},
+		{"name": "eye", "center": EYE, "radius": 58.0, "weight": 1.0},
+		{"name": "nose", "center": NOSE, "radius": 62.0, "weight": 1.0},
+		{"name": "teeth", "center": TEETH, "radius": 66.0, "weight": 0.95},
+		{"name": "face", "center": Vector2(895.0, 955.0), "radius": 128.0, "weight": 1.0},
+		{"name": "cheek", "center": Vector2(850.0, 975.0), "radius": 80.0, "weight": 0.9},
 	]
 
 

@@ -35,7 +35,7 @@ func _ready() -> void:
 
 
 func life_state() -> Dictionary:
-	return {"blink": blink, "look": look, "sprout": time * 2.1, "joy": joy, "time": time}
+	return {"blink": blink, "look": look, "sprout": time * 2.1, "joy": joy, "time": time, "gust": maxf(joy, _wiggle)}
 
 
 func _process(delta: float) -> void:
@@ -61,12 +61,12 @@ func _process(delta: float) -> void:
 			_look_target = Vector2(_rng.randf_range(-1.0, 1.0), _rng.randf_range(-0.6, 0.8)) if _rng.randf() < 0.7 else Vector2.ZERO
 			_next_glance = _rng.randf_range(1.2, 3.5)
 	look = look.lerp(_look_target, clampf(delta * 6.0, 0.0, 1.0))
-	# a little shimmy every so often, for no reason at all
+	# every so often a gust goes through his leaves, for no reason at all (the leaves move, not him)
 	_next_wiggle -= delta
 	if _next_wiggle <= 0.0:
 		_wiggle = 1.0
-		_next_wiggle = _rng.randf_range(8.0, 16.0)
-	_wiggle = maxf(0.0, _wiggle - delta * 1.4)
+		_next_wiggle = _rng.randf_range(6.0, 13.0)
+	_wiggle = maxf(0.0, _wiggle - delta * 0.7)
 	# a tap: hop, land with a squish
 	if hop > 0.0 or _hop_velocity != 0.0:
 		_hop_velocity -= 2600.0 * delta
@@ -79,11 +79,10 @@ func _process(delta: float) -> void:
 	_squash = maxf(0.0, _squash - delta * 4.0)
 	joy = maxf(0.0, joy - delta * 0.55)
 	# breathing, sway, squash and wiggle are all just this node's transform
-	var breath := sin(time * 1.7)
-	var squash := _squash * sin(_squash * PI) * 0.10
-	scale = Vector2(1.0 + breath * 0.006 + squash, 1.0 - breath * 0.012 - squash + (0.04 if _hop_velocity > 0.0 else 0.0))
-	skew = sin(time * 0.65) * 0.018 + sin(time * 13.0) * 0.03 * _wiggle
-	rotation = sin(time * 11.0) * 0.025 * _wiggle
+	# he only breathes (barely) and hops when tapped; the leaves do the moving
+	var breath := sin(time * 1.5)
+	var squash := _squash * sin(_squash * PI) * 0.08
+	scale = Vector2(1.0 + breath * 0.002 + squash, 1.0 - breath * 0.004 - squash + (0.035 if _hop_velocity > 0.0 else 0.0))
 	position = _base_position + Vector2(0.0, -hop)
 
 
