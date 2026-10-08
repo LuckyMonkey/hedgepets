@@ -145,7 +145,7 @@ protected_zones = {
 }
 feet = Array[Vector3]([Vector3(0.66, 0, 0.62), Vector3(0.66, 0, -0.62), Vector3(-0.62, 0, 0.6), Vector3(-0.62, 0, -0.6)])
 leaf_size = 0.44200000000000006
-leaves_per_cluster = 12
+leaves_per_cluster = 14
 coverage = 0.8
 flowering = 0.8
 tendrils = 3
@@ -157,7 +157,7 @@ palette = {
 "soft_sage": Color(0.47843137, 0.5803922, 0.4627451, 1),
 "warm_yellow_green": Color(0.5411765, 0.6392157, 0.3529412, 1)
 }
-inner_mass = Color(0.176, 0.27607843, 0.15184315, 1)
+inner_mass = Color(0.164, 0.2572549, 0.14149019, 1)
 ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
 silhouette_ink = 1.0
 interior_ink = 0.6

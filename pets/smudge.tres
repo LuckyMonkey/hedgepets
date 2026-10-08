@@ -101,39 +101,33 @@ regions = {
 },
 "MASK": {
 "center": Vector3(0, 0.0864, 0),
-"color": Color(0.22745098, 0.22745098, 0.19607843, 1),
-"coverage": 1.0,
-"density": 6.0,
-"foliage": true,
-"growth_up": 0.2,
-"leaf_scale": 0.34,
-"leaves_per_cluster": 12,
-"material": "foliage",
-"max_displacement": 0.04,
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
 "parent": "HEAD",
 "radii": Vector3(0.43, 0.2, 0.475),
 "shape": {
 "exponent": 2.0,
 "taper": -0.4
 },
-"tint_amount": 0.75,
-"tint_color": Color(0.22745098, 0.22745098, 0.19607843, 1)
+"surface": "moss",
+"tint_color": Color(0.27215686, 0.28156865, 0.24431373, 1)
 },
 "MUZZLE": {
 "center": Vector3(0.36720002, -0.1296, 0),
-"coverage": 1.0,
-"density": 5.0,
-"foliage": true,
-"growth_up": 0.2,
-"leaf_scale": 0.36,
-"leaves_per_cluster": 14,
-"material": "foliage",
-"max_displacement": 0.05,
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
 "parent": "HEAD",
 "radii": Vector3(0.187, 0.16, 0.22),
 "shape": "cushion",
-"tint": "pale_highlight",
-"tint_amount": 0.35
+"surface": "moss"
 },
 "TAIL_A": {
 "center": Vector3(-1.12, 0.78, 0),
@@ -230,7 +224,7 @@ protected_zones = {
 }
 feet = Array[Vector3]([Vector3(0.6, 0, 0.4), Vector3(0.6, 0, -0.4), Vector3(-0.55, 0, 0.44), Vector3(-0.55, 0, -0.44)])
 leaf_size = 0.44200000000000006
-leaves_per_cluster = 12
+leaves_per_cluster = 16
 coverage = 0.8
 flower_color = Color(0.78431374, 0.7058824, 0.9019608, 1)
 flowering = 0.3
@@ -243,7 +237,7 @@ palette = {
 "soft_sage": Color(0.654902, 0.7019608, 0.6509804, 1),
 "warm_yellow_green": Color(0.6039216, 0.64705884, 0.5568628, 1)
 }
-inner_mass = Color(0.25537255, 0.31058824, 0.26227453, 1)
+inner_mass = Color(0.23796079, 0.28941178, 0.24439217, 1)
 ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
 silhouette_ink = 1.0
 interior_ink = 0.6

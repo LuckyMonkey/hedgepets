@@ -62,8 +62,8 @@ static func _build_live(profile: CharacterArtProfile, region_name: String, head_
 			continue                                             # nothing grows on the underside
 		var p := HedgeAnatomy.shape_point(region, c, d)
 		var head_local := p if is_head else (p - head_center)
-		if HedgeAnatomy.protection(profile, head_local) > 0.72:
-			continue                                             # no cluster is centred on the face
+		if HedgeAnatomy.protection(profile, head_local) > 0.72 or HedgeAnatomy.in_patch(profile, p, is_head):
+			continue                                             # no cluster is centred on the face or a patch
 		var apart := true
 		for other in dirs:
 			if d.angle_to(other) < profile.cluster_min_gap * (0.8 if is_head else 1.0):
@@ -106,6 +106,8 @@ static func _build_live(profile: CharacterArtProfile, region_name: String, head_
 				continue
 			if rng.randf() < protect:
 				continue                                         # thinning smoothly toward the face
+			if HedgeAnatomy.in_patch(profile, p, is_head):
+				continue                                         # a moss patch (snout, marking) stays clear of leaves
 			var dist := offset.length() / 1.6
 			var size := leaf_len * lerpf(1.18, 0.62, dist) * rng.randf_range(0.88, 1.1) * lerpf(1.0, 0.3, protect)
 			var leaf: Array = _leaf(p, n, size, max_disp, float(region["growth_up"]), cd, rng, family, profile, crown, dist)

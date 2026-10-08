@@ -50,6 +50,16 @@ const PLANTS := {
 	"bostonivy": ["bostonivy", "2a3050", 0.3], "creeper": ["creeper", "2a2a48", 0.35], "variegated": ["frost", "f4f0d8", 0.3],
 }
 
+## How many leaves a plant needs to cover a body: broad ivy covers with few, willow and lavender need twice as many.
+const LEAF_FULLNESS := {"ivy": 1.0, "bostonivy": 1.0, "creeper": 1.2, "variegated": 1.0, "oak": 1.2, "maple": 1.4,
+	"pine": 1.8, "holly": 1.0, "boxwood": 1.3, "moss": 1.4, "jasmine": 1.2, "rose": 1.1, "lavender": 2.0, "clover": 1.2,
+	"fern": 1.4, "willow": 2.0, "sage": 1.3}
+
+
+static func fullness(plant: String) -> int:
+	return int(round(12.0 * float(LEAF_FULLNESS.get(plant, 1.2))))
+
+
 ## Variants: every pet can also come in the plants related to its own (its plant's groups), and each variant has a
 ## name: the plant's word + the animal ("Creeper Fox", "Mossback Turtle", "Frostleaf Beaver"). Which one turns up
 ## depends on what you grow (garden_game.gd).
@@ -112,6 +122,7 @@ static func restyle(p: CharacterArtProfile, plant: String) -> CharacterArtProfil
 	q.inner_mass = _c(PALETTES[look[0]][6])
 	q.flower_color = _c(look[1])
 	q.flowering = float(look[2])
+	q.leaves_per_cluster = fullness(plant)
 	return q
 
 
@@ -410,7 +421,7 @@ static func build(spec: Dictionary) -> CharacterArtProfile:
 
 ## The cute, all-plant pass (the goal image's rules, applied to any pet):
 ##   - a hedgepet is ALL PLANT except its feet and tail: head, face, snout and ears are leaves (the face younger and
-##     lighter); markings (masks, stripes, caps, bibs, collars, bellies, crests) are patches of tinted leaves
+##     lighter); snouts and markings (masks, stripes, caps, bibs, collars, bellies, crests) are clear moss patches
 ##   - features stay features: eyes, nose, teeth, beak; so do paws, tails, horns, antlers, antennae (wood and stems)
 ##   - cute proportions: a bigger head, bigger eyes, a shorter snout
 ##   - the leaf look: fewer, bigger leaves you can tell apart with shadow between, fine ink, a few vines
@@ -438,15 +449,18 @@ static func plantify(p: CharacterArtProfile) -> CharacterArtProfile:
 		if name == "HEAD":
 			leafy.merge({"density": 3.2, "leaf_scale": 0.55, "max_displacement": 0.12, "growth_up": 0.3, "tint": "pale_highlight",
 				"tint_amount": 0.42, "coverage": 0.97, "leaves_per_cluster": 18}, true)   # a lighter face: it reads as a head
-		elif name == "MUZZLE" or name == "FACE":
-			leafy.merge({"density": 5.0, "leaf_scale": 0.36, "max_displacement": 0.05, "tint": "pale_highlight", "tint_amount": 0.35,
-				"leaves_per_cluster": 14}, true)
+		elif name == "MUZZLE" or name == "FACE" or name in MARKINGS:
+			# a clear patch: short grass / moss fibres, no leaves (the face reads; markings read). Snouts take the
+			# pet's own moss colour (HedgePetNode.patch_tint); markings keep their colour, softened toward the plant.
+			r["surface"] = "moss"
+			r["foliage"] = false
+			r.erase("outline")
+			if name in MARKINGS and r.has("color"):
+				r["tint_color"] = (r["color"] as Color).lerp(p.palette["matcha"], 0.15)
+			r.erase("color")
+			continue
 		elif name == "EARS":
 			leafy.merge({"density": 7.0, "leaf_scale": 0.42, "max_displacement": 0.05, "leaves_per_cluster": 14}, true)
-		elif name in MARKINGS:
-			# a patch of leaves in the marking's colour, lying just over the fur-less face or body
-			leafy.merge({"density": 6.0, "leaf_scale": 0.34, "max_displacement": 0.04, "leaves_per_cluster": 12,
-				"tint_color": r.get("color", p.palette["pale_highlight"]), "tint_amount": 0.75}, true)
 		else:
 			continue
 		r.merge(leafy, true)
@@ -464,12 +478,12 @@ static func plantify(p: CharacterArtProfile) -> CharacterArtProfile:
 	p.protected_zones = zones
 	p.eye_size *= 1.15
 	p.leaf_size *= 1.3
-	p.leaves_per_cluster = 12
+	p.leaves_per_cluster = fullness(plant_of(p))
 	p.coverage = 0.8
 	p.interior_ink = 0.6
 	p.silhouette_ink = 1.0
 	p.ink_color = Color("1c2213")
-	p.inner_mass = p.inner_mass.darkened(0.12)
+	p.inner_mass = p.inner_mass.darkened(0.18)          # the gaps between leaves read as shadow, not as skin
 	# vines only on pets big enough to carry them (on a chickadee they'd be spider legs)
 	var body_r: Vector3 = R["BODY"]["radii"]
 	p.tendrils = 3 if body_r.x >= 0.9 else (1 if body_r.x >= 0.6 else 0)

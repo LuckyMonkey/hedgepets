@@ -165,6 +165,21 @@ static func anchor_normal(profile: CharacterArtProfile, name: String) -> Vector3
 
 ## How strongly a head-local point is protected (0 = grow freely, 1 = keep clear): the strongest zone wins, each a
 ## smooth gaussian of the angle (seen from the head centre) to its anchor. The muzzle is always clear.
+## Is this point (in head space if on_head, else creature space) inside a moss patch region (a snout, a marking)?
+## Leaves stay out of patches. Mirrored patches count on both sides.
+static func in_patch(profile: CharacterArtProfile, p: Vector3, on_head: bool) -> bool:
+	for name in profile.regions:
+		var r: Dictionary = profile.regions[name]
+		if not r.has("surface") or (r.get("parent", "") == "HEAD") != on_head:
+			continue
+		var c: Vector3 = r["center"]
+		var radii: Vector3 = (r["radii"] as Vector3) * 1.08
+		for side: float in ([1.0, -1.0] if r.get("mirror", false) else [1.0]):
+			if ((p - c * Vector3(1, 1, side)) / radii).length() < 1.0:
+				return true
+	return false
+
+
 static func protection(profile: CharacterArtProfile, head_local: Vector3) -> float:
 	var m: Dictionary = region(profile, "MUZZLE")
 	# a bare muzzle keeps the leaves off it; a leafy muzzle (all-plant pets) only keeps them off the nose and mouth

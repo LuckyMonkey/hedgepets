@@ -184,3 +184,18 @@ and the six hand-made ones besides Gerald.
 - **Palettes:** the "dark" and "bark" palettes are lighter, so the skunk, bear and loon read as creatures, not blobs.
 
 Before and after: `docs/acceptance/roster_before_cute.png`, `docs/acceptance/roster.png`.
+
+## Moss patches and eyes
+
+- **Moss patches** (`shaders/moss_patch.gdshader`, `HedgePetNode._build_patch`): a region with `"surface": "moss"`
+  is short grass / moss fibres instead of leaves.
+  - Rendered as shell layers: dark roots, lighter tips, each strand its own height, real depth on mobile.
+  - Leaves stay out of a patch (`HedgeAnatomy.in_patch`).
+  - Every snout is a patch, and so is every marking (mask, stripe, cap, bib, collar, belly, crest), in its colour.
+  - The colour comes from the pet's own palette with a small hue shift (`patch_tint`), so there's one texture for
+    every plant: fresh moss on green ivy, rust moss on a maple fox.
+  - The mass under the leaves is the same moss, three short shells, so a gap reads as moss, not skin.
+- **Leaf fullness per plant** (`SpeciesBuilder.LEAF_FULLNESS`): thin-leaved plants (willow, lavender, pine) get up to
+  twice the leaves per cluster, also when a pet is regrafted.
+- **Eyes:** no whites (tried, scrapped). A soft dark oval, only gently glossy, with one crisp almost-white dot and a
+  tiny second one on its curved front, both on the same side.

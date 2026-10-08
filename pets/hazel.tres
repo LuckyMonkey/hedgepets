@@ -117,19 +117,16 @@ regions = {
 },
 "MUZZLE": {
 "center": Vector3(0.3456, -0.108, 0),
-"coverage": 1.0,
-"density": 5.0,
-"foliage": true,
-"growth_up": 0.2,
-"leaf_scale": 0.36,
-"leaves_per_cluster": 14,
-"material": "foliage",
-"max_displacement": 0.05,
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
 "parent": "HEAD",
 "radii": Vector3(0.1445, 0.13, 0.18),
 "shape": "cushion",
-"tint": "pale_highlight",
-"tint_amount": 0.35
+"surface": "moss"
 },
 "TAIL": {
 "center": Vector3(-0.72, 1.1, 0),
@@ -214,7 +211,7 @@ protected_zones = {
 }
 feet = Array[Vector3]([Vector3(0.36, 0, 0.2), Vector3(0.36, 0, -0.2), Vector3(-0.08, 0, 0.34), Vector3(-0.08, 0, -0.34)])
 leaf_size = 0.41600000000000004
-leaves_per_cluster = 12
+leaves_per_cluster = 14
 coverage = 0.8
 flower_color = Color(0.65882355, 0.45490196, 0.22745098, 1)
 flowering = 0.5
@@ -227,7 +224,7 @@ palette = {
 "soft_sage": Color(0.5411765, 0.41568628, 0.22745098, 1),
 "warm_yellow_green": Color(0.7882353, 0.57254905, 0.23529412, 1)
 }
-inner_mass = Color(0.31058824, 0.17945099, 0.08282353, 1)
+inner_mass = Color(0.28941178, 0.16721569, 0.077176474, 1)
 ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
 silhouette_ink = 1.0
 interior_ink = 0.6

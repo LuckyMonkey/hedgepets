@@ -119,10 +119,9 @@ static func gerald() -> CharacterArtProfile:
 			"density": 3.2, "leaf_scale": 0.55, "max_displacement": 0.12, "growth_up": 0.3, "material": "foliage",
 			"tint": "warm_yellow_green", "tint_amount": 0.45, "coverage": 0.97, "leaves_per_cluster": 18,   # the face: younger, lighter leaves (the drawing's face area)
 			"shape": {"exponent": 2.1, "taper": -0.05}},
-		"MUZZLE": {"center": Vector3(0.70, -0.22, 0.0), "radii": Vector3(0.34, 0.27, 0.37), "parent": "HEAD", "foliage": true,
-			"density": 5.0, "leaf_scale": 0.36, "max_displacement": 0.05, "growth_up": 0.2, "material": "foliage",   # a snout of tiny leaves
-			"coverage": 1.0, "leaves_per_cluster": 14,
-			"tint": "pale_highlight", "tint_amount": 0.4,
+		"MUZZLE": {"center": Vector3(0.70, -0.22, 0.0), "radii": Vector3(0.34, 0.27, 0.37), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "foliage",
+			"surface": "moss",                    # a snout of short moss: clear of leaves, it defines the face
 			"shape": {"exponent": 2.4, "taper": -0.15}, "outline": 0.016},
 		"TAIL": {"center": Vector3(-1.62, 0.16, 0.08), "radii": Vector3(0.74, 0.075, 0.56), "parent": "", "foliage": false,
 			"density": 0.0, "leaf_scale": 0.4, "max_displacement": 0.0, "growth_up": 0.0, "material": "tail",

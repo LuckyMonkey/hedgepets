@@ -103,14 +103,12 @@ regions = {
 },
 "MUZZLE": {
 "center": Vector3(0.7, -0.22, 0),
-"coverage": 1.0,
-"density": 5.0,
-"foliage": true,
-"growth_up": 0.2,
-"leaf_scale": 0.36,
-"leaves_per_cluster": 14,
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
 "material": "foliage",
-"max_displacement": 0.05,
+"max_displacement": 0.0,
 "outline": 0.016,
 "parent": "HEAD",
 "radii": Vector3(0.34, 0.27, 0.37),
@@ -118,8 +116,7 @@ regions = {
 "exponent": 2.4,
 "taper": -0.15
 },
-"tint": "pale_highlight",
-"tint_amount": 0.4
+"surface": "moss"
 },
 "TAIL": {
 "center": Vector3(-1.62, 0.16, 0.08),

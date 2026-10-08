@@ -226,62 +226,19 @@ func _flower_node(region_name: String, dir: Vector3) -> Node3D:
 	return holder
 
 
-## Eye styles: how much white, and where. "none" is the plain glossy oval; the others add a little white without
-## going cartoon or creepy (tools: the eye sample sheet, res://eye_samples.tscn). Picked style: EYE_STYLE.
-const EYE_STYLES := {
-	"none": {},
-	"crescent": {"sclera": Color("f2ede0"), "k": 0.92, "off": Vector2(0.0, 0.17)},
-	"warm crescent": {"sclera": Color("ddcfae"), "k": 0.9, "off": Vector2(0.04, 0.17)},
-	"corner": {"sclera": Color("f2ede0"), "k": 0.92, "off": Vector2(0.17, 0.03)},
-	"thin rim": {"sclera": Color("efe9da"), "k": 0.93, "off": Vector2.ZERO},
-	"almond": {"sclera": Color("f2ede0"), "shape": Vector2(1.18, 0.9), "k": 0.7, "off": Vector2(0.0, 0.04)},
-	"brown iris": {"sclera": Color("e6dcc6"), "k": 0.9, "off": Vector2(0.0, 0.14), "iris": Color("4a2e1c"), "pupil": 0.55},
-	"soft lid": {"sclera": Color("f2ede0"), "k": 0.9, "off": Vector2(0.0, 0.16), "lid": true},
-	"big shine": {"shine": 1.5},
-}
-static var EYE_STYLE := "none"
-var eye_style := ""                      # this pet's style ("" = EYE_STYLE)
-
-
-func _build_eye(holder: Node3D, name: String, nose_side: float) -> void:
-	var st: Dictionary = EYE_STYLES.get(eye_style if eye_style != "" else EYE_STYLE, {})
+## The eye: a soft vertical oval, deep brown-black and only gently glossy, with one crisp almost-white dot of light
+## and a tiny second one, both on the same side (as if lit from one direction). No whites, no blurred sheen.
+func _build_eye(holder: Node3D, name: String, _nose_side: float) -> void:
 	var s := profile.eye_size
-	var ink := 0.035 * s / 0.155
-	var shape: Vector2 = st.get("shape", Vector2.ONE)
-	var to_nose := signf(nose_side) if nose_side != 0.0 else 1.0
-	var iris_parent: Node3D = holder
-	var iris_at := Vector3(0, 0, -s * 0.28)
-	var iris_r := Vector3(s * 0.88, s * 1.12, s * 0.55)
-	if st.has("sclera"):
-		# the white: a slightly bigger oval behind; the iris sits a touch in front, offset so the white shows
-		# where the style wants it (below, toward the back corner, all round)
-		var sclera := _ellipsoid(holder, Vector3(0, 0, -s * 0.3), Vector3(s * 0.95 * shape.x, s * 1.15 * shape.y, s * 0.5), "sclera", ink)
-		sclera.material_override = (sclera.material_override as StandardMaterial3D).duplicate()
-		(sclera.material_override as StandardMaterial3D).albedo_color = st["sclera"]
-		var k: float = st["k"]
-		var off: Vector2 = st["off"]
-		iris_at = Vector3(off.x * s * to_nose, off.y * s, -s * 0.24)
-		iris_r = Vector3(s * 0.95 * k, s * 1.15 * k * minf(1.0, shape.y + 0.1), s * 0.5)
-		ink = 0.0
-	var eye := _ellipsoid(holder, iris_at, iris_r, "eye", ink)
+	var eye := _ellipsoid(holder, Vector3(0, 0, -s * 0.28), Vector3(s * 0.88, s * 1.12, s * 0.55), "eye", 0.035 * s / 0.155)
 	eye.name = name
-	if st.has("iris"):
-		eye.material_override = (eye.material_override as StandardMaterial3D).duplicate()
-		(eye.material_override as StandardMaterial3D).albedo_color = st["iris"]
-		_ellipsoid(eye, Vector3(0, 0, s * 0.12), iris_r * Vector3(st["pupil"], st["pupil"], 0.6), "eye")
-	var shine: float = st.get("shine", 1.0)
-	# both eyes catch the light on the same side (as if lit from one direction), not mirrored
 	var lit := -1.0 if holder.basis.x.z >= 0.0 else 1.0
-	var gx := -0.28 * s * lit
-	_ellipsoid(eye, Vector3(gx - iris_at.x * 0.0, 0.4 * s, s * 0.24), Vector3(0.27, 0.32, 0.06) * s * shine, "glint")
-	_ellipsoid(eye, Vector3(-gx * 0.85, -0.32 * s, s * 0.24), Vector3(0.11, 0.11, 0.04) * s * shine, "glint")
-	if shine > 1.2:
-		_ellipsoid(eye, Vector3(0.05 * s, 0.55 * s, s * 0.24), Vector3(0.07, 0.07, 0.03) * s, "glint")
-	if st.get("lid", false):
-		# a soft upper lid of leaf-green resting over the top of the eye: calm, not staring
-		var lid := _ellipsoid(holder, Vector3(0, s * 0.62, -s * 0.12), Vector3(s * 1.04 * shape.x, s * 0.42, s * 0.56), "sage", 0.0)
-		lid.material_override = (lid.material_override as StandardMaterial3D).duplicate()
-		(lid.material_override as StandardMaterial3D).albedo_color = profile.palette["muted_ivy"]
+	var r := Vector3(s * 0.88, s * 1.12, s * 0.55)
+	for dot: Array in [[Vector2(-0.26 * lit, 0.34), 0.2], [Vector2(0.2 * lit, -0.3), 0.075]]:
+		# sit exactly on the eye's curved front (inside it, a dot can't be seen)
+		var xy: Vector2 = dot[0] * s
+		var z := r.z * sqrt(maxf(0.0, 1.0 - pow(xy.x / r.x, 2.0) - pow(xy.y / r.y, 2.0))) + 0.004
+		_ellipsoid(eye, Vector3(xy.x, xy.y, z), Vector3(1.0, 1.0, 0.25) * s * float(dot[1]), "glint")
 
 
 ## A tap: a hop, a shiver through the leaves, a heart.
@@ -315,17 +272,13 @@ func _mat(kind: String, region := {}) -> Material:
 			m.albedo_color = profile.palette["muted_ivy"].darkened(0.15) if region.get("foliage", false) else profile.palette["muted_ivy"]
 		"ear_inner":
 			m.albedo_color = profile.palette["muted_ivy"].darkened(0.18)
-		"sclera":
-			m.albedo_color = Color("f4efe2")
-			m.roughness = 0.35
-			m.metallic_specular = 0.5
 		"eye":
 			m.albedo_color = Color("1a120c")
-			m.roughness = 0.22
-			m.metallic_specular = 0.75
+			m.roughness = 0.6                               # only gently glossy: the dots do the shining
+			m.metallic_specular = 0.25
 		"glint":
 			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			m.albedo_color = Color(1, 1, 1, 0.9)
+			m.albedo_color = Color("f8f4ea")                 # a crisp, solid, almost-white dot
 		"nose":
 			m.albedo_color = Color("2e2018")
 			m.roughness = 0.32                            # a glossy nose
@@ -394,6 +347,13 @@ func _build_regions() -> void:
 					var toe := {"radii": rr * Vector3(0.3, 0.42, 0.26), "shape": {"exponent": 2.0, "flat_bottom": 0.4}}
 					_primitive(foot, toe, Vector3(rr.x * 0.86, -rr.y * 0.35, z), kind, outline * 0.7)
 			continue
+		if r.has("surface"):
+			_build_patch(name, r, parent, center)
+			continue
+		if kind == "inner":
+			# the mass under the leaves is dense moss too (a few short shells), so a gap reads as moss, not skin
+			_build_patch(name, r, parent, center, 3, profile.inner_mass.lightened(0.4), 0.97)
+			continue
 		var sides := [1.0, -1.0] if r.get("mirror", false) else [1.0]
 		for side: float in sides:
 			var node := _primitive(parent, r, center * Vector3(1, 1, side), kind, outline, 0.97 if r.get("foliage", false) else 1.0)
@@ -403,6 +363,46 @@ func _build_regions() -> void:
 			if kind == "ear":   # a little cup inside
 				var inner := _primitive(node, r, Vector3(0.03, -0.01, 0.0), "ear_inner", 0.0, 0.62)
 				inner.scale.z = 0.9
+
+
+## A patch: a region surfaced in short grass / moss fibres instead of leaves (shaders/moss_patch.gdshader): the
+## region's mesh as a solid base plus shells. Snouts and markings; any region with "surface": "moss".
+const PATCH_SHELLS := 9
+
+
+func _build_patch(name: String, r: Dictionary, parent: Node3D, center: Vector3, shells := PATCH_SHELLS, colour := Color(0, 0, 0, 0), scale := 1.0) -> void:
+	var mesh := HedgeAnatomy.build_mesh(r)
+	var radii: Vector3 = r["radii"]
+	var size := (radii.x + radii.y + radii.z) / 3.0
+	var tint: Color = colour if colour.a > 0.0 else r.get("tint_color", patch_tint(profile))
+	var sides := [1.0, -1.0] if r.get("mirror", false) else [1.0]
+	for side: float in sides:
+		var holder := Node3D.new()
+		holder.name = name
+		holder.position = center * Vector3(1, 1, side)
+		var rot: Vector3 = r.get("rotation", Vector3.ZERO)
+		holder.rotation_degrees = Vector3(rot.x * side, rot.y * side, rot.z)
+		holder.scale = Vector3.ONE * scale
+		parent.add_child(holder)
+		for k in range(shells + 1):
+			var m := ShaderMaterial.new()
+			m.shader = preload("res://shaders/moss_patch.gdshader")
+			m.set_shader_parameter("layer", float(k) / shells)
+			m.set_shader_parameter("pile", clampf(size * 0.22, 0.02, 0.07) if shells == PATCH_SHELLS else 0.035)
+			m.set_shader_parameter("density", clampf(10.0 / size, 32.0, 90.0) if shells == PATCH_SHELLS else 46.0)   # fine fibres, never dots
+			m.set_shader_parameter("tint", Vector3(tint.r, tint.g, tint.b))
+			var shell := MeshInstance3D.new()
+			shell.mesh = mesh
+			shell.material_override = m
+			shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if k == 0 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			holder.add_child(shell)
+
+
+## The patch colour for any plant: the palette's fresh yellow-green, nudged in hue and a little lighter and softer,
+## so green ivy gets a fresh moss, a crimson maple fox a warm rust moss (no separate texture per plant).
+static func patch_tint(p: CharacterArtProfile) -> Color:
+	var base: Color = p.palette["warm_yellow_green"]
+	return Color.from_hsv(fposmod(base.h + 0.035, 1.0), base.s * 0.78, minf(1.0, base.v * 1.12))
 
 
 ## Engraved crosshatch for a paddle tail: warm wood with a restrained diamond pattern.
