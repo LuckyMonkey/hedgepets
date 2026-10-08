@@ -15,23 +15,21 @@ var sun: DirectionalLight3D
 var pets: Array[HedgePetNode] = []
 var obstacles: Array = []                         # fixed: [Vector2 centre (x, z), radius] (trees)
 var things: Array = []                            # the garden's props: {id, kind, node, at (Vector2), radius, junk, value}
-var _target := Vector3(0.0, 0.0, -0.5)
+var _target := Vector3(0.0, 0.0, -0.8)
 var _distance := 12.5
 ## The camera eases toward these (Motion.approach): input moves the goal, never the camera itself; a drag that ends
 ## moving keeps gliding a little.
-var _goal_target := Vector3(0.0, 0.0, -0.5)
+var _goal_target := Vector3(0.0, 0.0, -0.8)
 ## Orbit: the camera circles the middle of the garden. Drag sideways to spin (with a glide after a fling), drag up and
 ## down to tilt a little, wheel / pinch to zoom. Springs on all three (Motion.spring).
 const CENTER := Vector3(0.0, 0.0, -0.8)
 var _yaw := 0.0
 var _goal_yaw := 0.0
-var _yaw_velocity := 0.0
 var _elev := deg_to_rad(49.5)
 var _goal_elev := deg_to_rad(49.5)
 var _cam_yaw := {}
 var _cam_elev := {}
 var _goal_distance := 12.5
-var _pan_velocity := Vector3.ZERO
 var _cam_pan := {}
 var _cam_zoom := {}
 var _press_at := Vector2.INF
@@ -124,9 +122,12 @@ func _build_world() -> void:
 
 
 func _place_camera() -> void:
-	var dir := Vector3(sin(_yaw) * cos(_elev), sin(_elev), cos(_yaw) * cos(_elev))
-	camera.position = CENTER + dir * _distance
-	camera.look_at(CENTER, Vector3.UP)
+	# up close the camera comes down toward eye level, so a close-up shows faces, not tops of heads
+	var close := clampf((12.5 - _distance) / (12.5 - ZOOM_MIN), 0.0, 1.0)
+	var el := _elev - close * close * 0.45
+	var dir := Vector3(sin(_yaw) * cos(el), sin(el), cos(_yaw) * cos(el))
+	camera.position = _target + dir * _distance
+	camera.look_at(_target, Vector3.UP)
 
 
 ## A real lawn: soft patches of greens, bald dirt spots, a worn track from the gate to the grill.
@@ -716,17 +717,17 @@ func pet_mode(node: HedgePetNode) -> String:
 func _process(delta: float) -> void:
 	for node in pets:
 		_walk(node, delta)
-	if _press_at == Vector2.INF and absf(_yaw_velocity) > 0.001:     # keep turning a little after a fling
-		_goal_yaw += _yaw_velocity * delta
-		_yaw_velocity *= pow(0.04, delta)
-	_yaw = Motion.spring(_yaw, _goal_yaw, _cam_yaw, 0.07 if _dragged else 0.45, delta)   # tight under a finger, unhurried otherwise
+	if is_processing_unhandled_input():
+		_keys(delta)
+	_target = Motion.spring(_target, _goal_target, _cam_pan, 0.12, delta)
+	_yaw = Motion.spring(_yaw, _goal_yaw, _cam_yaw, 0.1 if _dragged else 0.45, delta)
 	_elev = Motion.spring(_elev, _goal_elev, _cam_elev, 0.1 if _dragged else 0.25, delta)
 	_distance = Motion.spring(_distance, _goal_distance, _cam_zoom, 0.16, delta)
 	_place_camera()
 
 
 func _clamp_target(t: Vector3) -> Vector3:
-	return Vector3(clampf(t.x, -12.0, 12.0), 0.0, clampf(t.z, -9.0, 8.0))
+	return Vector3(clampf(t.x, -15.0, 15.0), 0.0, clampf(t.z, -14.0, 12.0))
 
 
 ## Wander: stand a while, look around, pick a free spot, walk there with a little step, turning to face the way.
@@ -824,19 +825,55 @@ func _build_tilt_shift() -> void:
 
 
 # ------------------------------------------------------------------ input: pan, zoom, tap a pet
+## Controls. Left drag / one finger: turn around the garden (slowly, no glide) and tilt a little. Right drag / two
+## fingers: pan, the ground follows your hand. Wheel / pinch: zoom, from close-up to the whole garden.
+## Keys: WASD or arrows pan, Q / E turn, R / F zoom.
+const TURN_PER_PX := 0.0025
+const ZOOM_MIN := 4.5
+const ZOOM_MAX := 24.0
+var _touches := {}                 # touch index -> position
+var _pinch := 0.0
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMagnifyGesture:
-		_goal_distance = clampf(_goal_distance / event.factor, 8.0, 24.0)
+		_zoom_by(1.0 / event.factor)
 		return
 	if event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
-		_goal_distance = clampf(_goal_distance * (0.88 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.12), 8.0, 24.0)
+		_zoom_by(0.88 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.12)
+		return
+	# two fingers: pan with their midpoint, pinch to zoom; a single finger never turns while two are down
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_touches[event.index] = event.position
+		else:
+			_touches.erase(event.index)
+		_pinch = _touch_spread()
+		if _touches.size() >= 2:
+			_press_at = Vector2.INF              # a second finger cancels the tap / turn
+			return
+	if event is InputEventScreenDrag and _touches.size() >= 2:
+		var before := _touch_mid()
+		_touches[event.index] = event.position
+		_pan_by((_touch_mid() - before))
+		var spread := _touch_spread()
+		if _pinch > 1.0 and spread > 1.0:
+			_zoom_by(_pinch / spread)
+		_pinch = spread
+		return
+	if event is InputEventScreenDrag:
+		_touches[event.index] = event.position
+	# right mouse button: pan
+	if event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_RIGHT:
+		_pan_by(event.relative)
+		return
+	if _touches.size() >= 2:
 		return
 	var pressed: bool = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) or (event is InputEventScreenTouch and event.pressed)
 	var released: bool = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed) or (event is InputEventScreenTouch and not event.pressed)
 	if pressed:
 		_press_at = event.position
 		_dragged = false
-		_yaw_velocity = 0.0
 	elif released and _press_at != Vector2.INF:
 		if not _dragged:
 			_tap(event.position)
@@ -845,10 +882,48 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.position.distance_to(_press_at) > 10.0:
 			_dragged = true
 		if _dragged:
-			var turn: float = -event.relative.x * 0.006
-			_goal_yaw += turn
-			_yaw_velocity = lerpf(_yaw_velocity, turn * 60.0, 0.5)
-			_goal_elev = clampf(_goal_elev + event.relative.y * 0.003, deg_to_rad(28), deg_to_rad(72))
+			_goal_yaw -= event.relative.x * TURN_PER_PX
+			_goal_elev = clampf(_goal_elev + event.relative.y * 0.002, deg_to_rad(28), deg_to_rad(72))
+
+
+func _touch_mid() -> Vector2:
+	var m := Vector2.ZERO
+	for k in _touches:
+		m += _touches[k]
+	return m / maxf(1.0, _touches.size())
+
+
+func _touch_spread() -> float:
+	if _touches.size() < 2:
+		return 0.0
+	var pts: Array = _touches.values()
+	return (pts[0] as Vector2).distance_to(pts[1])
+
+
+## Move the view by a screen drag: the ground follows the hand (drag right, the garden moves right).
+func _pan_by(screen: Vector2) -> void:
+	var k := _goal_distance * 0.0016
+	var right := Vector3(cos(_yaw), 0, -sin(_yaw))
+	var toward_camera := Vector3(sin(_yaw), 0, cos(_yaw))
+	_goal_target = _clamp_target(_goal_target - right * screen.x * k - toward_camera * screen.y * k)
+
+
+func _zoom_by(factor: float) -> void:
+	_goal_distance = clampf(_goal_distance * factor, ZOOM_MIN, ZOOM_MAX)
+
+
+func _keys(delta: float) -> void:
+	var pan := Vector2(Input.get_axis("ui_left", "ui_right"), Input.get_axis("ui_up", "ui_down"))
+	if Input.is_physical_key_pressed(KEY_A): pan.x -= 1.0
+	if Input.is_physical_key_pressed(KEY_D): pan.x += 1.0
+	if Input.is_physical_key_pressed(KEY_W): pan.y -= 1.0
+	if Input.is_physical_key_pressed(KEY_S): pan.y += 1.0
+	if pan != Vector2.ZERO:
+		_pan_by(-pan.limit_length(1.0) * 520.0 * delta)
+	if Input.is_physical_key_pressed(KEY_Q): _goal_yaw += 0.9 * delta
+	if Input.is_physical_key_pressed(KEY_E): _goal_yaw -= 0.9 * delta
+	if Input.is_physical_key_pressed(KEY_R): _zoom_by(1.0 - 1.2 * delta)
+	if Input.is_physical_key_pressed(KEY_F): _zoom_by(1.0 + 1.2 * delta)
 
 
 func _tap(at: Vector2) -> void:

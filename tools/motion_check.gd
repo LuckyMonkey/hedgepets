@@ -42,6 +42,7 @@ func _run() -> void:
 	watch("gerald leaves", func() -> float: return gerald.leaf_growth, 0.12)
 	watch("camera yaw", func() -> float: return garden._yaw, 0.06)
 	watch("camera height", func() -> float: return garden.camera.position.y, 0.5)
+	watch("camera target", func() -> float: return garden._target.x, 0.8)   # follows the hand, never faster
 	watch("camera distance", func() -> float: return garden._distance, 0.6)
 	watch("toast alpha", func() -> float: return game._toast.modulate.a, 0.35)
 	await frames(60)
@@ -50,6 +51,10 @@ func _run() -> void:
 	await frames(90)
 	print("camera orbit + zoom…")
 	garden._goal_yaw += 2.0
+	await frames(60)
+	for i in range(20):                              # a real right-drag: 20 moves, one per frame
+		garden._pan_by(Vector2(-20, 12))
+		await frames(1)
 	garden._goal_distance = 20.0
 	await frames(90)
 	print("a plant grows a stage…")

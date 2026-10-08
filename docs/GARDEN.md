@@ -60,9 +60,12 @@ puddle, Juniper the tipped chair, Bramble rocks. Clear everything and you lose t
 The wish keys come from `garden_game.gd:garden_counts()`: `puddle sticks branches rocks leaf_pile lawn_chair grill tire pot cleared`
 and `<plant>_planted/_grown/_flowering`.
 
-**Camera:** it orbits the middle of the garden. Drag sideways to spin it around (a fling keeps it turning a little),
-drag up or down to tilt, wheel or pinch to zoom (8 to 24). There's no panning: the garden stays put and you walk
-around it. The garden itself is still rectangular.
+**Camera:**
+- **Left drag / one finger:** turn slowly around the point you're looking at, with no glide afterward, and tilt a little.
+- **Right drag / two fingers:** pan. The ground follows your hand.
+- **Wheel / pinch:** zoom from 4.5 (a pet's-eye close-up) to 24 (the whole garden). Up close, the camera drops toward
+  eye level, so you see faces.
+- **Keys:** WASD / arrows pan, Q / E turn, R / F zoom.
 
 **All around it,** soft in the tilt-shift, each with its own way in (`garden.gd: GATES`, `gate_for`):
 
