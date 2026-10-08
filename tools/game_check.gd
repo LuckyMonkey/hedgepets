@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Plays the garden loop without a player: clear junk, dig, plant, water, grow, and watch visitors arrive.
-##   godot --headless --path . --script tools/game_check.gd
+##   HEDGEPETS_FRESH=1 godot --headless --path . --script tools/game_check.gd   (never touches the player's save)
 func _init() -> void:
 	call_deferred("_run")
 
@@ -12,7 +12,7 @@ func _fail(msg: String) -> void:
 
 
 func _run() -> void:
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://garden.json"))
+	OS.set_environment("HEDGEPETS_FRESH", "1")
 	var garden: Node = (load("res://garden.tscn") as PackedScene).instantiate()
 	root.add_child(garden)
 	await process_frame
@@ -46,10 +46,13 @@ func _run() -> void:
 	print("after ", game.pet_state, " coins ", game.coins, " counts ", game.garden_counts())
 	if game.pet_state["Clover"] != "resident":
 		return _fail("Clover should have moved in")
+	game.save_path = "user://garden_check.json"
+	OS.set_environment("HEDGEPETS_FRESH", "")
 	game.save()
-	var text := FileAccess.get_file_as_string("user://garden.json")
+	OS.set_environment("HEDGEPETS_FRESH", "1")
+	var text := FileAccess.get_file_as_string("user://garden_check.json")
 	if not text.contains("clover"):
 		return _fail("save missing plants")
 	print("PASS")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://garden.json"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://garden_check.json"))
 	quit(0)

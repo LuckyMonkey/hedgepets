@@ -29,7 +29,7 @@ def normals_from_height(height):
 
 def main():
     for path in sorted(glob.glob(os.path.join(ROOT, 'assets/sprites/*.png'))):
-        if path.endswith('_n.png'):
+        if path.endswith('_n.png') or os.path.basename(path).startswith(('grass', 'lawn')):
             continue
         sheet = Image.open(path).convert('RGBA')
         w, h = sheet.size

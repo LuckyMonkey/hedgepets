@@ -15,7 +15,8 @@ when the garden suits them. **[docs/GARDEN.md](docs/GARDEN.md).**
 **Art direction, parameters and acceptance: [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md).** Developer view: F1.
 
 **Pets:** Gerald (beaver, ivy), Clover (sitting bunny, clover, a cotton tail of blossom), Juniper (hedgehog, fern),
-Bramble (tortoise, a flowering jasmine shell) - each a profile in `pets/*.tres` on the same renderer. Switch with ‹ ›
+Bramble (tortoise, a flowering jasmine shell), Spruce (moose, pine, wooden paddle antlers), Hazel (squirrel, autumn oak
+with acorns, a huge tail), Rascal (raccoon, silvery sage, a mask and a ringed tail) - each a profile in `pets/*.tres` on the same renderer. Switch with ‹ ›
 or the arrow keys. **Drag** to turn the pet (turntable with momentum), drag up/down to tilt, **wheel** to zoom, **tap**
 for a hop and a heart.
 

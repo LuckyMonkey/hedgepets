@@ -6,7 +6,7 @@ extends Node3D
 ## Art: scripts/garden/garden_props.gd (things), the pets' own renderer (scripts/pet/hedge_pet_node.gd), the same
 ## foliage system for the hedge and trees (scripts/art/foliage_builder.gd).
 
-const PETS := ["res://pets/gerald.tres", "res://pets/clover.tres", "res://pets/juniper.tres", "res://pets/bramble.tres"]
+const PETS := ["res://pets/gerald.tres", "res://pets/clover.tres", "res://pets/juniper.tres", "res://pets/bramble.tres", "res://pets/spruce.tres", "res://pets/hazel.tres", "res://pets/rascal.tres"]
 const BOUNDS := Rect2(-12.0, -8.5, 24.0, 17.0)    # x, z where pets may walk
 const PET_SCALE := 0.62
 const PAPER := Color(0.968627, 0.945098, 0.890196)
@@ -66,6 +66,7 @@ func _build_world() -> void:
 	sun.light_energy = 0.62
 	sun.shadow_enabled = true
 	sun.shadow_blur = 2.5
+	sun.shadow_opacity = 0.72                          # tree shade, not a hole in the lawn
 	sun.directional_shadow_max_distance = 60.0
 	sun.rotation_degrees = p.key_angle
 	add_child(sun)
@@ -114,11 +115,12 @@ func _build_ground() -> void:
 			c = c.lerp(dirt, clampf(bald * 0.8 + track * 0.45, 0.0, 0.85))
 			img.set_pixel(x, y, c)
 	img.generate_mipmaps()
-	var m := StandardMaterial3D.new()
-	m.albedo_texture = ImageTexture.create_from_image(img)
-	m.uv1_scale = Vector3(160.0 / 60.0, 160.0 / 60.0, 1.0)
-	m.roughness = 1.0
-	m.metallic_specular = 0.0
+	var detail := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/lawn_detail.png"))
+	detail.generate_mipmaps()
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/lawn.gdshader")
+	m.set_shader_parameter("macro", ImageTexture.create_from_image(img))
+	m.set_shader_parameter("detail", ImageTexture.create_from_image(detail))
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(160, 160)
 	var ground := MeshInstance3D.new()
@@ -197,20 +199,70 @@ func _build_backdrop() -> void:
 	# a ragged hedge along the back, behind the fence, with a gap where it has thinned
 	_bush(Vector3(-8.5, 1.4, -12.5), Vector3(7.5, 1.6, 1.4), "hedgeivy", hedge_palette, Color("2a4223"), 0.7, 0.55, "cushion")
 	_bush(Vector3(12.5, 1.2, -12.8), Vector3(4.6, 1.4, 1.3), "hedgeivy", hedge_palette, Color("2a4223"), 0.7, 0.55, "cushion")
-	# two small trees
-	for t: Array in [[Vector3(-11.5, 0, -10.5), 1.0], [Vector3(12.5, 0, -9.0), 0.8]]:
-		var at: Vector3 = t[0]
-		var s: float = t[1]
-		var trunk := GardenProps.part(self, GardenProps.cyl(0.18 * s, 0.32 * s, 4.0 * s, 10), GardenProps.mat("trunk", Color("6a4e36")), at + Vector3(0, 2.0 * s, 0), Vector3(0, 0, 4), 0.02)
-		trunk.name = "Trunk"
-		_bush(at + Vector3(0, 4.6 * s, 0), Vector3(2.4, 1.9, 2.2) * s, "hedgeivy", hedge_palette, Color("2f4a27"), 0.75, 0.6, "egg")
-		obstacles.append([Vector2(at.x, at.z), 0.8])
+	# tall trees: their crowns go off the top of the screen, their shadows fall across the lawn
+	_tree(Vector3(-7.4, 0, 2.2), 12.0, hedge_palette)          # near, at the edge: a trunk, and its shade on the lawn
+	_tree(Vector3(-4.5, 0, -14.5), 11.0, hedge_palette)
+	_pine(Vector3(5.5, 0, -15.0), 14.0)
+	_pine(Vector3(9.0, 0, -12.5), 11.0)
+	_pine(Vector3(-9.5, 0, -7.0), 12.0)
 	# autumn leaf piles, raked once and then forgotten
 	var autumn := {"deep_forest": Color("7a4a24"), "muted_ivy": Color("9a5e2c"), "matcha": Color("b9803a"),
 		"warm_yellow_green": Color("c99a46"), "soft_sage": Color("8e6a48"), "pale_highlight": Color("d8b066")}
 	for at: Vector3 in [Vector3(8.5, 0.0, -6.5), Vector3(-9.5, 0.0, -6.8)]:
 		_bush(at + Vector3(0, 0.15, 0), Vector3(1.3, 0.5, 1.1), "hedgeivy", autumn, Color("7a5332"), 0.45, 0.9, "dome")
 		_thing("leaf_pile", get_child(get_child_count() - 1), Vector2(at.x, at.z), 1.4, 3)
+
+
+## A limb from a to b (a tapered cylinder with an ink hull).
+func _limb(a: Vector3, b: Vector3, r0: float, r1: float, m: Material) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	node.mesh = GardenProps.cyl(r1, r0, a.distance_to(b), 8)
+	var y := (b - a).normalized()
+	var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
+	node.transform = Transform3D(Basis(x, y, x.cross(y)), (a + b) * 0.5)
+	node.material_override = m
+	node.material_overlay = GardenProps.hull(0.02)
+	add_child(node)
+	return node
+
+
+## A big broadleaf tree: a leaning trunk, a few branches forking up and out, a leaf clump at each branch end.
+func _tree(at: Vector3, height: float, palette: Dictionary) -> void:
+	var bark := GardenProps.mat("bark", Color("5c4634"))
+	var lean := Vector3(_rng.randf_range(-0.6, 0.6), 0, _rng.randf_range(-0.6, 0.6))
+	var top := at + Vector3(0, height * 0.62, 0) + lean
+	_limb(at, top, 0.55, 0.3, bark).name = "Trunk"
+	_limb(at + Vector3(0, 0.2, 0), at + Vector3(0.9, 0.0, 0.3), 0.3, 0.12, bark)       # a root
+	_limb(at + Vector3(0, 0.2, 0), at + Vector3(-0.6, 0.0, -0.7), 0.28, 0.1, bark)
+	var n := 5
+	for i in range(n):
+		var a := TAU * float(i) / float(n) + _rng.randf_range(-0.4, 0.4)
+		var from := at.lerp(top, _rng.randf_range(0.55, 0.95))
+		var reach := _rng.randf_range(2.2, 3.6)
+		var to := from + Vector3(cos(a) * reach, _rng.randf_range(1.6, 3.2), sin(a) * reach)
+		_limb(from, to, 0.24, 0.08, bark)
+		var twig := to + Vector3(cos(a + 0.8) * 0.9, 0.7, sin(a + 0.8) * 0.9)
+		_limb(to, twig, 0.08, 0.03, bark)
+		var r := _rng.randf_range(1.6, 2.3)
+		_bush(to + Vector3(0, 0.6, 0), Vector3(r, r * 0.72, r), "hedgeoak", palette, Color("2f4a27"), 0.8, 0.5, "egg")
+	_bush(top + Vector3(0, 2.6, 0), Vector3(2.6, 2.0, 2.6), "hedgeoak", palette, Color("2f4a27"), 0.85, 0.5, "egg")
+	obstacles.append([Vector2(at.x, at.z), 1.0])
+
+
+## A pine: a straight thin trunk and tiers of needles, wide at the bottom, narrowing to a point.
+func _pine(at: Vector3, height: float) -> void:
+	var pine := {"deep_forest": Color("1c3529"), "muted_ivy": Color("28493a"), "matcha": Color("3b6046"),
+		"warm_yellow_green": Color("557349"), "soft_sage": Color("4f6b5e"), "pale_highlight": Color("7f9a7c")}
+	_limb(at, at + Vector3(0, height, 0), 0.4, 0.08, GardenProps.mat("pinebark", Color("4e3a2c"))).name = "Trunk"
+	var tiers := 5
+	for i in range(tiers):
+		var t := float(i) / float(tiers - 1)
+		var y := lerpf(height * 0.28, height * 0.9, t)
+		var r := lerpf(3.0, 0.9, t) * height / 12.0 * _rng.randf_range(0.82, 1.12)
+		var off := Vector3(_rng.randf_range(-0.35, 0.35), _rng.randf_range(-0.3, 0.3), _rng.randf_range(-0.35, 0.35))
+		_bush(at + Vector3(0, y, 0) + off, Vector3(r, r * _rng.randf_range(0.48, 0.62), r * _rng.randf_range(0.85, 1.0)), "hedgepine", pine, Color("1d3326"), 0.8, 0.55,
+			{"exponent": 2.0, "taper": -0.75, "taper_axis": "y", "flat_bottom": 0.5})
+	obstacles.append([Vector2(at.x, at.z), 0.7])
 
 
 ## Every prop is a thing in the garden: what it is, where, how big, whether the shovel can clear it and what it
@@ -269,10 +321,10 @@ func _build_grass() -> void:
 	mm.use_custom_data = true
 	mm.mesh = tuft
 	var items: Array = []
-	for i in range(2400):
-		var x := _rng.randf_range(-20, 20)
+	for i in range(22000):
+		var x := _rng.randf_range(-19, 19)
 		var z := _rng.randf_range(-11, 11)
-		if _blocked(Vector2(x, z), 0.2):
+		if _blocked(Vector2(x, z), 0.12):
 			continue
 		var bald := _bald_noise.get_noise_2d((x + 30.0) / 60.0 * 512.0, (z + 30.0) / 60.0 * 512.0)
 		if bald > 0.4 and _rng.randf() < 0.8:
@@ -287,7 +339,7 @@ func _build_grass() -> void:
 			cell = 10         # daisy
 		elif roll < 0.11:
 			cell = 11         # seed heads
-		var s := _rng.randf_range(0.7, 1.25) * (1.3 if cell == 11 else 1.0)
+		var s := _rng.randf_range(0.32, 0.6) * (1.5 if cell == 11 else (1.25 if cell >= 8 else 1.0))   # ankle-high to a pet
 		var t := Transform3D(Basis.from_euler(Vector3(0, _rng.randf_range(0, TAU), 0)).scaled(Vector3(s, s, s)), Vector3(x, 0, z))
 		var tint := Color("86a050").lerp(Color("a9ad62"), _rng.randf() * 0.6).darkened(_rng.randf() * 0.12)
 		items.append([t, tint, Color(float(cell), _rng.randf_range(0, TAU), 0, 0)])
@@ -316,7 +368,7 @@ func _blocked(p: Vector2, margin: float) -> bool:
 
 # ------------------------------------------------------------------ pets
 func _spawn_pets() -> void:
-	var spots := [Vector3(1.0, 0, 0.5), Vector3(-3.5, 0, 5.0), Vector3(-6.5, 0, -1.0), Vector3(7.0, 0, 1.5)]
+	var spots := [Vector3(1.0, 0, 0.5), Vector3(-3.5, 0, 5.0), Vector3(-6.5, 0, -1.0), Vector3(7.0, 0, 1.5), Vector3(-1.0, 0, -6.0), Vector3(4.5, 0, 5.5), Vector3(-8.0, 0, 4.0)]
 	for i in range(PETS.size()):
 		var node := HedgePetNode.new()
 		node.name = "Pet%d" % i

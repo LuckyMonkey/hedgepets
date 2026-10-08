@@ -12,6 +12,9 @@ func _run() -> void:
 	root.add_child(scene)
 	scene.set_process_input(false)
 	scene.set_process_unhandled_input(false)
+	if OS.get_environment("DIST") != "":
+		scene._distance = float(OS.get_environment("DIST"))
+		scene._place_camera()
 	for i in range(int(OS.get_environment("FRAMES")) if OS.get_environment("FRAMES") != "" else 90):
 		await process_frame
 	root.get_texture().get_image().save_png("/tmp/hedgepets-views/garden.png")

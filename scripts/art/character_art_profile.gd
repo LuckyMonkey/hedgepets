@@ -58,6 +58,7 @@ extends Resource
 @export var coverage := 0.86                # fraction of each cluster's leaves kept (gaps show the inner green mass)
 @export var face_clearing := 1.0            # multiplier on every protected zone
 @export var silhouette_scale := 1.0         # multiplier on every region's max_displacement
+@export var flower_color := Color(1.0, 0.98, 0.92)   # the cell-13 bloom: a flower, an acorn, a cone
 @export var flowering := 0.35               # 0 no flowers .. 1 blooming (flowers never near the face)
 @export var growth := 1.0                   # 0.3 young/sparse .. 1 full
 @export var tendrils := 4                   # vines trailing from the body
@@ -313,3 +314,202 @@ static func bramble() -> CharacterArtProfile:
 		"resident": "Flowering jasmine and a drink of water. He's in no hurry."}
 	return p
 
+
+
+## Spruce: a moose made of pine. Tall legs of bark, a shoulder hump, a long soft nose, a little bell under the chin,
+## antlers like two flat paddles of pale wood. Big, gentle, slow.
+static func spruce() -> CharacterArtProfile:
+	var p := CharacterArtProfile.new()
+	p.pet_name = "Spruce"
+	p.species = "moose"
+	p.adopted = "October 8, 2026"
+	p.seed = 4242
+	p.leaf_sheet = "hedgepine"
+	p.leaf_size = 0.42
+	p.leaves_per_cluster = 22
+	p.flowering = 0.25
+	p.flower_color = Color("8a5a34")
+	p.palette = {"deep_forest": Color("1f3b30"), "muted_ivy": Color("2e5240"), "matcha": Color("456b4c"),
+		"warm_yellow_green": Color("5f7d4e"), "soft_sage": Color("5e7a6c"), "pale_highlight": Color("93ab8c")}
+	p.inner_mass = Color("223a2c")
+	var bark := Color("5e4a38")
+	var nose := Color("7a6248")
+	p.regions = {
+		"BODY": {"center": Vector3(0.0, 1.62, 0.0), "radii": Vector3(1.3, 0.72, 0.68), "parent": "", "foliage": true,
+			"density": 1.4, "leaf_scale": 0.9, "max_displacement": 0.22, "growth_up": 0.6, "material": "foliage",
+			"shape": {"exponent": 2.2}},
+		"HUMP": {"center": Vector3(0.7, 2.18, 0.0), "radii": Vector3(0.58, 0.42, 0.52), "parent": "", "foliage": true,
+			"density": 1.4, "leaf_scale": 0.85, "max_displacement": 0.2, "growth_up": 0.7, "material": "foliage"},
+		"HEAD": {"center": Vector3(1.72, 2.2, 0.0), "radii": Vector3(0.56, 0.52, 0.5), "parent": "", "foliage": true,
+			"density": 2.0, "leaf_scale": 0.55, "max_displacement": 0.08, "growth_up": 0.3, "material": "foliage"},
+		"MUZZLE": {"center": Vector3(0.58, -0.24, 0.0), "radii": Vector3(0.4, 0.27, 0.3), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": {"exponent": 2.4, "taper": 0.15}, "outline": 0.016, "color": nose},
+		"BELL": {"center": Vector3(0.12, -0.5, 0.0), "radii": Vector3(0.08, 0.17, 0.06), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": "teardrop", "outline": 0.012, "color": nose},
+		"ANTLERS": {"center": Vector3(-0.08, 0.5, 0.68), "radii": Vector3(0.3, 0.045, 0.44), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": "paddle", "rotation": Vector3(-14, 0, 0), "mirror": true, "outline": 0.016, "color": Color("8a6e4a")},
+		"EARS": {"center": Vector3(-0.26, 0.32, 0.44), "radii": Vector3(0.07, 0.15, 0.05), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "ear",
+			"rotation": Vector3(-40, 0, 0), "mirror": true, "outline": 0.012},
+		"FEET": {"center": Vector3.ZERO, "radii": Vector3(0.14, 0.62, 0.14), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": {"exponent": 2.2}, "outline": 0.014, "color": bark},
+	}
+	p.anchors = {
+		"EYE_LEFT": {"dir": Vector3(0.6, 0.32, 0.72), "on": "HEAD"},
+		"EYE_RIGHT": {"dir": Vector3(0.6, 0.32, -0.72), "on": "HEAD"},
+		"NOSE": {"dir": Vector3(1.0, 0.2, 0.0), "on": "MUZZLE"},
+		"MOUTH": {"dir": Vector3(0.8, -0.55, 0.0), "on": "MUZZLE"},
+		"CHEEK_LEFT": {"dir": Vector3(0.45, -0.25, 0.86), "on": "HEAD"},
+		"CHEEK_RIGHT": {"dir": Vector3(0.45, -0.25, -0.86), "on": "HEAD"},
+	}
+	p.protected_zones = {
+		"EYE_LEFT": {"radius": 0.45, "strength": 1.0},
+		"EYE_RIGHT": {"radius": 0.45, "strength": 1.0},
+		"CHEEK_LEFT": {"radius": 0.3, "strength": 0.6},
+		"CHEEK_RIGHT": {"radius": 0.3, "strength": 0.6},
+	}
+	p.feet = [Vector3(0.8, 0.0, 0.32), Vector3(0.8, 0.0, -0.32), Vector3(-0.8, 0.0, 0.34), Vector3(-0.8, 0.0, -0.34)]
+	p.features = {"teeth": false, "mouth": "smile", "cheeks": true, "nose": Vector3(0.1, 0.07, 0.13)}
+	p.eye_size = 0.12
+	p.tendrils = 0
+	p.hop_height = 0.18
+	p.frame_target = Vector3(0.4, 1.6, 0.0)
+	p.frame_distance = 9.6
+	p.wants = {"notice": {"cleared": 6}, "visit": {"pine_planted": 1}, "resident": {"pine_grown": 2, "puddle": 1}}
+	p.hints = {"notice": "Something big needs room. Clear out some of the junk.", "visit": "A pine seedling smells like home to him.",
+		"resident": "Two good pines and somewhere to drink, and he'll stay."}
+	return p
+
+
+## Hazel: a squirrel in autumn oak, sitting up, with a tail bigger than she is curling up behind; acorns for flowers.
+static func hazel() -> CharacterArtProfile:
+	var p := CharacterArtProfile.new()
+	p.pet_name = "Hazel"
+	p.species = "squirrel"
+	p.adopted = "October 8, 2026"
+	p.seed = 3131
+	p.leaf_sheet = "hedgeoak"
+	p.leaf_size = 0.32
+	p.leaves_per_cluster = 18
+	p.flowering = 0.5
+	p.flower_color = Color("a8743a")
+	p.palette = {"deep_forest": Color("6b3d1f"), "muted_ivy": Color("9a5426"), "matcha": Color("b8702e"),
+		"warm_yellow_green": Color("c9923c"), "soft_sage": Color("8a6a3a"), "pale_highlight": Color("e0b25a")}
+	p.inner_mass = Color("5a3418")
+	var fur := Color("b0723e")
+	p.regions = {
+		"BODY": {"center": Vector3(0.0, 0.68, 0.0), "radii": Vector3(0.5, 0.66, 0.48), "parent": "", "foliage": true,
+			"density": 1.7, "leaf_scale": 0.75, "max_displacement": 0.13, "growth_up": 0.5, "material": "foliage",
+			"shape": {"exponent": 2.0, "taper": -0.3, "taper_axis": "y", "flat_bottom": 0.9}},
+		"HEAD": {"center": Vector3(0.2, 1.52, 0.0), "radii": Vector3(0.42, 0.38, 0.38), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": {"exponent": 2.0, "taper": -0.15}, "outline": 0.014, "color": fur},
+		"MUZZLE": {"center": Vector3(0.32, -0.1, 0.0), "radii": Vector3(0.17, 0.13, 0.18), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": "cushion", "outline": 0.01, "color": Color("e3c9a0")},
+		"EARS": {"center": Vector3(-0.06, 0.36, 0.2), "radii": Vector3(0.07, 0.15, 0.05), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": "teardrop", "rotation": Vector3(-14, 0, 0), "mirror": true, "outline": 0.012, "color": fur},
+		"HANDS": {"center": Vector3(0.44, 1.02, 0.13), "radii": Vector3(0.08, 0.1, 0.07), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"mirror": true, "outline": 0.01, "color": fur},
+		"TAIL": {"center": Vector3(-0.72, 1.1, 0.0), "radii": Vector3(0.42, 0.95, 0.4), "parent": "", "foliage": true,
+			"density": 2.0, "leaf_scale": 0.85, "max_displacement": 0.3, "growth_up": 0.8, "material": "foliage",
+			"shape": {"exponent": 2.0, "taper": 0.25, "taper_axis": "y"}, "rotation": Vector3(0, 0, 12)},
+		"TAIL_TIP": {"center": Vector3(-0.42, 2.05, 0.0), "radii": Vector3(0.36, 0.28, 0.32), "parent": "", "foliage": true,
+			"density": 2.0, "leaf_scale": 0.8, "max_displacement": 0.28, "growth_up": 0.6, "material": "foliage"},
+		"FEET": {"center": Vector3.ZERO, "radii": Vector3(0.13, 0.07, 0.1), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": "dome", "outline": 0.01, "color": Color("8b5a30")},
+	}
+	p.anchors = {
+		"EYE_LEFT": {"dir": Vector3(0.62, 0.3, 0.64), "on": "HEAD"},
+		"EYE_RIGHT": {"dir": Vector3(0.62, 0.3, -0.64), "on": "HEAD"},
+		"NOSE": {"dir": Vector3(1.0, 0.35, 0.0), "on": "MUZZLE"},
+		"MOUTH": {"dir": Vector3(0.8, -0.45, 0.0), "on": "MUZZLE"},
+		"TEETH": {"dir": Vector3(0.9, -0.6, 0.0), "on": "MUZZLE"},
+		"CHEEK_LEFT": {"dir": Vector3(0.45, -0.22, 0.85), "on": "HEAD"},
+		"CHEEK_RIGHT": {"dir": Vector3(0.45, -0.22, -0.85), "on": "HEAD"},
+	}
+	p.protected_zones = {}
+	p.feet = [Vector3(0.36, 0.0, 0.2), Vector3(0.36, 0.0, -0.2), Vector3(-0.08, 0.0, 0.34), Vector3(-0.08, 0.0, -0.34)]
+	p.features = {"teeth": true, "mouth": "bunny", "cheeks": true, "nose": Vector3(0.05, 0.04, 0.06)}
+	p.eye_size = 0.095
+	p.tendrils = 0
+	p.hop_height = 0.5
+	p.frame_target = Vector3(0.0, 1.15, 0.0)
+	p.frame_distance = 6.2
+	p.wants = {"notice": {"branches": 1}, "visit": {"oak_planted": 1}, "resident": {"oak_flowering": 1, "sticks": 2}}
+	p.hints = {"notice": "A fallen branch to run along. Don't clear them all.", "visit": "An oak, even a tiny one.",
+		"resident": "An oak with acorns on it, and a few sticks for the nest."}
+	return p
+
+
+## Rascal: a raccoon of silvery sage, with a dark mask, a ringed tail and dark mittens. He likes the junk best of all.
+static func rascal() -> CharacterArtProfile:
+	var p := CharacterArtProfile.new()
+	p.pet_name = "Rascal"
+	p.species = "raccoon"
+	p.adopted = "October 8, 2026"
+	p.seed = 6060
+	p.leaf_sheet = "hedgesage"
+	p.leaf_size = 0.34
+	p.leaves_per_cluster = 18
+	p.flowering = 0.3
+	p.flower_color = Color("c8b4e6")
+	p.palette = {"deep_forest": Color("46574a"), "muted_ivy": Color("66786a"), "matcha": Color("869684"),
+		"warm_yellow_green": Color("9aa58e"), "soft_sage": Color("a7b3a6"), "pale_highlight": Color("cfd6c8")}
+	p.inner_mass = Color("4a5a4c")
+	var pale := Color("e6e3d2")
+	var grey := Color("7c7a6e")
+	var dark := Color("3a3a32")
+	p.regions = {
+		"BODY": {"center": Vector3(0.0, 0.72, 0.0), "radii": Vector3(0.98, 0.62, 0.7), "parent": "", "foliage": true,
+			"density": 1.5, "leaf_scale": 0.85, "max_displacement": 0.2, "growth_up": 0.5, "material": "foliage",
+			"shape": {"exponent": 2.2, "flat_bottom": 0.85}},
+		"HEAD": {"center": Vector3(1.0, 0.98, 0.0), "radii": Vector3(0.48, 0.42, 0.46), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": {"exponent": 2.0, "taper": -0.4}, "outline": 0.014, "color": grey},
+		"MUZZLE": {"center": Vector3(0.34, -0.12, 0.0), "radii": Vector3(0.22, 0.16, 0.22), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": "cushion", "outline": 0.01, "color": pale},
+		"MASK": {"center": Vector3(0.0, 0.08, 0.0), "radii": Vector3(0.43, 0.2, 0.475), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": {"exponent": 2.0, "taper": -0.4}, "color": dark},
+		"EARS": {"center": Vector3(-0.1, 0.36, 0.27), "radii": Vector3(0.1, 0.12, 0.05), "parent": "HEAD", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"rotation": Vector3(-20, 0, 0), "mirror": true, "outline": 0.012, "color": Color("8a8a7a")},
+		"TAIL_A": {"center": Vector3(-1.12, 0.78, 0.0), "radii": Vector3(0.24, 0.21, 0.21), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage", "outline": 0.012, "color": pale},
+		"TAIL_B": {"center": Vector3(-1.4, 0.9, 0.0), "radii": Vector3(0.18, 0.2, 0.2), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage", "outline": 0.012, "color": dark},
+		"TAIL_C": {"center": Vector3(-1.66, 1.03, 0.0), "radii": Vector3(0.18, 0.18, 0.18), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage", "outline": 0.012, "color": pale},
+		"TAIL_D": {"center": Vector3(-1.9, 1.18, 0.0), "radii": Vector3(0.17, 0.15, 0.15), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": {"exponent": 2.0, "taper": 0.5}, "outline": 0.012, "color": dark},
+		"FEET": {"center": Vector3.ZERO, "radii": Vector3(0.16, 0.1, 0.14), "parent": "", "foliage": false,
+			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "sage",
+			"shape": "dome", "outline": 0.012, "color": dark},
+	}
+	p.anchors = {
+		"EYE_LEFT": {"dir": Vector3(0.62, 0.3, 0.62), "on": "HEAD"},
+		"EYE_RIGHT": {"dir": Vector3(0.62, 0.3, -0.62), "on": "HEAD"},
+		"NOSE": {"dir": Vector3(1.0, 0.3, 0.0), "on": "MUZZLE"},
+		"MOUTH": {"dir": Vector3(0.8, -0.5, 0.0), "on": "MUZZLE"},
+	}
+	p.protected_zones = {}
+	p.feet = [Vector3(0.6, 0.0, 0.4), Vector3(0.6, 0.0, -0.4), Vector3(-0.55, 0.0, 0.44), Vector3(-0.55, 0.0, -0.44)]
+	p.features = {"teeth": false, "mouth": "smile", "cheeks": false, "nose": Vector3(0.07, 0.055, 0.08)}
+	p.eye_size = 0.1
+	p.tendrils = 0
+	p.frame_target = Vector3(0.2, 0.8, 0.0)
+	p.frame_distance = 6.4
+	p.wants = {"notice": {"grill": 1}, "visit": {"sage_planted": 1}, "resident": {"grill": 1, "tire": 1, "sage_grown": 1}}
+	p.hints = {"notice": "Something smells that old grill from streets away.", "visit": "Sage. He likes to roll in it.",
+		"resident": "Keep the grill AND the tire, and grow him some sage. He's not going to explain."}
+	return p

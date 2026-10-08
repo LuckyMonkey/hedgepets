@@ -11,7 +11,7 @@ like a tabletop model.
 |---|---|
 | ✋ hand | pet a pet (it hops and says how it feels), look at things |
 | 🪏 shovel | clear junk for coins (each thing has a scrap value); dig a seedbed on bare lawn |
-| 🌱 seeds | plant ivy 🌿 3, clover 🍀 3, fern 🌾 4, jasmine 🌼 6 in a seedbed |
+| 🌱 seeds | plant ivy 🌿 3, clover 🍀 3, fern 🌾 4, sage 🪴 4, jasmine 🌼 6, oak 🌰 6, pine 🌲 8 in a seedbed |
 | 💧 water | a watered plant grows: mound → sprout → bush → flowering (~18 s a stage; water lasts ~40 s) |
 
 Each pet has three sets of wishes in its profile (`CharacterArtProfile.wants`, with journal `hints`):
@@ -20,11 +20,21 @@ Each pet has three sets of wishes in its profile (`CharacterArtProfile.wants`, w
 - **visit**: it comes in and wanders around,
 - **resident**: it moves in (🪙 +10), and while its wishes stay met it brings 🪙 2 every 30 s.
 
+Pets: Gerald (beaver, ivy; lives here from the start), Clover (bunny, clover), Juniper (hedgehog, fern), Bramble
+(tortoise, jasmine), Spruce (moose, pine; needs room: clear 6 things), Hazel (squirrel, autumn oak with acorns; wants
+branches), Rascal (raccoon, silvery sage; wants the grill and the tire kept).
+
 A visitor whose wishes stop being met wanders off after ~20 s. Junk isn't all bad: Gerald wants sticks and the
 puddle, Juniper the tipped chair, Bramble rocks. Clear everything and you lose them.
 
-The wish keys come from `garden_game.gd:garden_counts()`: `puddle sticks branches rocks leaf_pile lawn_chair cleared`
+The wish keys come from `garden_game.gd:garden_counts()`: `puddle sticks branches rocks leaf_pile lawn_chair grill tire pot cleared`
 and `<plant>_planted/_grown/_flowering`.
+
+The scenery: tall oaks (leaning trunk, forked branches, a leaf clump per branch) and tiered pines whose crowns run
+off the top of the screen and whose shade falls across the lawn; ankle-high grass tufts (22k, `tools/make_grass_sprites.py`)
+over a lawn with fine blade grain (`shaders/lawn.gdshader`, `tools/make_lawn_detail.py`). Leaf styles for pets and plants:
+ivy, clover, fern, jasmine, and `tools/make_leaf_styles.py`: oak (acorns), pine (cones), sage (lilac sprigs); the
+cell-13 bloom is tinted by `CharacterArtProfile.flower_color`.
 
 📖 is the journal. Progress autosaves to `user://garden.json`.
 
@@ -38,5 +48,8 @@ and `<plant>_planted/_grown/_flowering`.
 ## Checks
 
     godot --headless --path . --script tools/game_check.gd     # plays the loop: clear, plant, grow, a pet moves in
-    DISPLAY=:0 godot --path . --script tools/capture_garden.gd # /tmp/hedgepets-views/garden.png (FRAMES=700 for later)
-    DISPLAY=:0 godot --path . --script tools/garden_fps.gd     # ~3.6 ms/frame on the RTX 3050
+    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/capture_garden.gd   # /tmp/hedgepets-views/garden.png
+                                                               # FRAMES=700 later in time, DIST=30 zoomed out
+    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/garden_fps.gd       # ~4.1 ms/frame on the RTX 3050
+
+HEDGEPETS_FRESH=1 starts from a new garden and never reads or writes the player's save.

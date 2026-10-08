@@ -10,12 +10,15 @@ extends Node
 ##   Journal what you know about each pet: the hint for its next step, revealed as it gets closer.
 ##   Saved to user://garden.json every few seconds.
 
-const SAVE_PATH := "user://garden.json"
+var save_path := "user://garden.json"
 const SEEDS := {
 	"ivy": {"icon": "🌿", "price": 3, "sheet": "hedgeivy"},
 	"clover": {"icon": "🍀", "price": 3, "sheet": "hedgeclover"},
 	"fern": {"icon": "🌾", "price": 4, "sheet": "hedgefern"},
 	"jasmine": {"icon": "🌼", "price": 6, "sheet": "hedgejasmine"},
+	"sage": {"icon": "🪴", "price": 4, "sheet": "hedgesage"},
+	"oak": {"icon": "🌰", "price": 6, "sheet": "hedgeoak"},
+	"pine": {"icon": "🌲", "price": 8, "sheet": "hedgepine"},
 }
 const STAGE_SECONDS := 18.0        # watered growth time per stage
 const WATER_SECONDS := 40.0        # how long one watering lasts
@@ -60,6 +63,7 @@ func setup(g: Node3D) -> void:
 func garden_counts() -> Dictionary:
 	var c := {"puddle": garden.count("sprinkler"), "sticks": garden.count("stick"), "branches": garden.count("branch"),
 		"rocks": garden.count("rock"), "leaf_pile": garden.count("leaf_pile"), "lawn_chair": garden.count("lawn_chair"),
+		"grill": garden.count("grill"), "tire": garden.count("tire"), "pot": garden.count("pot"),
 		"cleared": cleared}
 	for sp in SEEDS:
 		c[sp + "_planted"] = 0
@@ -447,12 +451,12 @@ func _build_ui() -> void:
 		bar.add_child(b)
 		_tool_buttons[key] = b
 	_seed_row = HBoxContainer.new()
-	_seed_row.position = Vector2(170, 1640)
-	_seed_row.add_theme_constant_override("separation", 30)
+	_seed_row.position = Vector2(64, 1650)
+	_seed_row.add_theme_constant_override("separation", 8)
 	for sp in SEEDS:
-		var b := _button("%s %d" % [SEEDS[sp]["icon"], SEEDS[sp]["price"]], "%s seeds" % sp, 36)
+		var b := _button("%s%d" % [SEEDS[sp]["icon"], SEEDS[sp]["price"]], "%s seeds" % sp, 32)
 		b.name = sp
-		b.custom_minimum_size = Vector2(150, 90)
+		b.custom_minimum_size = Vector2(128, 90)
 		b.pressed.connect(func() -> void:
 			seed_choice = sp
 			_refresh())
@@ -475,6 +479,8 @@ func _build_ui() -> void:
 
 # ------------------------------------------------------------------ save
 func save() -> void:
+	if OS.get_environment("HEDGEPETS_FRESH") != "":
+		return                                           # captures and checks never touch the player's garden
 	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state}
 	var present := {}
 	for t in garden.things:
@@ -485,7 +491,7 @@ func save() -> void:
 	for b in seedbeds:
 		var pl = b["plant"]
 		data["beds"].append({"x": b["at"].x, "z": b["at"].y, "plant": null if pl == null else {"species": pl["species"], "stage": pl["stage"], "water": pl["water"], "progress": pl["progress"]}})
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f != null:
 		f.store_string(JSON.stringify(data))
 
@@ -496,9 +502,9 @@ var _all_ids: Array = []
 func _load() -> void:
 	for t in garden.things:
 		_all_ids.append(t["id"])
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(save_path) or OS.get_environment("HEDGEPETS_FRESH") != "":
 		return
-	var data = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+	var data = JSON.parse_string(FileAccess.get_file_as_string(save_path))
 	if typeof(data) != TYPE_DICTIONARY:
 		return
 	coins = int(data.get("coins", coins))

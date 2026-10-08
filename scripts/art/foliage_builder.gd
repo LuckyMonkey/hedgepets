@@ -100,7 +100,7 @@ static func build(profile: CharacterArtProfile, region_name: String, head_center
 			var head_local := cp - head_center
 			if HedgeAnatomy.protection(profile, head_local) < 0.05 and cp.distance_to(head_center) > 1.1:
 				var fsize := leaf_len * 0.62
-				var flower: Array = _leaf(cp + cn * 0.05, cn, fsize, max_disp, 0.0, cd, rng, Color(1.0, 0.98, 0.92), profile, true, 0.0)
+				var flower: Array = _leaf(cp + cn * 0.05, cn, fsize, max_disp, 0.0, cd, rng, profile.flower_color, profile, true, 0.0)
 				var custom: Color = flower[2]
 				custom.r = 13.0                                  # the flower sprite
 				custom.a = 0.3                                   # flowers go at FAR detail

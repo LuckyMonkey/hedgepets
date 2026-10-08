@@ -1,0 +1,212 @@
+[gd_resource type="Resource" script_class="CharacterArtProfile" format=3]
+
+[ext_resource type="Script" path="res://scripts/art/character_art_profile.gd" id="1_itpj3"]
+
+[resource]
+script = ExtResource("1_itpj3")
+pet_name = "Spruce"
+species = "moose"
+adopted = "October 8, 2026"
+seed = 4242
+leaf_sheet = "hedgepine"
+features = {
+"cheeks": true,
+"mouth": "smile",
+"nose": Vector3(0.1, 0.07, 0.13),
+"teeth": false
+}
+wants = {
+"notice": {
+"cleared": 6
+},
+"resident": {
+"pine_grown": 2,
+"puddle": 1
+},
+"visit": {
+"pine_planted": 1
+}
+}
+hints = {
+"notice": "Something big needs room. Clear out some of the junk.",
+"resident": "Two good pines and somewhere to drink, and he'll stay.",
+"visit": "A pine seedling smells like home to him."
+}
+frame_target = Vector3(0.4, 1.6, 0)
+frame_distance = 9.6
+regions = {
+"ANTLERS": {
+"center": Vector3(-0.08, 0.5, 0.68),
+"color": Color(0.5411765, 0.43137255, 0.2901961, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"mirror": true,
+"outline": 0.016,
+"parent": "HEAD",
+"radii": Vector3(0.3, 0.045, 0.44),
+"rotation": Vector3(-14, 0, 0),
+"shape": "paddle"
+},
+"BELL": {
+"center": Vector3(0.12, -0.5, 0),
+"color": Color(0.47843137, 0.38431373, 0.28235295, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.012,
+"parent": "HEAD",
+"radii": Vector3(0.08, 0.17, 0.06),
+"shape": "teardrop"
+},
+"BODY": {
+"center": Vector3(0, 1.62, 0),
+"density": 1.4,
+"foliage": true,
+"growth_up": 0.6,
+"leaf_scale": 0.9,
+"material": "foliage",
+"max_displacement": 0.22,
+"parent": "",
+"radii": Vector3(1.3, 0.72, 0.68),
+"shape": {
+"exponent": 2.2
+}
+},
+"EARS": {
+"center": Vector3(-0.26, 0.32, 0.44),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "ear",
+"max_displacement": 0.0,
+"mirror": true,
+"outline": 0.012,
+"parent": "HEAD",
+"radii": Vector3(0.07, 0.15, 0.05),
+"rotation": Vector3(-40, 0, 0)
+},
+"FEET": {
+"center": Vector3(0, 0, 0),
+"color": Color(0.36862746, 0.2901961, 0.21960784, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.014,
+"parent": "",
+"radii": Vector3(0.14, 0.62, 0.14),
+"shape": {
+"exponent": 2.2
+}
+},
+"HEAD": {
+"center": Vector3(1.72, 2.2, 0),
+"density": 2.0,
+"foliage": true,
+"growth_up": 0.3,
+"leaf_scale": 0.55,
+"material": "foliage",
+"max_displacement": 0.08,
+"parent": "",
+"radii": Vector3(0.56, 0.52, 0.5)
+},
+"HUMP": {
+"center": Vector3(0.7, 2.18, 0),
+"density": 1.4,
+"foliage": true,
+"growth_up": 0.7,
+"leaf_scale": 0.85,
+"material": "foliage",
+"max_displacement": 0.2,
+"parent": "",
+"radii": Vector3(0.58, 0.42, 0.52)
+},
+"MUZZLE": {
+"center": Vector3(0.58, -0.24, 0),
+"color": Color(0.47843137, 0.38431373, 0.28235295, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.016,
+"parent": "HEAD",
+"radii": Vector3(0.4, 0.27, 0.3),
+"shape": {
+"exponent": 2.4,
+"taper": 0.15
+}
+}
+}
+anchors = {
+"CHEEK_LEFT": {
+"dir": Vector3(0.45, -0.25, 0.86),
+"on": "HEAD"
+},
+"CHEEK_RIGHT": {
+"dir": Vector3(0.45, -0.25, -0.86),
+"on": "HEAD"
+},
+"EYE_LEFT": {
+"dir": Vector3(0.6, 0.32, 0.72),
+"on": "HEAD"
+},
+"EYE_RIGHT": {
+"dir": Vector3(0.6, 0.32, -0.72),
+"on": "HEAD"
+},
+"MOUTH": {
+"dir": Vector3(0.8, -0.55, 0),
+"on": "MUZZLE"
+},
+"NOSE": {
+"dir": Vector3(1, 0.2, 0),
+"on": "MUZZLE"
+}
+}
+protected_zones = {
+"CHEEK_LEFT": {
+"radius": 0.3,
+"strength": 0.6
+},
+"CHEEK_RIGHT": {
+"radius": 0.3,
+"strength": 0.6
+},
+"EYE_LEFT": {
+"radius": 0.45,
+"strength": 1.0
+},
+"EYE_RIGHT": {
+"radius": 0.45,
+"strength": 1.0
+}
+}
+feet = Array[Vector3]([Vector3(0.8, 0, 0.32), Vector3(0.8, 0, -0.32), Vector3(-0.8, 0, 0.34), Vector3(-0.8, 0, -0.34)])
+leaf_size = 0.42
+leaves_per_cluster = 22
+flower_color = Color(0.5411765, 0.3529412, 0.20392157, 1)
+flowering = 0.25
+tendrils = 0
+palette = {
+"deep_forest": Color(0.12156863, 0.23137255, 0.1882353, 1),
+"matcha": Color(0.27058825, 0.41960785, 0.29803923, 1),
+"muted_ivy": Color(0.18039216, 0.32156864, 0.2509804, 1),
+"pale_highlight": Color(0.5764706, 0.67058825, 0.54901963, 1),
+"soft_sage": Color(0.36862746, 0.47843137, 0.42352942, 1),
+"warm_yellow_green": Color(0.37254903, 0.49019608, 0.30588236, 1)
+}
+inner_mass = Color(0.13333334, 0.22745098, 0.17254902, 1)
+eye_size = 0.12
+hop_height = 0.18

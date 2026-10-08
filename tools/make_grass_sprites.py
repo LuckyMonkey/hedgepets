@@ -36,11 +36,11 @@ def main():
         d = ImageDraw.Draw(big)
         cx = CELL * SS / 2
         if c < 8 or c == 11:
-            n = rng.randint(7, 14) if c < 6 else rng.randint(14, 20)
+            n = rng.randint(26, 40) if c < 6 else rng.randint(40, 56)     # many fine blades: lawn, not a shrub
             for b in range(n):
-                h = rng.uniform(0.45, 0.95) * CELL * SS * (0.9 if c < 6 else 0.7)
-                blade(d, cx + rng.uniform(-0.18, 0.18) * CELL * SS, h, rng.uniform(-0.45, 0.45), rng.uniform(10, 22), rng,
-                      tone=rng.randint(200, 255))
+                h = rng.uniform(0.35, 0.98) * CELL * SS * (0.9 if c < 6 else 0.7)
+                blade(d, cx + rng.uniform(-0.3, 0.3) * CELL * SS, h, rng.uniform(-0.55, 0.55), rng.uniform(5, 11), rng,
+                      tone=rng.randint(185, 255))
             if c == 11:   # seed heads
                 for b in range(3):
                     x = cx + rng.uniform(-0.15, 0.15) * CELL * SS

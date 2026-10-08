@@ -1,0 +1,220 @@
+[gd_resource type="Resource" script_class="CharacterArtProfile" format=3]
+
+[ext_resource type="Script" path="res://scripts/art/character_art_profile.gd" id="1_ffj8u"]
+
+[resource]
+script = ExtResource("1_ffj8u")
+pet_name = "Rascal"
+species = "raccoon"
+adopted = "October 8, 2026"
+seed = 6060
+leaf_sheet = "hedgesage"
+features = {
+"cheeks": false,
+"mouth": "smile",
+"nose": Vector3(0.07, 0.055, 0.08),
+"teeth": false
+}
+wants = {
+"notice": {
+"grill": 1
+},
+"resident": {
+"grill": 1,
+"sage_grown": 1,
+"tire": 1
+},
+"visit": {
+"sage_planted": 1
+}
+}
+hints = {
+"notice": "Something smells that old grill from streets away.",
+"resident": "Keep the grill AND the tire, and grow him some sage. He's not going to explain.",
+"visit": "Sage. He likes to roll in it."
+}
+frame_target = Vector3(0.2, 0.8, 0)
+frame_distance = 6.4
+regions = {
+"BODY": {
+"center": Vector3(0, 0.72, 0),
+"density": 1.5,
+"foliage": true,
+"growth_up": 0.5,
+"leaf_scale": 0.85,
+"material": "foliage",
+"max_displacement": 0.2,
+"parent": "",
+"radii": Vector3(0.98, 0.62, 0.7),
+"shape": {
+"exponent": 2.2,
+"flat_bottom": 0.85
+}
+},
+"EARS": {
+"center": Vector3(-0.1, 0.36, 0.27),
+"color": Color(0.5411765, 0.5411765, 0.47843137, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"mirror": true,
+"outline": 0.012,
+"parent": "HEAD",
+"radii": Vector3(0.1, 0.12, 0.05),
+"rotation": Vector3(-20, 0, 0)
+},
+"FEET": {
+"center": Vector3(0, 0, 0),
+"color": Color(0.22745098, 0.22745098, 0.19607843, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.012,
+"parent": "",
+"radii": Vector3(0.16, 0.1, 0.14),
+"shape": "dome"
+},
+"HEAD": {
+"center": Vector3(1, 0.98, 0),
+"color": Color(0.4862745, 0.47843137, 0.43137255, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.014,
+"parent": "",
+"radii": Vector3(0.48, 0.42, 0.46),
+"shape": {
+"exponent": 2.0,
+"taper": -0.4
+}
+},
+"MASK": {
+"center": Vector3(0, 0.08, 0),
+"color": Color(0.22745098, 0.22745098, 0.19607843, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"parent": "HEAD",
+"radii": Vector3(0.43, 0.2, 0.475),
+"shape": {
+"exponent": 2.0,
+"taper": -0.4
+}
+},
+"MUZZLE": {
+"center": Vector3(0.34, -0.12, 0),
+"color": Color(0.9019608, 0.8901961, 0.8235294, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.01,
+"parent": "HEAD",
+"radii": Vector3(0.22, 0.16, 0.22),
+"shape": "cushion"
+},
+"TAIL_A": {
+"center": Vector3(-1.12, 0.78, 0),
+"color": Color(0.9019608, 0.8901961, 0.8235294, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.012,
+"parent": "",
+"radii": Vector3(0.24, 0.21, 0.21)
+},
+"TAIL_B": {
+"center": Vector3(-1.4, 0.9, 0),
+"color": Color(0.22745098, 0.22745098, 0.19607843, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.012,
+"parent": "",
+"radii": Vector3(0.18, 0.2, 0.2)
+},
+"TAIL_C": {
+"center": Vector3(-1.66, 1.03, 0),
+"color": Color(0.9019608, 0.8901961, 0.8235294, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.012,
+"parent": "",
+"radii": Vector3(0.18, 0.18, 0.18)
+},
+"TAIL_D": {
+"center": Vector3(-1.9, 1.18, 0),
+"color": Color(0.22745098, 0.22745098, 0.19607843, 1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "sage",
+"max_displacement": 0.0,
+"outline": 0.012,
+"parent": "",
+"radii": Vector3(0.17, 0.15, 0.15),
+"shape": {
+"exponent": 2.0,
+"taper": 0.5
+}
+}
+}
+anchors = {
+"EYE_LEFT": {
+"dir": Vector3(0.62, 0.3, 0.62),
+"on": "HEAD"
+},
+"EYE_RIGHT": {
+"dir": Vector3(0.62, 0.3, -0.62),
+"on": "HEAD"
+},
+"MOUTH": {
+"dir": Vector3(0.8, -0.5, 0),
+"on": "MUZZLE"
+},
+"NOSE": {
+"dir": Vector3(1, 0.3, 0),
+"on": "MUZZLE"
+}
+}
+feet = Array[Vector3]([Vector3(0.6, 0, 0.4), Vector3(0.6, 0, -0.4), Vector3(-0.55, 0, 0.44), Vector3(-0.55, 0, -0.44)])
+leaf_size = 0.34
+leaves_per_cluster = 18
+flower_color = Color(0.78431374, 0.7058824, 0.9019608, 1)
+flowering = 0.3
+tendrils = 0
+palette = {
+"deep_forest": Color(0.27450982, 0.34117648, 0.2901961, 1),
+"matcha": Color(0.5254902, 0.5882353, 0.5176471, 1),
+"muted_ivy": Color(0.4, 0.47058824, 0.41568628, 1),
+"pale_highlight": Color(0.8117647, 0.8392157, 0.78431374, 1),
+"soft_sage": Color(0.654902, 0.7019608, 0.6509804, 1),
+"warm_yellow_green": Color(0.6039216, 0.64705884, 0.5568628, 1)
+}
+inner_mass = Color(0.2901961, 0.3529412, 0.29803923, 1)
+eye_size = 0.1
