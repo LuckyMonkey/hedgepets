@@ -9,6 +9,7 @@ extends Node2D
 ## each frame, from life_state().
 
 const Creature = preload("res://scripts/creature_definition.gd")
+const GrowthRenderer = preload("res://scripts/growth_renderer.gd")
 
 var time := 0.0
 var blink := 0.0            # 0 open .. 1 shut
@@ -83,7 +84,11 @@ func _process(delta: float) -> void:
 	var breath := sin(time * 1.5)
 	var squash := _squash * sin(_squash * PI) * 0.08
 	scale = Vector2(1.0 + breath * 0.002 + squash, 1.0 - breath * 0.004 - squash + (0.035 if _hop_velocity > 0.0 else 0.0))
-	position = _base_position + Vector2(0.0, -hop)
+	# a little shiver when a strong gust goes through him, or when he is tapped
+	var gust_here := clampf(GrowthRenderer.wind_at(Creature.BODY_CENTER.x, time) - 0.55, 0.0, 1.0)
+	var shiver := gust_here * 1.2 + joy * 1.6
+	position = _base_position + Vector2(sin(time * 31.0) * shiver, -hop + sin(time * 27.0) * shiver * 0.5)
+	rotation = sin(time * 23.0) * 0.0025 * shiver
 
 
 func _input(event: InputEvent) -> void:

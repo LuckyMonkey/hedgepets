@@ -1,9 +1,20 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/hedge_pet.gd" id="1_pet"]
 [ext_resource type="Script" path="res://scripts/growth_renderer.gd" id="2_growth"]
 [ext_resource type="Script" path="res://scripts/hedge_ink_specimen.gd" id="3_specimen"]
 [ext_resource type="Script" path="res://scripts/pet_life.gd" id="4_life"]
+
+[sub_resource type="Gradient" id="Gradient_sun"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_sun"]
+gradient = SubResource("Gradient_sun")
+width = 512
+height = 512
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(0.988235, 0.972549, 0.929412, 0.96)
@@ -54,6 +65,17 @@ z_index = 10
 position = Vector2(-540, -1262)
 script = ExtResource("1_pet")
 features_only = true
+
+[node name="Shade" type="CanvasModulate" parent="."]
+color = Color(0.84, 0.84, 0.80, 1)
+
+[node name="Sun" type="PointLight2D" parent="."]
+position = Vector2(240, 560)
+color = Color(1, 0.94, 0.80, 1)
+energy = 0.6
+texture = SubResource("GradientTexture2D_sun")
+texture_scale = 4.6
+height = 220.0
 
 [node name="NameTag" type="Label" parent="."]
 offset_left = 140.0

@@ -602,20 +602,40 @@ func _prepare_mark(mark: Dictionary) -> void:
 	mark["polys"] = true
 
 
+## The wind where a leaf is: a light breeze always, and gusts that roll across the hedge from left to right.
+static func wind_at(x: float, t: float) -> float:
+	var breeze := 0.25 + 0.10 * sin(t * 0.7)
+	var front := fposmod(t * 0.23 - x / 2400.0, 1.0)            # a gust every ~4.3 s, travelling ~550 px/s
+	var gust := pow(maxf(0.0, sin(front * PI)), 6.0) * (0.75 + 0.25 * sin(t * 0.31))
+	return breeze + gust
+
+
 func _paint_mark(mark: Dictionary, gust: float) -> void:
-	# wind: a slow wave rolls across the hedge, every leaf flutters on its own; rim leaves move most, a tap shivers them all
 	var center: Vector2 = mark["center"]
 	var phase: float = mark.get("phase", 0.0)
 	var rim: float = mark.get("rim", 0.5)
-	var wave := sin(_time * 1.15 - center.x * 0.009 + center.y * 0.003) * 0.6 + sin(_time * 0.43 + center.y * 0.006) * 0.4
-	var flutter := sin(_time * (3.2 + phase * 0.35) + phase) * 0.35 + sin(_time * 7.3 + phase * 2.0) * 0.12 * (0.4 + gust)
-	var sway := (wave * (0.05 + 0.13 * rim) + flutter * (0.04 + 0.10 * rim)) * (1.0 + gust * 2.2)
-	var angle: float = mark["base_angle"] + sway
-	var drift := Vector2(cos(angle), sin(angle)) * sway * (4.0 + 10.0 * rim)
-	draw_set_transform(center + drift, angle, Vector2(mark.get("turn", 1.0), 1.0))
-	if leaf_sheet != null:
-		draw_texture_rect_region(leaf_sheet, mark["dest"], mark["fill_src"], mark["pigment"])
-		draw_texture_rect_region(leaf_sheet, mark["dest"], mark["ink_src"], mark["ink_color"])
+	var wind := wind_at(center.x, _time) + gust
+	var reach := 0.35 + 0.65 * rim                       # leaves at the rim move most; deep ones barely
+	# bend with the wind, flutter on the stem, and twist so the edge shows for a moment in a gust
+	var bend := wind * 0.16 * reach
+	var flutter := (sin(_time * (5.0 + phase) + phase * 3.0) * 0.6 + sin(_time * (11.0 + phase * 2.0)) * 0.4) * 0.07 * wind * reach
+	var twist := maxf(0.0, sin(_time * (2.6 + phase * 0.5) + phase * 5.0)) * clampf(wind - 0.3, 0.0, 1.0) * reach
+	var angle: float = mark["base_angle"] + bend + flutter
+	var lift := Vector2(wind * 6.0 * reach, -wind * 3.0 * reach)
+	var turn: float = mark.get("turn", 1.0)
+	var scale_x := turn * (1.0 - 0.55 * twist)
+	if leaf_sheet == null:
+		return
+	# a soft shadow on whatever is beneath this leaf (drawn first, so later leaves cover it)
+	if int(mark["depth"]) >= 2 and float(mark.get("sdf", 0.0)) < 6.0:   # only leaves lying on him cast; strays over the paper don't
+		draw_set_transform(center + lift + Vector2(7.0, 10.0) * (0.7 + 0.6 * rim), angle, Vector2(scale_x * 1.06, 1.06))
+		draw_texture_rect_region(leaf_sheet, mark["dest"], mark["fill_src"], Color(0.04, 0.08, 0.02, 0.30))
+	draw_set_transform(center + lift, angle, Vector2(scale_x, 1.0))
+	var pigment: Color = mark["pigment"]
+	if twist > 0.05:
+		pigment = pigment.lightened(0.18 * twist)          # the paler underside shows as it turns
+	draw_texture_rect_region(leaf_sheet, mark["dest"], mark["fill_src"], pigment)
+	draw_texture_rect_region(leaf_sheet, mark["dest"], mark["ink_src"], mark["ink_color"])
 	if mark["flower"]:
 		var size: float = mark["size"]
 		draw_circle(Vector2(0.0, -0.62 * size), size * 0.085, Color(0.86, 0.62, 0.16, 0.95))
@@ -628,8 +648,18 @@ func _load_leaf_sheet() -> void:
 		return
 	var name: String = profile.geometry_path.get_file().replace("_geometry.json", "")
 	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/%s.png" % name))
-	if image != null and not image.is_empty():
-		leaf_sheet = ImageTexture.create_from_image(image)
+	if image == null or image.is_empty():
+		return
+	# the sheet plus its normal map (tools/make_normal_maps.py): Godot's 2D lights shape every leaf, and leaves
+	# glint as they turn in the wind
+	var lit := CanvasTexture.new()
+	lit.diffuse_texture = ImageTexture.create_from_image(image)
+	var normals := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/%s_n.png" % name))
+	if normals != null and not normals.is_empty():
+		lit.normal_texture = ImageTexture.create_from_image(normals)
+	lit.specular_color = Color(1.0, 0.98, 0.85, 1.0)
+	lit.specular_shininess = 0.35
+	leaf_sheet = lit
 
 
 ## Light a pigment: shade toward deep green in shadow, toward warm yellow-green in the light.

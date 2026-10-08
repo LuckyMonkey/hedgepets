@@ -16,6 +16,13 @@ A tiny Godot 4.7 (GL Compatibility, portrait 1080 × 1920) garden-creature lab. 
   rolls across him (rim leaves most; a tap shivers them all). Leaves are baked sprites
   (`assets/sprites/*.png` from `tools/bake_leaf_sprites.py`; real lobed ivy from `tools/make_ivy_sprites.py`), so 670
   rustling leaves run at the display's frame rate.
+- **Light and shadow** (Godot 2D lighting): every leaf sprite has a normal map (`tools/make_normal_maps.py`: a
+  gentle dome and pressed-in veins) and is drawn as a `CanvasTexture`; a warm `PointLight2D` ("Sun") from the upper
+  left over a slightly dimmed `CanvasModulate` shapes each leaf, and leaves glint as they turn. Each leaf on the body
+  drops a soft shadow on whatever lies beneath it.
+- **Realistic wind**: a breeze plus gusts that roll across him left to right (`wind_at()`); leaves bend with it,
+  flutter on their stems, lift, and twist so their paler edge shows for a moment; deep leaves barely move. A strong
+  gust or a tap sends a small shiver through him.
 - **He is alive** (`scripts/pet_life.gd`): breathes (barely), blinks, follows your pointer with his eye and glances
   around when you're idle; every so often a gust goes through his leaves; tap him and he hops, his eye squeezes shut,
   his cheek flushes and a heart pops out. He himself does not sway - the leaves do.
