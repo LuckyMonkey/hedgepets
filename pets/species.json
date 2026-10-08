@@ -1,0 +1,898 @@
+[
+ {
+  "name": "Ember",
+  "species": "red fox",
+  "plan": "quadruped",
+  "plant": "maple",
+  "palette": "crimson",
+  "wants": {
+   "notice": {
+    "leaf_pile": 1
+   },
+   "visit": {
+    "maple_planted": 1
+   },
+   "resident": {
+    "maple_grown": 2,
+    "branches": 1
+   }
+  },
+  "hints": [
+   "A fox likes a leaf pile to pounce in.",
+   "A maple, for the colour.",
+   "Two maples and a branch to watch from."
+  ],
+  "skin": "c8642c",
+  "skin2": "f2e6d2",
+  "dark": "3a2620",
+  "ears": "pointy",
+  "snout": "long",
+  "tail": "bushy",
+  "tip": true,
+  "leg": 0.25,
+  "body": [
+   0.95,
+   0.9,
+   0.9
+  ],
+  "bloom": "b0502a"
+ },
+ {
+  "name": "Chip",
+  "species": "eastern chipmunk",
+  "plan": "sitter",
+  "plant": "oak",
+  "palette": "autumn",
+  "wants": {
+   "notice": {
+    "rocks": 2
+   },
+   "visit": {
+    "oak_planted": 1
+   },
+   "resident": {
+    "oak_flowering": 1,
+    "rocks": 3
+   }
+  },
+  "hints": [
+   "Chipmunks live under stone walls. Keep some rocks.",
+   "An oak sapling: future acorns.",
+   "Acorns, and rocks to stash them under."
+  ],
+  "size": 0.55,
+  "skin": "b07848",
+  "skin2": "f0dcc0",
+  "ears": "round",
+  "snout": "short",
+  "tail": "thin",
+  "tail_color": "8a5a34",
+  "extras": [
+   "stripes",
+   "hands"
+  ],
+  "dark": "3a2a1e",
+  "teeth": true,
+  "eyes": 1.15
+ },
+ {
+  "name": "Dapple",
+  "species": "white-tailed fawn",
+  "plan": "quadruped",
+  "plant": "fern",
+  "palette": "bark",
+  "wants": {
+   "notice": {
+    "fern_grown": 1
+   },
+   "visit": {
+    "fern_grown": 2
+   },
+   "resident": {
+    "fern_flowering": 1,
+    "clover_grown": 2
+   }
+  },
+  "hints": [
+   "A fawn hides in tall ferns.",
+   "More ferns. She's shy.",
+   "Ferns to hide in and clover to nibble."
+  ],
+  "skin": "b07848",
+  "skin2": "f2e6d2",
+  "dark": "3a2a1e",
+  "ears": "pointy",
+  "snout": "long",
+  "tail": "cotton",
+  "leg": 0.55,
+  "body": [
+   0.85,
+   0.85,
+   0.8
+  ],
+  "flowering": 0.85,
+  "bloom": "f6f0e0",
+  "eyes": 1.15
+ },
+ {
+  "name": "Barley",
+  "species": "black bear cub",
+  "plan": "sitter",
+  "plant": "boxwood",
+  "palette": "dark",
+  "wants": {
+   "notice": {
+    "grill": 1
+   },
+   "visit": {
+    "rose_planted": 1
+   },
+   "resident": {
+    "rose_flowering": 1,
+    "grill": 1,
+    "tire": 1
+   }
+  },
+  "hints": [
+   "A bear cub can smell that grill from the woods.",
+   "Rose hips. Bears love them.",
+   "Roses in bloom, the grill to sniff, a tire to sit in."
+  ],
+  "size": 1.1,
+  "skin": "2e2a26",
+  "skin2": "b89a78",
+  "dark": "221e1a",
+  "ears": "round",
+  "snout": "short",
+  "tail": "short",
+  "extras": [
+   "hands"
+  ],
+  "eyes": 1.05
+ },
+ {
+  "name": "Pepper",
+  "species": "striped skunk",
+  "plan": "quadruped",
+  "plant": "boxwood",
+  "palette": "dark",
+  "wants": {
+   "notice": {
+    "tire": 1
+   },
+   "visit": {
+    "cleared": 3
+   },
+   "resident": {
+    "tire": 1,
+    "leaf_pile": 1
+   }
+  },
+  "hints": [
+   "Skunks den in old tires. Don't move it.",
+   "A bit of tidying, but not too much.",
+   "The tire and a leaf pile. She's polite, honestly."
+  ],
+  "size": 0.8,
+  "skin": "24221e",
+  "skin2": "2e2a26",
+  "dark": "1a1816",
+  "ears": "nubs",
+  "snout": "long",
+  "tail": "bushy",
+  "tip": true,
+  "extras": [
+   "blaze"
+  ],
+  "leg": 0.05,
+  "bloom": "f6f6ee",
+  "flowering": 0.1
+ },
+ {
+  "name": "Tater",
+  "species": "opossum",
+  "plan": "quadruped",
+  "plant": "sage",
+  "palette": "silver",
+  "wants": {
+   "notice": {
+    "pot": 1
+   },
+   "visit": {
+    "sage_planted": 1
+   },
+   "resident": {
+    "pot": 1,
+    "sage_grown": 1,
+    "leaf_pile": 1
+   }
+  },
+  "hints": [
+   "Opossums nap in tipped pots.",
+   "Sage. He rolls in it.",
+   "His pot, his sage, a leaf pile. He eats the ticks, too."
+  ],
+  "size": 0.85,
+  "skin": "eeeae0",
+  "skin2": "f2eee6",
+  "dark": "2a2624",
+  "ear_color": "2a2624",
+  "ears": "round",
+  "snout": "long",
+  "tail": "thin",
+  "tail_color": "e8b4ac",
+  "leg": 0.12,
+  "eyes": 1.1
+ },
+ {
+  "name": "Burrow",
+  "species": "woodchuck",
+  "plan": "sitter",
+  "plant": "clover",
+  "palette": "bark",
+  "wants": {
+   "notice": {
+    "clover_grown": 1
+   },
+   "visit": {
+    "cleared": 4
+   },
+   "resident": {
+    "clover_flowering": 2,
+    "cleared": 6
+   }
+  },
+  "hints": [
+   "A woodchuck noticed your clover.",
+   "Room to dig. Clear some junk.",
+   "Lots of clover and lots of room. He'll stay till spring."
+  ],
+  "size": 1.0,
+  "skin": "8a6a48",
+  "skin2": "c8b090",
+  "dark": "3a2a1e",
+  "ears": "nubs",
+  "snout": "short",
+  "tail": "short",
+  "teeth": true,
+  "mouth": "beaver",
+  "extras": [
+   "hands"
+  ],
+  "body": [
+   1.15,
+   0.95,
+   1.1
+  ]
+ },
+ {
+  "name": "Quill",
+  "species": "porcupine",
+  "plan": "round",
+  "plant": "pine",
+  "palette": "pine",
+  "wants": {
+   "notice": {
+    "pine_planted": 1
+   },
+   "visit": {
+    "pine_grown": 1
+   },
+   "resident": {
+    "pine_flowering": 1,
+    "branches": 1
+   }
+  },
+  "hints": [
+   "A porcupine likes the smell of new pine.",
+   "A grown pine to climb.",
+   "A pine with cones and a branch to perch on."
+  ],
+  "size": 0.9,
+  "skin": "4a3a2e",
+  "skin2": "6a5a48",
+  "dark": "2a2018",
+  "ears": "nubs",
+  "snout": "short",
+  "tail": "short",
+  "eyes": 1.1
+ },
+ {
+  "name": "Ripple",
+  "species": "river otter",
+  "plan": "quadruped",
+  "plant": "willow",
+  "palette": "bark",
+  "wants": {
+   "notice": {
+    "puddle": 1
+   },
+   "visit": {
+    "rocks": 3
+   },
+   "resident": {
+    "puddle": 1,
+    "willow_flowering": 1
+   }
+  },
+  "hints": [
+   "Otters follow water.",
+   "Rocks to slide off.",
+   "A willow by the water. Perfect."
+  ],
+  "size": 0.85,
+  "skin": "6a4a34",
+  "skin2": "d8c0a0",
+  "ears": "nubs",
+  "snout": "short",
+  "tail": "taper",
+  "body": [
+   1.3,
+   0.8,
+   0.8
+  ],
+  "leg": 0.05
+ },
+ {
+  "name": "Bobbin",
+  "species": "bobcat",
+  "plan": "quadruped",
+  "plant": "oak",
+  "palette": "autumn",
+  "wants": {
+   "notice": {
+    "lawn_chair": 1
+   },
+   "visit": {
+    "branches": 2
+   },
+   "resident": {
+    "lawn_chair": 1,
+    "oak_grown": 2
+   }
+  },
+  "hints": [
+   "A bobcat would nap under that chair.",
+   "Branches to stalk along.",
+   "Two oaks and her chair. She'll pretend she doesn't care."
+  ],
+  "skin": "c08a58",
+  "skin2": "f0e0c8",
+  "dark": "3a2a1e",
+  "ears": "tufts",
+  "snout": "short",
+  "tail": "short",
+  "tail_color": "3a2a1e",
+  "leg": 0.28,
+  "eyes": 1.15
+ },
+ {
+  "name": "Peeper",
+  "species": "spring peeper",
+  "plan": "round",
+  "plant": "clover",
+  "palette": "spring",
+  "wants": {
+   "notice": {
+    "puddle": 1
+   },
+   "visit": {
+    "clover_planted": 1
+   },
+   "resident": {
+    "puddle": 1,
+    "clover_grown": 1,
+    "rocks": 2
+   }
+  },
+  "hints": [
+   "Something is peeping by the puddle at dusk.",
+   "Low clover to hide in.",
+   "The puddle, clover, a couple of stones."
+  ],
+  "size": 0.55,
+  "skin": "b89a5a",
+  "skin2": "e8d8a8",
+  "ears": "none",
+  "snout": "none",
+  "tail": "none",
+  "eye_dir": [
+   0.4,
+   0.7,
+   0.6
+  ],
+  "eyes": 1.6,
+  "head": 1.25
+ },
+ {
+  "name": "Cinder",
+  "species": "red eft",
+  "plan": "long",
+  "plant": "maple",
+  "palette": "crimson",
+  "wants": {
+   "notice": {
+    "leaf_pile": 1
+   },
+   "visit": {
+    "puddle": 1
+   },
+   "resident": {
+    "leaf_pile": 1,
+    "puddle": 1,
+    "maple_grown": 1
+   }
+  },
+  "hints": [
+   "A red eft wanders out of the leaves after rain.",
+   "Damp ground: the puddle.",
+   "Leaves, water, and a maple to match."
+  ],
+  "size": 0.6,
+  "skin": "e0642a",
+  "dark": "b04a20",
+  "ears": "none",
+  "snout": "none",
+  "tail": "none",
+  "taper": false,
+  "segments": 5,
+  "eyes": 1.3
+ },
+ {
+  "name": "Ribbon",
+  "species": "garter snake",
+  "plan": "long",
+  "plant": "ivy",
+  "palette": "spring",
+  "wants": {
+   "notice": {
+    "rocks": 4
+   },
+   "visit": {
+    "ivy_planted": 1
+   },
+   "resident": {
+    "rocks": 3,
+    "ivy_grown": 2
+   }
+  },
+  "hints": [
+   "Garter snakes bask on warm rocks.",
+   "Ivy to slither through.",
+   "Rocks to bask on and ivy to hide in. Harmless, and handy."
+  ],
+  "size": 0.75,
+  "skin": "4a6a3a",
+  "ears": "none",
+  "snout": "none",
+  "tail": "none",
+  "segments": 7,
+  "eyes": 1.2
+ },
+ {
+  "name": "Gobbles",
+  "species": "wild turkey",
+  "plan": "bird",
+  "plant": "oak",
+  "palette": "bark",
+  "wants": {
+   "notice": {
+    "cleared": 5
+   },
+   "visit": {
+    "oak_grown": 1
+   },
+   "resident": {
+    "oak_flowering": 1,
+    "cleared": 8
+   }
+  },
+  "hints": [
+   "Turkeys wander through open ground. Clear some.",
+   "A grown oak.",
+   "Acorns and a wide clear lawn to strut on."
+  ],
+  "size": 1.3,
+  "skin": "c8786a",
+  "beak": "d8b070",
+  "ears": "none",
+  "snout": "beak",
+  "tail": "fan",
+  "extras": [
+   "wattle"
+  ],
+  "leg": 0.35,
+  "neck": 0.15,
+  "head": 0.85,
+  "fan": 2.2
+ },
+ {
+  "name": "Dee",
+  "species": "black-capped chickadee",
+  "plan": "bird",
+  "plant": "boxwood",
+  "palette": "snow",
+  "wants": {
+   "notice": {
+    "pine_planted": 1
+   },
+   "visit": {
+    "sticks": 3
+   },
+   "resident": {
+    "pine_grown": 1,
+    "boxwood_grown": 1
+   }
+  },
+  "hints": [
+   "Chick-a-dee-dee-dee! A pine seedling caught her eye.",
+   "Twigs for a nest.",
+   "A pine and a boxwood to dart between."
+  ],
+  "size": 0.55,
+  "skin": "f2eee4",
+  "beak": "2a2624",
+  "ears": "none",
+  "snout": "beak",
+  "tail": "fan",
+  "extras": [
+   "cap",
+   "bib"
+  ],
+  "dark": "1e1c1a",
+  "eyes": 1.2,
+  "head": 1.15
+ },
+ {
+  "name": "Ruby",
+  "species": "northern cardinal",
+  "plan": "bird",
+  "plant": "maple",
+  "palette": "crimson",
+  "wants": {
+   "notice": {
+    "rose_planted": 1
+   },
+   "visit": {
+    "maple_planted": 1
+   },
+   "resident": {
+    "maple_grown": 1,
+    "rose_grown": 1
+   }
+  },
+  "hints": [
+   "A flash of red near the roses.",
+   "A maple.",
+   "A maple to sing from and roses below."
+  ],
+  "size": 0.6,
+  "skin": "c83a2a",
+  "beak": "e88a30",
+  "ears": "none",
+  "snout": "beak",
+  "tail": "fan",
+  "extras": [
+   "crest",
+   "eyepatch"
+  ],
+  "dark": "2a1e1c",
+  "eyes": 1.15,
+  "head": 1.1
+ },
+ {
+  "name": "Jay",
+  "species": "blue jay",
+  "plan": "bird",
+  "plant": "oak",
+  "palette": "blue",
+  "wants": {
+   "notice": {
+    "oak_planted": 1
+   },
+   "visit": {
+    "sticks": 4
+   },
+   "resident": {
+    "oak_flowering": 1,
+    "has_chipmunk": 1
+   }
+  },
+  "hints": [
+   "A loud jay is shouting about your oak.",
+   "Sticks for a big messy nest.",
+   "Acorns, and the chipmunk to argue with."
+  ],
+  "size": 0.7,
+  "skin": "6a8ab8",
+  "beak": "2a2624",
+  "ears": "none",
+  "snout": "beak",
+  "tail": "fan",
+  "extras": [
+   "crest",
+   "bib"
+  ],
+  "dark": "2a2a2e",
+  "eyes": 1.15,
+  "head": 1.05
+ },
+ {
+  "name": "Robin",
+  "species": "American robin",
+  "plan": "bird",
+  "plant": "fern",
+  "palette": "bark",
+  "wants": {
+   "notice": {
+    "cleared": 2
+   },
+   "visit": {
+    "puddle": 1
+   },
+   "resident": {
+    "puddle": 1,
+    "cleared": 5,
+    "fern_grown": 1
+   }
+  },
+  "hints": [
+   "Robins hunt worms on open lawn.",
+   "A puddle to bathe in.",
+   "Open lawn, a bath, and a fern for the nest."
+  ],
+  "size": 0.65,
+  "skin": "5a5048",
+  "beak": "e8b030",
+  "ears": "none",
+  "snout": "beak",
+  "tail": "fan",
+  "extras": [
+   "belly"
+  ],
+  "skin2": "d8743a",
+  "eyes": 1.1
+ },
+ {
+  "name": "Waddle",
+  "species": "mallard",
+  "plan": "bird",
+  "plant": "willow",
+  "palette": "spring",
+  "wants": {
+   "notice": {
+    "puddle": 1
+   },
+   "visit": {
+    "willow_planted": 1
+   },
+   "resident": {
+    "puddle": 1,
+    "willow_grown": 1,
+    "has_spring peeper": 1
+   }
+  },
+  "hints": [
+   "Ducks land where there's water.",
+   "A willow by the puddle.",
+   "The puddle, a willow, and a peeper for company."
+  ],
+  "size": 0.85,
+  "skin": "2e6a4a",
+  "beak": "e8c040",
+  "ears": "none",
+  "snout": "bill",
+  "tail": "short",
+  "tail_color": "2a2a2a",
+  "extras": [
+   "ring"
+  ],
+  "skin2": "f2f0e6",
+  "eyes": 1.0
+ },
+ {
+  "name": "Hoot",
+  "species": "barred owl",
+  "plan": "bird",
+  "plant": "oak",
+  "palette": "bark",
+  "wants": {
+   "notice": {
+    "branches": 1
+   },
+   "visit": {
+    "oak_grown": 1
+   },
+   "resident": {
+    "oak_grown": 2,
+    "pine_grown": 1
+   }
+  },
+  "hints": [
+   "Who cooks for you? Something on that branch.",
+   "A grown oak to roost in.",
+   "Tall trees: two oaks and a pine."
+  ],
+  "size": 0.95,
+  "skin": "b8a488",
+  "beak": "e0c060",
+  "ears": "none",
+  "snout": "beak",
+  "tail": "short",
+  "extras": [
+   "facedisc"
+  ],
+  "skin2": "e8dcc6",
+  "eyes": 1.45,
+  "head": 1.25
+ },
+ {
+  "name": "Dusk",
+  "species": "little brown bat",
+  "plan": "sitter",
+  "plant": "lavender",
+  "palette": "lavender",
+  "wants": {
+   "notice": {
+    "lawn_chair": 1
+   },
+   "visit": {
+    "lavender_planted": 1
+   },
+   "resident": {
+    "lavender_flowering": 1,
+    "lawn_chair": 1
+   }
+  },
+  "hints": [
+   "Something hangs under the lawn chair at dusk.",
+   "Lavender: it brings the moths.",
+   "Lavender in bloom and the chair to hang under."
+  ],
+  "size": 0.5,
+  "skin": "6a4a34",
+  "skin2": "8a6a50",
+  "ears": "biground",
+  "snout": "short",
+  "tail": "none",
+  "extras": [
+   "wings"
+  ],
+  "eyes": 1.2
+ },
+ {
+  "name": "Stardust",
+  "species": "star-nosed mole",
+  "plan": "round",
+  "plant": "boxwood",
+  "palette": "dark",
+  "wants": {
+   "notice": {
+    "leaf_pile": 1
+   },
+   "visit": {
+    "puddle": 1
+   },
+   "resident": {
+    "puddle": 1,
+    "cleared": 4
+   }
+  },
+  "hints": [
+   "Little tunnels under the leaf pile...",
+   "Soft wet ground.",
+   "Water and room to dig."
+  ],
+  "size": 0.6,
+  "skin": "2a2622",
+  "ears": "none",
+  "snout": "star",
+  "tail": "thin",
+  "tail_color": "2a2622",
+  "eyes": 0.6
+ },
+ {
+  "name": "Flurry",
+  "species": "snowshoe hare",
+  "plan": "sitter",
+  "plant": "boxwood",
+  "palette": "snow",
+  "wants": {
+   "notice": {
+    "clover_planted": 1
+   },
+   "visit": {
+    "clover_grown": 2
+   },
+   "resident": {
+    "clover_flowering": 1,
+    "boxwood_grown": 1
+   }
+  },
+  "hints": [
+   "Big feet at the gap in the fence.",
+   "Clover, lots.",
+   "Clover in flower and a boxwood to hide behind."
+  ],
+  "size": 0.85,
+  "skin": "f2f0e8",
+  "skin2": "f6f4ee",
+  "ears": "long",
+  "snout": "short",
+  "tail": "cotton",
+  "teeth": true,
+  "mouth": "bunny",
+  "eyes": 1.15,
+  "ear_color": "eae6dc"
+ },
+ {
+  "name": "Thimble",
+  "species": "deer mouse",
+  "plan": "sitter",
+  "plant": "clover",
+  "palette": "spring",
+  "wants": {
+   "notice": {
+    "pot": 1
+   },
+   "visit": {
+    "clover_planted": 1
+   },
+   "resident": {
+    "pot": 1,
+    "clover_flowering": 1
+   }
+  },
+  "hints": [
+   "A tiny nose in the tipped pot.",
+   "Clover seeds.",
+   "Her pot and clover in flower."
+  ],
+  "size": 0.42,
+  "skin": "a8825e",
+  "skin2": "f2e6da",
+  "ears": "mouse",
+  "snout": "short",
+  "tail": "thin",
+  "tail_color": "e8b4ac",
+  "extras": [
+   "hands"
+  ],
+  "eyes": 1.3
+ },
+ {
+  "name": "Monarch",
+  "species": "monarch caterpillar",
+  "plan": "long",
+  "plant": "jasmine",
+  "palette": "golden",
+  "wants": {
+   "notice": {
+    "jasmine_planted": 1
+   },
+   "visit": {
+    "jasmine_grown": 1
+   },
+   "resident": {
+    "jasmine_flowering": 2
+   }
+  },
+  "hints": [
+   "A stripy someone is looking for flowers.",
+   "Leaves to munch.",
+   "Lots of flowers. Something wonderful might happen."
+  ],
+  "size": 0.55,
+  "skin": "2a2a2a",
+  "dark": "1e1e1e",
+  "ears": "none",
+  "snout": "none",
+  "tail": "none",
+  "taper": false,
+  "segments": 6,
+  "extras": [
+   "antennae"
+  ],
+  "eyes": 1.2
+ }
+]

@@ -8,4 +8,5 @@ func _init() -> void:
 		var path := "res://pets/%s.tres" % p.pet_name.to_lower()
 		var err := ResourceSaver.save(p, path)
 		print(("saved " if err == OK else "FAILED ") + path)
+	print("species.json: %d more (built at load time by SpeciesBuilder)" % SpeciesBuilder.load_all().size())
 	quit()

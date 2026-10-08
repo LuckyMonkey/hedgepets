@@ -4,7 +4,7 @@ extends Node3D
 ## Drag to turn (turntable, momentum), drag up/down to tilt, wheel to zoom, tap for a hop; ‹ › or arrow keys switch
 ## pets. Developer view: F1 (scripts/art/art_debug.gd). The garden is res://garden.tscn.
 
-const PETS := ["res://pets/gerald.tres", "res://pets/clover.tres", "res://pets/juniper.tres", "res://pets/bramble.tres", "res://pets/spruce.tres", "res://pets/hazel.tres", "res://pets/rascal.tres"]
+var PETS: Array = []          # every CharacterArtProfile (CharacterArtProfile.roster())
 
 var pet_index := 0
 var pet_node: HedgePetNode
@@ -38,6 +38,7 @@ var leaves_mat: ShaderMaterial:
 
 
 func _ready() -> void:
+	PETS = CharacterArtProfile.roster()
 	_build_world()
 	_build_ui()
 	_load_pet(0)
@@ -45,8 +46,7 @@ func _ready() -> void:
 
 func _load_pet(index: int) -> void:
 	pet_index = posmod(index, PETS.size())
-	var path: String = PETS[pet_index]
-	var p: CharacterArtProfile = load(path) as CharacterArtProfile if ResourceLoader.exists(path) else CharacterArtProfile.gerald()
+	var p: CharacterArtProfile = PETS[pet_index]
 	if pet_node == null:
 		pet_node = HedgePetNode.new()
 		pet_node.name = "HedgePet"

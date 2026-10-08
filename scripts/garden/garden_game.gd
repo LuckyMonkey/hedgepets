@@ -19,6 +19,11 @@ const SEEDS := {
 	"sage": {"icon": "🪴", "price": 4, "sheet": "hedgesage"},
 	"oak": {"icon": "🌰", "price": 6, "sheet": "hedgeoak"},
 	"pine": {"icon": "🌲", "price": 8, "sheet": "hedgepine"},
+	"maple": {"icon": "🍁", "price": 7, "sheet": "hedgemaple"},
+	"boxwood": {"icon": "🌳", "price": 5, "sheet": "hedgeboxwood"},
+	"willow": {"icon": "🎋", "price": 6, "sheet": "hedgewillow"},
+	"rose": {"icon": "🌹", "price": 6, "sheet": "hedgerose"},
+	"lavender": {"icon": "🪻", "price": 5, "sheet": "hedgelavender"},
 }
 const STAGE_SECONDS := 18.0        # watered growth time per stage
 const WATER_SECONDS := 40.0        # how long one watering lasts
@@ -41,7 +46,7 @@ var _coin_label: Label
 var _toast: Label
 var _toast_t := 0.0
 var _tool_buttons := {}
-var _seed_row: HBoxContainer
+var _seed_row: GridContainer
 var _journal: PanelContainer
 var _journal_text: RichTextLabel
 
@@ -49,12 +54,12 @@ var _journal_text: RichTextLabel
 func setup(g: Node3D) -> void:
 	garden = g
 	_build_ui()
-	for node in garden.pets:
-		var p: CharacterArtProfile = node.profile
+	for p: CharacterArtProfile in garden.roster:
 		pet_state[p.pet_name] = "resident" if p.starts_resident else "away"
 	_load()
-	for node in garden.pets:
-		_apply_mode(node, true)
+	for p: CharacterArtProfile in garden.roster:
+		if pet_state[p.pet_name] != "away":
+			_apply_mode(garden.node_for(p), true)
 	_refresh()
 	toast("Tidy the garden, plant things, and see who comes by.")
 
@@ -65,6 +70,9 @@ func garden_counts() -> Dictionary:
 		"rocks": garden.count("rock"), "leaf_pile": garden.count("leaf_pile"), "lawn_chair": garden.count("lawn_chair"),
 		"grill": garden.count("grill"), "tire": garden.count("tire"), "pot": garden.count("pot"),
 		"cleared": cleared}
+	for p: CharacterArtProfile in garden.roster:
+		if pet_state.get(p.pet_name, "") == "resident":
+			c["has_" + p.species] = int(c.get("has_" + p.species, 0)) + 1
 	for sp in SEEDS:
 		c[sp + "_planted"] = 0
 		c[sp + "_grown"] = 0
@@ -96,8 +104,9 @@ func _process(delta: float) -> void:
 	if _income <= 0.0:
 		_income = INCOME_SECONDS
 		var happy := 0
-		for node in garden.pets:
-			if pet_state[node.profile.pet_name] == "resident" and _met(node.profile.wants["resident"], garden_counts()):
+		var counts := garden_counts()
+		for p: CharacterArtProfile in garden.roster:
+			if pet_state[p.pet_name] == "resident" and _met(p.wants["resident"], counts):
 				happy += 1
 		if happy > 0:
 			coins += 2 * happy
@@ -112,16 +121,29 @@ func _process(delta: float) -> void:
 		_toast.modulate.a = clampf(_toast_t, 0.0, 1.0)
 
 
+const MAX_GUESTS := 3              # peeking + visiting at once: a garden is visited, not mobbed
+const NOTICE_GAP := 14.0           # seconds between new faces at the fence
+var _notice_wait := 4.0
+
+
 func _visitors() -> void:
 	var counts := garden_counts()
-	for node in garden.pets:
-		var p: CharacterArtProfile = node.profile
+	_notice_wait -= 1.0
+	var guests := 0
+	for k in pet_state:
+		if pet_state[k] == "noticed" or pet_state[k] == "visiting":
+			guests += 1
+	var order: Array = garden.roster.duplicate()
+	order.shuffle()
+	for p: CharacterArtProfile in order:
 		var name := p.pet_name
 		var state: String = pet_state[name]
 		var next := state
 		match state:
 			"away":
-				if _met(p.wants["notice"], counts):
+				if guests < MAX_GUESTS and _notice_wait <= 0.0 and _met(p.wants["notice"], counts):
+					guests += 1
+					_notice_wait = NOTICE_GAP
 					next = "noticed"
 					toast("Someone's peeking through the gap in the fence…")
 			"noticed":
@@ -143,7 +165,7 @@ func _visitors() -> void:
 		if next != state:
 			_since[name] = 0.0
 			pet_state[name] = next
-			_apply_mode(node)
+			_apply_mode(garden.node_for(p))
 			_refresh()
 
 
@@ -153,7 +175,7 @@ func _apply_mode(node: HedgePetNode, at_once := false) -> void:
 	if garden.pet_mode(node) == "roam" and mode == "away" and not at_once:
 		mode = "leave"
 	if garden.pet_mode(node) != mode:
-		garden.set_pet_mode(node, mode)
+		garden.set_pet_mode(node, mode, at_once)
 
 
 func _grow(delta: float) -> void:
@@ -376,16 +398,31 @@ func _refresh() -> void:
 func _fill_journal() -> void:
 	var lines := "[b]Journal[/b]\n\n"
 	var counts := garden_counts()
-	for node in garden.pets:
-		var p: CharacterArtProfile = node.profile
+	var unseen: Array = []
+	for p: CharacterArtProfile in garden.roster:
 		var state: String = pet_state[p.pet_name]
+		if state == "away":
+			unseen.append(p)
+			continue
 		var label: String = {"away": "not seen yet", "noticed": "peeking in", "visiting": "visiting", "resident": "lives here"}[state]
 		var step: String = {"away": "notice", "noticed": "visit", "visiting": "resident", "resident": "resident"}[state]
 		var hint: String = p.hints[step] if state != "away" or cleared > 0 else "???"
 		if state == "away" and not _met(p.wants["notice"], counts):
 			hint = p.hints["notice"]
 		lines += "[b]%s[/b] the %s - %s\n%s\n\n" % [p.pet_name, p.species, label, hint]
+	# rumours: a few of the ones you haven't met, the nearest to noticing first
+	lines += "[b]Around the neighbourhood[/b] (%d not seen yet)\n\n" % unseen.size()
+	unseen.sort_custom(func(a, b) -> bool: return _missing(a.wants["notice"], counts) < _missing(b.wants["notice"], counts))
+	for p: CharacterArtProfile in unseen.slice(0, 4):
+		lines += "%s %s\n\n" % ["🐾", p.hints["notice"]]
 	_journal_text.text = lines
+
+
+func _missing(wants: Dictionary, counts: Dictionary) -> int:
+	var n := 0
+	for k in wants:
+		n += maxi(0, int(wants[k]) - int(counts.get(k, 0)))
+	return n
 
 
 func _button(text: String, tip: String, size := 64) -> Button:
@@ -450,9 +487,11 @@ func _build_ui() -> void:
 			_refresh())
 		bar.add_child(b)
 		_tool_buttons[key] = b
-	_seed_row = HBoxContainer.new()
-	_seed_row.position = Vector2(64, 1650)
-	_seed_row.add_theme_constant_override("separation", 8)
+	_seed_row = GridContainer.new()
+	_seed_row.columns = 6
+	_seed_row.position = Vector2(84, 1560)
+	_seed_row.add_theme_constant_override("h_separation", 8)
+	_seed_row.add_theme_constant_override("v_separation", 6)
 	for sp in SEEDS:
 		var b := _button("%s%d" % [SEEDS[sp]["icon"], SEEDS[sp]["price"]], "%s seeds" % sp, 32)
 		b.name = sp

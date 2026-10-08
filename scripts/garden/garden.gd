@@ -6,7 +6,6 @@ extends Node3D
 ## Art: scripts/garden/garden_props.gd (things), the pets' own renderer (scripts/pet/hedge_pet_node.gd), the same
 ## foliage system for the hedge and trees (scripts/art/foliage_builder.gd).
 
-const PETS := ["res://pets/gerald.tres", "res://pets/clover.tres", "res://pets/juniper.tres", "res://pets/bramble.tres", "res://pets/spruce.tres", "res://pets/hazel.tres", "res://pets/rascal.tres"]
 const BOUNDS := Rect2(-12.0, -8.5, 24.0, 17.0)    # x, z where pets may walk
 const PET_SCALE := 0.62
 const PAPER := Color(0.968627, 0.945098, 0.890196)
@@ -21,6 +20,8 @@ var _distance := 12.5
 var _press_at := Vector2.INF
 var _dragged := false
 var _rng := RandomNumberGenerator.new()
+var roster: Array = []                            # every CharacterArtProfile; pets holds the ones built so far
+var _nodes := {}                                  # pet name -> HedgePetNode
 var _wander := {}                                 # pet -> {target, wait, mode}
 var game: Node                                    # scripts/garden/garden_game.gd
 const GAP := Vector3(2.5, 0.0, -11.0)             # the collapsed bit of fence where visitors come through
@@ -368,23 +369,31 @@ func _blocked(p: Vector2, margin: float) -> bool:
 
 # ------------------------------------------------------------------ pets
 func _spawn_pets() -> void:
-	var spots := [Vector3(1.0, 0, 0.5), Vector3(-3.5, 0, 5.0), Vector3(-6.5, 0, -1.0), Vector3(7.0, 0, 1.5), Vector3(-1.0, 0, -6.0), Vector3(4.5, 0, 5.5), Vector3(-8.0, 0, 4.0)]
-	for i in range(PETS.size()):
-		var node := HedgePetNode.new()
-		node.name = "Pet%d" % i
-		add_child(node)
-		node.setup(load(PETS[i]) as CharacterArtProfile)
-		node.scale = Vector3.ONE * PET_SCALE
-		node.position = spots[i]
-		node.rotation.y = _rng.randf_range(-PI, PI)
-		node.set_detail("MEDIUM")
-		pets.append(node)
-		_wander[node] = {"target": spots[i], "wait": _rng.randf_range(0.5, 3.0), "mode": "roam"}
+	roster = CharacterArtProfile.roster()
+
+
+## A pet's node, built the first time it comes by (a garden of thirty pets only pays for the ones in it).
+func node_for(p: CharacterArtProfile) -> HedgePetNode:
+	if _nodes.has(p.pet_name):
+		return _nodes[p.pet_name]
+	var node := HedgePetNode.new()
+	node.name = "Pet_" + p.pet_name
+	add_child(node)
+	node.setup(p)
+	node.scale = Vector3.ONE * PET_SCALE
+	node.rotation.y = _rng.randf_range(-PI, PI)
+	node.set_detail("MEDIUM")
+	node.visible = false
+	node.position = GAP + Vector3(0, 0, -6)
+	pets.append(node)
+	_nodes[p.pet_name] = node
+	_wander[node] = {"target": node.position, "wait": _rng.randf_range(0.5, 3.0), "mode": "away"}
+	return node
 
 
 ## How a pet is in the garden: "away" (out of sight), "peek" (at the fence gap, looking in), "roam" (wandering),
 ## "leave" (walking back out through the gap).
-func set_pet_mode(node: HedgePetNode, mode: String) -> void:
+func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 	var w: Dictionary = _wander[node]
 	var was: String = w["mode"]
 	w["mode"] = mode
@@ -401,6 +410,12 @@ func set_pet_mode(node: HedgePetNode, mode: String) -> void:
 			node.visible = true
 			if was == "away":
 				node.position = GAP + Vector3(0, 0, 1.5)
+				if at_once:                              # already living here when the garden opens
+					for k in range(20):
+						var spot := Vector2(_rng.randf_range(-3, 3), _rng.randf_range(-2, 3))
+						if not _blocked(spot, 0.8):
+							node.position = Vector3(spot.x, 0, spot.y)
+							break
 			w["target"] = GAP + Vector3(_rng.randf_range(-1.0, 1.0), 0, 2.5)
 			w["wait"] = 0.5
 		"leave":
@@ -502,6 +517,8 @@ func _tap(at: Vector2) -> void:
 	var best: HedgePetNode = null
 	var best_d := 90.0
 	for node in pets:
+		if not node.visible:
+			continue
 		var d := camera.unproject_position(node.global_position + Vector3(0, 0.6, 0)).distance_to(at)
 		if d < best_d:
 			best_d = d

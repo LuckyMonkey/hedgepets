@@ -5,6 +5,11 @@ x -0.6..0.6, y -0.05..1.15, stalk at y = 0; see make_ivy_sprites.py):
     hedgeoak    lobed oak leaves; cell 13 an acorn          (Hazel the squirrel)
     hedgepine   needle sprays;    cell 13 a little cone      (Spruce the moose)
     hedgesage   soft felted ovals; cell 13 a sprig of bloom  (Rascal the raccoon)
+    hedgemaple  pointed five-lobed leaves; cell 13 winged seeds
+    hedgeboxwood little oval leaves in threes; cell 13 a tiny floret cluster
+    hedgewillow long narrow leaves in fans; cell 13 a fuzzy catkin
+    hedgerose   serrated leaflets; cell 13 a rose
+    hedgelavender grey needles; cell 13 a spike of florets
 
 Cells 0-7 leaves, 8-11 stems, 12/14/15 buds and berries. The fill is white (tinted by the pet's palette; the
 cell-13 bloom by profile.flower_color).
@@ -89,6 +94,68 @@ def pine_spray(size, lean, rng):
     return polys, [rot(p) for p in twig + tipcap]
 
 
+def rot_fn(lean):
+    a = math.radians(lean)
+    return lambda p: (p[0] * math.cos(a) + p[1] * math.sin(a), -p[0] * math.sin(a) + p[1] * math.cos(a))
+
+
+def maple_leaf(size, lean, rng):
+    rot = rot_fn(lean)
+    lobes = [(0.0, 0.55), (52.0, 0.45), (-52.0, 0.45), (108.0, 0.22), (-108.0, 0.22)]
+    pts = []
+    for i in range(240):
+        th = -math.pi + math.tau * i / 240.0
+        bump = 0.0
+        for at, h in lobes:
+            d = abs((th - math.radians(at) + math.pi) % math.tau - math.pi)
+            bump = max(bump, h * math.exp(-d / 0.17))
+        r = 0.5 * size * (0.42 + bump) * (1.0 + 0.05 * math.sin(th * 23))
+        r *= 1.0 - 0.4 * math.exp(-((abs(th) - math.pi) / 0.3) ** 2)
+        pts.append((math.sin(th) * r, math.cos(th) * r))
+    low = min(y for _, y in pts)
+    pts = [(x, y - low + 0.02) for x, y in pts]
+    c = (0.0, -low + 0.02)
+    veins = [[(0, 0.0), c, (c[0] + math.sin(math.radians(a)) * size * (0.21 + h * 0.5), c[1] + math.cos(math.radians(a)) * size * (0.21 + h * 0.5))] for a, h in lobes]
+    return [rot(p) for p in pts], [[rot(p) for p in v] for v in veins]
+
+
+def oval(cx, cy, w, h, ang, n=28):
+    a = math.radians(ang)
+    out = []
+    for i in range(n):
+        t = i / n * math.tau
+        x, y = math.cos(t) * w, (math.sin(t) + 1.0) * h * 0.5 * (1.0 + 0.25 * math.sin(t))
+        out.append((cx + x * math.cos(a) + y * math.sin(a), cy - x * math.sin(a) + y * math.cos(a)))
+    return out
+
+
+def sprig(kind, size, lean, rng):
+    """Several small leaves on one twig: boxwood (ovals in threes), willow (a fan of long blades), rose (serrated
+    leaflets in pairs), lavender (grey needles). Returns (polygons, twig and vein lines)."""
+    rot = rot_fn(lean)
+    polys, lines = [], []
+    if kind == 'boxwood':
+        lines.append([(0, 0), (0, 0.9 * size)])
+        for k, (y, ang) in enumerate([(0.25, 55), (0.42, -55), (0.6, 50), (0.75, -45), (0.88, 0)]):
+            polys.append(oval(0, y * size, 0.11 * size, 0.3 * size, ang if k < 4 else 0))
+    elif kind == 'willow':
+        for k in range(rng.randint(3, 4)):
+            ang = -30 + 20 * k + rng.uniform(-6, 6)
+            polys.append(oval(0, 0.02, 0.06 * size, 1.0 * size, ang))
+            lines.append([(0, 0.02), (math.sin(math.radians(ang)) * 0.9 * size, 0.02 + math.cos(math.radians(ang)) * 0.9 * size)])
+    elif kind == 'rose':
+        lines.append([(0, 0), (0, 0.95 * size)])
+        for y, ang in [(0.3, 62), (0.3, -62), (0.58, 55), (0.58, -55), (0.82, 0)]:
+            o = oval(0, y * size, 0.13 * size, 0.36 * size, ang, 40)
+            o = [(x + 0.012 * math.sin(i * 2.3), yy) for i, (x, yy) in enumerate(o)]   # serrated
+            polys.append(o)
+    else:  # lavender
+        for k in range(rng.randint(5, 7)):
+            ang = rng.uniform(-35, 35)
+            polys.append(oval(0, 0.02, 0.03 * size, rng.uniform(0.6, 1.0) * size, ang, 16))
+    return [[rot(p) for p in poly] for poly in polys], [[rot(p) for p in ln] for ln in lines]
+
+
 def bloom(kind):
     """Cell 13: an acorn, a cone, or a sprig of small florets. Returns polygons (fill) and lines (ink)."""
     if kind == 'oak':
@@ -107,6 +174,24 @@ def bloom(kind):
                 polys.append(sc)
                 lines.append(sc + [sc[0]])
         return polys, lines
+    if kind == 'maple':
+        polys = [oval(0.0, 0.3, 0.12, 0.62, a) for a in (38, -38)]
+        return polys, [p + [p[0]] for p in polys]
+    if kind == 'boxwood':
+        polys = [oval(math.cos(a) * 0.12, 0.55 + math.sin(a) * 0.1, 0.07, 0.14, 0) for a in [i * math.tau / 5 for i in range(5)]]
+        return polys, [p + [p[0]] for p in polys]
+    if kind == 'willow':
+        polys = [oval(0, 0.15, 0.1, 0.8, 8)]
+        return polys, [polys[0] + [polys[0][0]]]
+    if kind == 'rose':
+        polys, lines = [], []
+        for ring, (r, n) in enumerate([(0.3, 6), (0.21, 5), (0.12, 4)]):
+            for i in range(n):
+                a = i * math.tau / n + ring * 0.5
+                c = oval(math.cos(a) * r * 0.55, 0.45 + math.sin(a) * r * 0.55, r * 0.55, r * 0.9, math.degrees(a) - 90)
+                polys.append(c)
+                lines.append(c + [c[0]])
+        return polys, lines
     polys, lines = [], []
     lines.append([(0, 0.0), (0, 0.85)])
     for k in range(7):
@@ -120,7 +205,7 @@ def bloom(kind):
 
 
 def render(kind):
-    rng = random.Random({'oak': 31, 'pine': 41, 'sage': 51}[kind])
+    rng = random.Random(sum(map(ord, kind)))
     sheet = Image.new('RGBA', (CELL * 16, CELL * 2), (0, 0, 0, 0))
     w_ink = int(0.022 / SPAN * CELL * SS)
     w_vein = int(0.014 / SPAN * CELL * SS)
@@ -146,7 +231,14 @@ def render(kind):
         else:
             size = rng.uniform(0.85, 1.0)
             lean = rng.uniform(-12, 12)
-            if kind == 'pine':
+            if kind in ('boxwood', 'willow', 'rose', 'lavender'):
+                polys, vlines = sprig(kind, size, lean, rng)
+                for p in polys:
+                    fd.polygon([px(x, y) for x, y in p], fill=255)
+                    idr.line([px(x, y) for x, y in p + [p[0]]], fill=255, width=max(1, int(w_ink * 0.75)), joint='curve')
+                for v in vlines:
+                    idr.line([px(x, y) for x, y in v], fill=255, width=w_ink, joint='curve')
+            elif kind == 'pine':
                 polys, twig = pine_spray(size, lean, rng)
                 for p in polys:
                     fd.polygon([px(x, y) for x, y in p], fill=255)
@@ -154,7 +246,7 @@ def render(kind):
                 for p in polys[::3]:                                   # a few needles inked, not all
                     idr.line([px(*p[0]), px(*p[1])], fill=255, width=max(1, w_vein // 2))
             else:
-                outline, vlines = (oak_leaf if kind == 'oak' else sage_leaf)(size, lean, rng)
+                outline, vlines = {'oak': oak_leaf, 'sage': sage_leaf, 'maple': maple_leaf}[kind](size, lean, rng)
                 pts = [px(x, y) for x, y in outline]
                 fd.polygon(pts, fill=255)
                 idr.line(pts + [pts[0]], fill=255, width=w_ink if kind == 'oak' else int(w_ink * 0.7), joint='curve')
@@ -187,5 +279,5 @@ def render(kind):
 
 
 if __name__ == '__main__':
-    for k in ('oak', 'pine', 'sage'):
+    for k in ('oak', 'pine', 'sage', 'maple', 'boxwood', 'willow', 'rose', 'lavender'):
         render(k)

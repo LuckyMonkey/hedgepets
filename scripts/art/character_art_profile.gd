@@ -513,3 +513,25 @@ static func rascal() -> CharacterArtProfile:
 	p.hints = {"notice": "Something smells that old grill from streets away.", "visit": "Sage. He likes to roll in it.",
 		"resident": "Keep the grill AND the tire, and grow him some sage. He's not going to explain."}
 	return p
+
+
+## Every pet: the hand-made profiles (res://pets/*.tres, Gerald first), then res://pets/species.json.
+static func roster() -> Array:
+	var names: Array = []
+	for f in DirAccess.get_files_at("res://pets"):
+		var n := f.trim_suffix(".remap")
+		if n.ends_with(".tres") and not names.has(n):
+			names.append(n)
+	names.sort()
+	names.erase("gerald.tres")
+	names.push_front("gerald.tres")
+	var out: Array = []
+	for n in names:
+		out.append(load("res://pets/" + n))
+	var made := {}
+	for p: CharacterArtProfile in out:
+		made[p.pet_name] = true
+	for p: CharacterArtProfile in SpeciesBuilder.load_all():
+		if not made.has(p.pet_name):
+			out.append(p)
+	return out
