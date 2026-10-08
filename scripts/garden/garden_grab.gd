@@ -3,14 +3,14 @@ extends Node
 ## Hands-on yard work. With ✋, press on a piece of junk and drag:
 ##
 ##   YANK   most things are stuck (bedded in the lawn, sunk in mud, rusted in place). Pulling builds STRAIN: the thing
-##          leans toward your hand and starts to shake, a ring fills at your finger. Quick jerks (fast flicks) count
-##          for much more than a steady pull, and heavy things barely move for a steady pull at all. At full strain
-##          it tears free: a burst of dirt, a hop, a bare patch where it was.
+##          leans toward your hand and starts to shake, a ring fills at your finger. A slow, steady pull frees
+##          anything in the end (heavier = longer); quick jerks are an optional shortcut, never required. At full
+##          strain it tears free: a burst of dirt, a hop, a bare patch where it was.
 ##   HAUL   a free thing follows your hand on a heavy spring: light things lift and swing, heavy ones scrape along
 ##          the ground, slow, tilted, kicking up dust. Let go and it thuds down where you leave it.
 ##   BIN    drop junk in the trash barrel by the garden gate. It only holds 100 lb (a big rock won't go in at all).
-##          Tap it to call a pickup: it costs a fee, the hauler pays scrap for what's inside, and the next pickup
-##          can't come for a few minutes. You can't clear the whole yard at once.
+##          The rubbish truck comes by on its own every so often (and while you're away) and empties it, paying a
+##          little scrap. No fee, no countdown, nothing to call: the yard just gets cleared gradually.
 ##   FIX    the tipped lawn chair rights itself when you yank it free. The rusty grill scrubs clean if you work it in
 ##          circles while you hold it; a clean grill sells for more.
 ##
@@ -26,15 +26,13 @@ const PHYS := {
 }
 const AREA := Rect2(-13.0, -10.4, 26.0, 19.8)        # where things can be hauled to
 const BARREL_CAP := 100.0
-const PICKUP_FEE := 8
-const PICKUP_COOLDOWN := 180.0      # seconds between pickups (real time, so it runs while the game is closed)
+const TRUCK_EVERY := Vector2(150.0, 300.0)   # seconds after something goes in; real time, so also while away
 
 var garden: Node3D
 var game: Node
 var barrel: Dictionary = {}
 var contents: Array = []            # {kind, lb, value} in the barrel
-var next_pickup := 0.0              # unix time
-var _pickup_armed := 0.0            # a first tap shows the status; a second within a few seconds calls the pickup
+var next_pickup := 0.0              # unix time the truck comes by (0 = nothing in the barrel)
 var _tag: Label3D
 var held = null                     # the thing (garden.things entry) under your hand
 var active := false                 # dragging (not just pressed)
@@ -194,8 +192,9 @@ func _yank(t: Dictionary, g: Vector3, delta: float) -> void:
 	var pull := Vector3(g.x - node.position.x, 0, g.z - node.position.z)
 	var tension := clampf(pull.length() / 2.0, 0.0, 1.0)
 	var yank := clampf((_speed - 500.0) / 1400.0, 0.0, 1.0)
-	# effort: a steady pull counts 1, a jerk up to 2.8; resistance grows with the square root of the weight
-	var rate := (tension * 1.0 + yank * 1.8) * 2.6 / sqrt(lb * 0.5 + 4.0) / maxf(float(t["stuck"]), 0.2) - 0.3
+	# effort: a steady pull always gets there (heavier = longer); a jerk adds more; easing off lets it settle back
+	var effort := (tension * 0.6 + yank * 1.8) * 2.6 / sqrt(lb * 0.5 + 4.0) / maxf(float(t["stuck"]), 0.2)
+	var rate := effort if tension > 0.15 or yank > 0.0 else -0.3
 	strain = clampf(strain + rate * delta, 0.0, 1.0)
 	# it leans toward your hand and shakes as the strain builds (light things lean more)
 	var dir := pull.normalized() if pull.length() > 0.01 else Vector3.RIGHT
@@ -307,6 +306,8 @@ func _bin(t: Dictionary) -> void:
 	garden.things.erase(t)
 	game.placed = game.placed.filter(func(p) -> bool: return p["node"] != node)
 	contents.append({"kind": t["kind"], "lb": lb, "value": _value(t)})
+	if next_pickup <= 0.0:
+		next_pickup = Time.get_unix_time_from_system() + randf_range(TRUCK_EVERY.x, TRUCK_EVERY.y)
 	game.cleared += 1
 	Motion.swap(b, Vector3.ONE, func() -> void: pass)
 	_show_fill()
@@ -314,21 +315,12 @@ func _bin(t: Dictionary) -> void:
 	game._refresh()
 
 
-## Tapping the barrel: first tap tells you where things stand, a second tap calls the pickup.
+## Tapping the barrel just tells you how full it is.
 func barrel_tapped() -> void:
-	var now := Time.get_unix_time_from_system()
-	var wait := next_pickup - now
 	if contents.is_empty():
 		game.toast("🗑️ The barrel's empty. Haul junk here; it holds %d lb." % int(BARREL_CAP))
-	elif wait > 0.0:
-		game.toast("🚛 The pickup can come again in %d:%02d." % [int(wait) / 60, int(wait) % 60])
-	elif now - _pickup_armed > 4.0:
-		_pickup_armed = now
-		game.toast("🗑️ %d/%d lb, scrap ~🪙 %d. Tap again to call the pickup (🪙 %d)." % [int(fill_lb()), int(BARREL_CAP), _scrap(), PICKUP_FEE])
-	elif game.coins < PICKUP_FEE:
-		game.toast("🚛 A pickup costs 🪙 %d." % PICKUP_FEE)
 	else:
-		_pickup()
+		game.toast("🗑️ %d of %d lb. The truck comes by every so often." % [int(fill_lb()), int(BARREL_CAP)])
 
 
 func _scrap() -> int:
@@ -338,12 +330,11 @@ func _scrap() -> int:
 	return v
 
 
-func _pickup() -> void:
+func _pickup(quiet := false) -> void:
 	var scrap := _scrap()
-	game.coins += scrap - PICKUP_FEE
+	game.coins += scrap
 	contents.clear()
-	next_pickup = Time.get_unix_time_from_system() + PICKUP_COOLDOWN
-	_pickup_armed = 0.0
+	next_pickup = 0.0
 	var b: Node3D = barrel["node"]
 	var lid: Node3D = b.get_node("Lid")
 	var tw := Motion.channel(lid, "lid")
@@ -351,7 +342,8 @@ func _pickup() -> void:
 	tw.tween_interval(Motion._d(0.4))
 	tw.tween_callback(_show_fill)
 	Motion.swap(b, Vector3.ONE, func() -> void: pass)
-	game.toast("🚛 The pickup came by. Fee 🪙 %d, scrap 🪙 +%d. Next one in %d min." % [PICKUP_FEE, scrap, int(PICKUP_COOLDOWN / 60.0)])
+	if not quiet:
+		game.toast("🚛 The rubbish truck came by and emptied the barrel. Scrap 🪙 +%d" % scrap)
 	game._refresh()
 
 
@@ -373,11 +365,9 @@ func _tend_tag(delta: float) -> void:
 	if _tag_t > 0.0 or _tag == null:
 		return
 	_tag_t = 0.5
-	var wait := next_pickup - Time.get_unix_time_from_system()
-	var text := "🗑️ %d/%d lb" % [int(fill_lb()), int(BARREL_CAP)]
-	if wait > 0.0:
-		text += "  🚛 %d:%02d" % [int(wait) / 60, int(wait) % 60]
-	_tag.text = text
+	if not contents.is_empty() and next_pickup > 0.0 and Time.get_unix_time_from_system() >= next_pickup:
+		_pickup()                                       # the truck came by
+	_tag.text = "🗑️ %d/%d lb" % [int(fill_lb()), int(BARREL_CAP)]
 	_tag.modulate = Color(1, 0.86, 0.7) if fill_lb() >= BARREL_CAP * 0.9 else Color.WHITE
 
 

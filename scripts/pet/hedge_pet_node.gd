@@ -21,6 +21,15 @@ var joy := 0.0
 var hop := 0.0
 var walking := 0.0                               # 0 standing .. 1 walking: a little step bounce
 var look_point := Vector3.INF                    # a world point to turn the head toward (INF: glance around)
+## Little moods, each 0..1 and eased (never a jump): asleep (eyes shut, slow breaths, head down, Zzz), curious (a
+## head tilt when you come near), shaking (after a watering: a shiver from nose to tail, droplets flying).
+var asleep := 0.0
+var sleeping := false
+var curious := 0.0
+var noticed := false
+var _shake := 0.0
+## Single flowers that have sprouted somewhere unexpected: [region name, direction]. Kept across regrafts.
+var extra_flowers: Array = []
 var _hop_v := 0.0
 var _next_blink := 2.0
 var _blink := 0.0
@@ -135,8 +144,91 @@ func _leaf_burst() -> void:
 	p.finished.connect(p.queue_free)
 
 
+## Fall asleep / wake up (eased in _process). Waking from a tap is a little startled hop.
+func set_sleeping(on: bool) -> void:
+	sleeping = on
+
+
+## After a watering: shake it off.
+func shake_off() -> void:
+	sleeping = false
+	_shake = 1.0
+	joy = maxf(joy, 0.4)
+	_droplets()
+
+
+func _droplets() -> void:
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.amount = 30
+	p.lifetime = 0.9
+	p.explosiveness = 0.6
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = (profile.regions["BODY"]["radii"] as Vector3).x * 0.9
+	p.direction = Vector3.UP
+	p.spread = 85.0
+	p.initial_velocity_min = 1.5
+	p.initial_velocity_max = 3.2
+	p.gravity = Vector3(0, -8.0, 0)
+	p.scale_amount_min = 0.03
+	p.scale_amount_max = 0.06
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.75, 0.88, 0.98, 0.85)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.roughness = 0.1
+	var drop := SphereMesh.new()
+	drop.radius = 1.0
+	drop.height = 2.0
+	drop.radial_segments = 6
+	drop.rings = 3
+	drop.material = m
+	p.mesh = drop
+	p.position = profile.regions["BODY"]["center"]
+	p.emitting = true
+	add_child(p)
+	p.finished.connect(p.queue_free)
+
+
+## A single flower sprouts somewhere on the pet (on top, mostly): grows in, stays, survives regrafts.
+func sprout_flower(rng: RandomNumberGenerator) -> void:
+	var names: Array = []
+	for n in profile.regions:
+		if profile.regions[n].get("foliage", false):
+			names.append(n)
+	if names.is_empty():
+		return
+	var region: String = names[rng.randi() % names.size()]
+	var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(0.2, 1.0), rng.randf_range(-1, 1)).normalized()
+	extra_flowers.append([region, dir])
+	var node := _flower_node(region, dir)
+	if node != null:
+		Motion.appear(node, Vector3.ONE, Motion.SLOW * 2.0)
+
+
+func _flower_node(region_name: String, dir: Vector3) -> Node3D:
+	if not profile.regions.has(region_name) or leaves_mat == null:
+		return null
+	var r: Dictionary = profile.regions[region_name]
+	var on_head: bool = region_name == "HEAD" or r.get("parent", "") == "HEAD"
+	var c: Vector3 = Vector3.ZERO if region_name == "HEAD" else r["center"]
+	var p := HedgeAnatomy.shape_point(r, c, dir)
+	var n := HedgeAnatomy.shape_normal(r, c, p)
+	var size := profile.leaf_size * 0.95
+	var t := (Vector3.UP - n * Vector3.UP.dot(n))
+	t = t.normalized() if t.length() > 0.05 else n.cross(Vector3.FORWARD).normalized()
+	var right := t.cross(n).normalized()
+	var up := (t * cos(0.6) + n * sin(0.6)).normalized()
+	var item := [Transform3D(Basis(right * size, up * size, right.cross(up).normalized() * size), p + n * 0.03), profile.flower_color, Color(13.0, randf() * TAU, 0.8, 0.0)]
+	var holder := Node3D.new()
+	holder.name = "ExtraFlower"
+	(head if on_head else pet).add_child(holder)
+	_add_multimesh(holder, [item], "EXTRA_FLOWER")
+	return holder
+
+
 ## A tap: a hop, a shiver through the leaves, a heart.
 func tap() -> void:
+	sleeping = false
 	joy = 1.0
 	if hop <= 0.0:
 		_hop_v = sqrt(2.0 * 9.0 * profile.hop_height)
@@ -392,6 +484,8 @@ func rebuild_foliage() -> void:
 		for c in built["clusters"]:
 			cluster_debug.append({"position": c["position"], "parent": parent, "normal": c["normal"], "color": c["color"]})
 	_add_multimesh(pet, _tendrils(), "TENDRILS")
+	for f in extra_flowers:
+		_flower_node(f[0], f[1])
 	set_detail(detail, true)
 
 
@@ -543,8 +637,11 @@ func _process(delta: float) -> void:
 		_blink = 1.0
 		_next_blink = _rng.randf_range(profile.blink_interval.x, profile.blink_interval.y)
 	_blink = maxf(0.0, _blink - delta * 8.0)
+	asleep = move_toward(asleep, 1.0 if sleeping else 0.0, delta * (0.5 if sleeping else 2.5))
+	curious = move_toward(curious, 1.0 if noticed and not sleeping else 0.0, delta * 2.5)
+	_shake = maxf(0.0, _shake - delta * 1.1)
 	for eye in eyes:
-		eye.scale.y = 1.0 - 0.88 * sin(_blink * PI)
+		eye.scale.y = lerpf(1.0 - 0.88 * sin(_blink * PI), 0.1, asleep)
 	# where to look: a point in the world, or glancing around now and then
 	if look_point != Vector3.INF:
 		var local := head.global_transform.affine_inverse() * look_point
@@ -555,8 +652,11 @@ func _process(delta: float) -> void:
 		if _next_glance <= 0.0:
 			_look_target = Vector2(_rng.randf_range(-0.8, 0.8), _rng.randf_range(-0.4, 0.4)) if _rng.randf() < 0.7 else Vector2.ZERO
 			_next_glance = _rng.randf_range(1.5, 4.0)
+	if asleep > 0.0:
+		_look_target = _look_target.lerp(Vector2.ZERO, asleep)
 	_look = _look.lerp(_look_target, clampf(delta * 3.0, 0.0, 1.0))
-	head.rotation = Vector3(sin(time * 0.37) * 0.05, _look.x * profile.look_strength * 1.6, -_look.y * profile.look_strength * 0.5 + sin(time * 0.9) * 0.015)   # a gentle, curious tilt
+	head.rotation = Vector3(sin(time * 0.37) * 0.05 + curious * 0.24 + sin(time * 30.0) * 0.08 * _shake,
+		_look.x * profile.look_strength * 1.6, -_look.y * profile.look_strength * 0.5 + sin(time * 0.9) * 0.015 - asleep * 0.22)   # a gentle, curious tilt; head down asleep
 	if hop > 0.0 or _hop_v != 0.0:
 		_hop_v -= 9.0 * delta
 		hop += _hop_v * delta
@@ -566,12 +666,14 @@ func _process(delta: float) -> void:
 	var step := absf(sin(time * 9.0)) * 0.06 * walking   # a little bounce in each step
 	pet.position.y = hop + step + sin(time * 1.5) * 0.004
 	pet.rotation.z = sin(time * 9.0) * 0.03 * walking
+	pet.rotation.x = sin(time * 34.0) * 0.1 * _shake * _shake                  # shaking off the water
+	pet.scale = Vector3(1.0, 1.0 + sin(time * 1.3) * 0.025 * asleep, 1.0)       # slow breaths in sleep
 	_next_gust -= delta
 	if _next_gust <= 0.0:
 		_gust = 1.0
 		_next_gust = _rng.randf_range(7.0, 14.0)
 	_gust = maxf(0.0, _gust - delta * 0.8)
-	_leaf_param("gust", joy * 1.2 + _gust * 0.5 + walking * 0.4)
+	_leaf_param("gust", joy * 1.2 + _gust * 0.5 * (1.0 - asleep * 0.7) + walking * 0.4 + _shake * 1.5)
 	shell_mat.set_shader_parameter("body_center", pet.to_global(profile.regions["BODY"]["center"]))
 	shell_mat.set_shader_parameter("head_center", head.global_position)
 	heart.modulate.a = clampf(joy * 1.4, 0.0, 1.0)

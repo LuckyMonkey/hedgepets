@@ -76,6 +76,8 @@ var grab: Node                       # scripts/garden/garden_grab.gd: yank, haul
 
 func setup(g: Node3D) -> void:
 	garden = g
+	if OS.get_environment("HEDGEPETS_SAVE") != "":
+		save_path = OS.get_environment("HEDGEPETS_SAVE")      # checks use their own save file
 	_build_ui()
 	grab = preload("res://scripts/garden/garden_grab.gd").new()
 	grab.name = "Grab"
@@ -88,7 +90,10 @@ func setup(g: Node3D) -> void:
 		if pet_state[p.pet_name] != "away":
 			_apply_mode(_node(p), true)
 	_refresh()
-	toast("Tidy the garden, plant things, and see who comes by.")
+	if _away_for > 6.0 * 3600.0:
+		_welcome_back()
+	else:
+		toast("Tidy the garden, plant things, and see who comes by.")
 
 
 # ------------------------------------------------------------------ what the garden has
@@ -199,7 +204,9 @@ func _visitors() -> void:
 					next = "visiting"
 					toast("%s came in to have a look around." % name)
 				elif not _met(p.wants["notice"], counts):
-					next = "away"
+					_since[name] = float(_since.get(name, 0.0)) + 1.0
+					if float(_since[name]) > 90.0:          # lingers at the fence a good while first
+						next = "away"
 			"visiting":
 				if _met(p.wants["resident"], counts):
 					next = "resident"
@@ -207,9 +214,9 @@ func _visitors() -> void:
 					toast("🏡 %s moved in! (🪙 +10)" % name)
 				elif not _met(p.wants["visit"], counts):
 					_since[name] = float(_since.get(name, 0.0)) + 1.0
-					if float(_since[name]) > 20.0:
+					if float(_since[name]) > 240.0:         # stays a long while; no rush to make it happy
 						next = "noticed" if _met(p.wants["notice"], counts) else "away"
-						toast("%s wandered off." % name)
+						toast("%s wandered home for now. Maybe another day." % name)
 		if next != state:
 			_since[name] = 0.0
 			pet_state[name] = next
@@ -238,9 +245,31 @@ func _choose_variant(p: CharacterArtProfile) -> void:
 		toast("A %s is peeking through the gap in the fence…" % SpeciesBuilder.variant_name(p, plant))
 
 
+var pet_flowers := {}               # pet name -> [[region, x, y, z], ...]: single flowers it has sprouted (saved)
+
+
+## Now and then a resident grows a single flower somewhere unexpected (at most three each). Just because.
+func surprise_flower(quiet := false) -> void:
+	var options: Array = garden.pets.filter(func(n) -> bool: return n.visible and pet_state.get(n.profile.pet_name, "") == "resident" and n.extra_flowers.size() < 3)
+	if options.is_empty():
+		return
+	var node: HedgePetNode = options.pick_random()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	node.sprout_flower(rng)
+	pet_flowers[node.profile.pet_name] = node.extra_flowers.map(func(f) -> Array: return [f[0], f[1].x, f[1].y, f[1].z])
+	if not quiet:
+		toast("🌼 %s has grown a little flower." % node.profile.pet_name)
+
+
 ## The pet's node in the garden, grown in whatever plant you last regrafted it in.
 func _node(p: CharacterArtProfile) -> HedgePetNode:
+	var fresh: bool = not garden._nodes.has(p.pet_name)
 	var node: HedgePetNode = garden.node_for(p)
+	if fresh and pet_flowers.has(p.pet_name):
+		for f in pet_flowers[p.pet_name]:
+			node.extra_flowers.append([str(f[0]), Vector3(float(f[1]), float(f[2]), float(f[3]))])
+			node._flower_node(str(f[0]), Vector3(float(f[1]), float(f[2]), float(f[3])))
 	var want: String = pet_plant.get(p.pet_name, "")
 	if want != "" and SpeciesBuilder.plant_of(node.profile) != want:
 		node.set_plant(want, node.visible)
@@ -296,6 +325,30 @@ func favourite(node: HedgePetNode) -> Dictionary:
 	return options.pick_random() if not options.is_empty() else {}
 
 
+var _away_for := 0.0                # seconds since the last visit (0 on a first visit)
+
+
+func _restore_gift(icon: String, at: Vector3, value: int) -> void:
+	var l := Label3D.new()
+	l.text = icon
+	l.font_size = 64
+	l.pixel_size = 0.005
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.position = at + Vector3(0, 0.25, 0)
+	garden.add_child(l)
+	gifts.append({"at": at, "node": l, "value": value, "age": 1.0})
+
+
+## Back after a while: the garden carried on without you. A resident or two may have flowered; nothing went wrong.
+func _welcome_back() -> void:
+	if _away_for < 6.0 * 3600.0:
+		return
+	var blooms := mini(3, 1 + int(_away_for / 86400.0))
+	for i in range(blooms):
+		surprise_flower(true)
+	toast("🌿 Welcome back. The garden's been growing.")
+
+
 ## A happy resident leaves something behind: tap it to collect.
 func _drop_gift(node: HedgePetNode) -> void:
 	var g: Array = GIFTS.pick_random()
@@ -319,11 +372,7 @@ func _tend_gifts(delta: float) -> void:
 		var l: Label3D = g["node"]
 		if g["age"] > Motion._d(Motion.SLOW) + 0.05:   # landed: a gentle bob, eased in
 			l.position.y = 0.25 + 0.07 * sin((g["age"] - 0.65) * 3.0) * clampf(g["age"] - 0.65, 0.0, 1.0)
-		if g["age"] > 100.0:
-			l.modulate.a = clampf((120.0 - g["age"]) / 20.0, 0.0, 1.0)
-		if g["age"] > 120.0:
-			l.queue_free()
-			gifts.erase(g)
+		# gifts stay where they fell until you pick them up (they're saved, too): nothing to miss
 
 
 func _collect_gift(p2: Vector2) -> bool:
@@ -440,6 +489,11 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 			_refresh()
 			return true
 		"water":
+			if pet != null:
+				pet.shake_off()
+				_splash(pet.position + Vector3(0, 0.6, 0))
+				toast(["%s shook it all off.", "%s gave a big shake. Droplets everywhere.", "%s didn't mind the water at all."].pick_random() % pet.profile.pet_name)
+				return true
 			var pl = _plant_at(p2)
 			if pl == null:
 				toast("Water a plant (tap right on it).")
@@ -615,7 +669,7 @@ var _journal_open := false
 
 ## A message: slides in, stays a few seconds, fades. A new one replaces it smoothly.
 func toast(text: String) -> void:
-	if _toast.visible and _toast.modulate.a > 0.05:             # one is showing: let it go first, then the new one
+	if _toast.visible and _toast.modulate.a > 0.05 and _toast.text != "":   # one is showing: let it go first
 		var t := Motion.channel(_toast, "fade")
 		t.tween_property(_toast, "modulate:a", 0.0, Motion._d(Motion.FAST * 0.8))
 		t.tween_callback(func() -> void: _show_toast(text))
@@ -675,7 +729,7 @@ func _fill_journal() -> void:
 	for p: CharacterArtProfile in garden.roster:
 		total += SpeciesBuilder.variants_of(p).size()
 		found += (discovered.get(p.pet_name, []) as Array).size()
-	var lines := "[b]Journal[/b]   appeal %s %d · variants %d/%d\n\n" % ["★", appeal(), found, total]
+	var lines := "[b]Journal[/b]\n\n"
 	var counts := garden_counts()
 	var unseen: Array = []
 	for p: CharacterArtProfile in garden.roster:
@@ -689,10 +743,11 @@ func _fill_journal() -> void:
 		if state == "away" and not _met(p.wants["notice"], counts):
 			hint = p.hints["notice"]
 		var seen: Array = discovered.get(p.pet_name, [])
-		var vs: Array = SpeciesBuilder.variants_of(p).map(func(v) -> String: return SpeciesBuilder.variant_name(p, v) if seen.has(v) else "?")
-		lines += "[b]%s[/b] the %s - %s\n%s\n[color=#7a6a50]%s[/color]\n\n" % [p.pet_name, SpeciesBuilder.variant_name(p, pet_plant.get(p.pet_name, "")), label, hint, " · ".join(vs)]
+		var vs: Array = seen.map(func(v) -> String: return SpeciesBuilder.variant_name(p, v))
+		var seen_as := ("\n[color=#7a6a50]seen as %s[/color]" % ", ".join(vs)) if vs.size() > 1 else ""
+		lines += "[b]%s[/b] the %s - %s\n%s%s\n\n" % [p.pet_name, SpeciesBuilder.variant_name(p, pet_plant.get(p.pet_name, "")), label, hint, seen_as]
 	# rumours: a few of the ones you haven't met, the nearest to noticing first
-	lines += "[b]Around the neighbourhood[/b] (%d not seen yet)\n\n" % unseen.size()
+	lines += "[b]Around the neighbourhood[/b]\n\n"
 	unseen.sort_custom(func(a, b) -> bool: return _missing(a.wants["notice"], counts) < _missing(b.wants["notice"], counts))
 	for p: CharacterArtProfile in unseen.slice(0, 4):
 		lines += "%s %s\n\n" % ["🐾", p.hints["notice"]]
@@ -823,6 +878,9 @@ func save() -> void:
 		return                                           # captures and checks never touch the player's garden
 	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state, "plants": pet_plant,
 		"moved": _moved_state(),
+		"gifts": gifts.map(func(g) -> Dictionary: return {"x": g["at"].x, "z": g["at"].z, "icon": g["node"].text, "value": g["value"]}),
+		"flowers": pet_flowers,
+		"last_visit": Time.get_unix_time_from_system(),
 		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
 		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["x"], "z": b["z"], "yaw": b["yaw"]})}
 	var present := {}
@@ -871,9 +929,15 @@ func _load() -> void:
 		var pl = b.get("plant")
 		if pl != null:
 			_plant(str(pl["species"]), bed, int(pl["stage"]), float(pl["water"]), float(pl["progress"]))
+	pet_flowers = data.get("flowers", {})
+	for g in data.get("gifts", []):
+		_restore_gift(str(g["icon"]), Vector3(float(g["x"]), 0, float(g["z"])), int(g["value"]))
+	_away_for = Time.get_unix_time_from_system() - float(data.get("last_visit", Time.get_unix_time_from_system()))
 	var bin: Dictionary = data.get("barrel", {})
 	grab.contents = bin.get("contents", [])
 	grab.next_pickup = float(bin.get("next_pickup", 0.0))
+	if not grab.contents.is_empty() and grab.next_pickup > 0.0 and Time.get_unix_time_from_system() >= grab.next_pickup:
+		grab._pickup(true)                              # the truck came while you were away
 	grab._show_fill()
 	var moved: Dictionary = data.get("moved", {})
 	for t in garden.things:

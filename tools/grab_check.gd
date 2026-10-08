@@ -88,17 +88,16 @@ func _run() -> void:
 	if not garden.things.has(rocks0[0]):
 		return _fail("an overfull barrel took a rock")
 	print("full barrel refuses a rock")
+	# the truck: nothing to call, no fee; once it's due it just comes and empties the barrel, paying scrap
 	game.coins = 20
 	grab.barrel_tapped()
-	grab.barrel_tapped()
-	if not grab.contents.is_empty() or game.coins != 20 - grab.PICKUP_FEE + 5:
-		return _fail("pickup: contents %d, coins %d" % [grab.contents.size(), game.coins])
-	grab.contents.append({"kind": "stick", "lb": 2.0, "value": 1})
-	grab.barrel_tapped()
-	grab.barrel_tapped()
 	if grab.contents.is_empty():
-		return _fail("a second pickup came during the cooldown")
-	print("pickup: fee and scrap paid, cooldown holds")
+		return _fail("tapping the barrel emptied it")
+	grab.next_pickup = Time.get_unix_time_from_system() - 1.0
+	await frames(40)
+	if not grab.contents.is_empty() or game.coins != 20 + 5:
+		return _fail("truck: contents %d, coins %d (want 25: scrap, no fee)" % [grab.contents.size(), game.coins])
+	print("truck came on its own: emptied, scrap paid, no fee")
 	grab.contents.clear()
 	grab._show_fill()
 	# the biggest rock: a steady pull is not enough; jerks are
@@ -106,16 +105,22 @@ func _run() -> void:
 	rocks.sort_custom(func(a, b) -> bool: return a["radius"] > b["radius"])
 	var rock: Dictionary = rocks[0]
 	grab.grabbable(rock)
-	await work(rock, rock["node"].position + Vector3(2.5, 0, 0), 3.0, false)
+	# no reflexes needed: a slow steady pull frees even the biggest rock; jerks are only quicker
+	var t0 := Time.get_ticks_msec()
+	var f0 := Engine.get_process_frames()
+	await work(rock, rock["node"].position + Vector3(2.5, 0, 0), 15.0, false)
 	grab.end(screen_of(rock["node"].position))
-	if rock["stuck"] <= 0.0:
-		return _fail("a %d lb rock came free for a steady pull" % rock["lb"])
-	print("rock (%d lb) holds against a steady pull" % rock["lb"])
-	await work(rock, rock["node"].position + Vector3(2.5, 0, 0), 10.0, true)
-	grab.end(screen_of(rock["node"].position))
+	var steady_s := (Engine.get_process_frames() - f0) / 60.0
 	if rock["stuck"] > 0.0:
-		return _fail("a %d lb rock never came free even with jerks" % rock["lb"])
-	print("rock yanked free with jerks")
+		return _fail("a %d lb rock never came free for a steady pull" % rock["lb"])
+	if steady_s < 2.5:
+		return _fail("a %d lb rock came free in %.1f s: too easy for its weight" % [rock["lb"], steady_s])
+	var rock2: Dictionary = rocks[1]
+	grab.grabbable(rock2)
+	f0 = Engine.get_process_frames()
+	await work(rock2, rock2["node"].position + Vector3(2.5, 0, 0), 15.0, true)
+	grab.end(screen_of(rock2["node"].position))
+	print("rock (%d lb): steady pull %.1f s; rock (%d lb) with jerks %.1f s" % [rock["lb"], steady_s, rock2["lb"], (Engine.get_process_frames() - f0) / 60.0])
 	# the chair rights itself
 	var chair: Dictionary = of.call("lawn_chair")[0]
 	await work(chair, chair["node"].position + Vector3(0, 0, 2.5), 8.0, true)

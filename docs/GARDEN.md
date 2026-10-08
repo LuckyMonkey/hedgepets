@@ -23,16 +23,15 @@ Everything is heavier than it looks, in pounds: stick 2, pot 15, branch 15, chai
 
 - **Yank.** Most junk is stuck: bedded in the lawn, sunk in mud, rusted in place. Hold and pull. Strain builds (a ring
   at your finger, yellow to red), the thing leans toward you and shakes. A steady pull works on light things; heavy
-  ones need **jerks** (fast flicks count for nearly three times a steady pull), and a big rock won't come for a
-  steady pull at all. Ease off and the strain relaxes. At full strain it tears free: dirt flies, it hops, and it
+  ones take longer. A **slow, steady pull frees anything** (a 132 lb rock in about 5 s); quick jerks are an optional
+  shortcut (about 1.5 s), never required. Ease off and the strain relaxes. At full strain it tears free: dirt flies, it hops, and it
   leaves a bare patch where it lay.
 - **Haul.** Once free it follows your hand on a spring that's stiffer the lighter it is: light things lift and swing,
   heavy ones scrape along the ground, tilted, slow, kicking up dust. Let go and it thuds down there.
 - **Bin it.** Drop junk in the **trash barrel** by the garden gate. It only holds **100 lb** (the lid rides up as it
-  fills; a tag over it says how full), so a 132 lb rock never goes in: find it a place instead. Tap the barrel for its
-  status, tap again to **call the pickup**: 🪙 8, the hauler pays scrap for what's inside, and the next pickup can't
-  come for **3 minutes** (real time, so it runs while the game is closed). Fill it well before you call. You can't
-  clear the whole yard at once.
+  fills; a tag over it says how full), so a 132 lb rock never goes in: find it a place instead. The **rubbish truck
+  comes by on its own** a few minutes after something goes in (or while you're away) and empties it, paying a little
+  scrap. No fee, no countdown, nothing to call: the yard just gets cleared gradually.
 - **Fix.** The tipped lawn chair rights itself when you yank it free. Work the rusty grill in circles while you hold
   it and the rust scrubs off (three turns): a clean grill sells for 12 more.
 
@@ -92,9 +91,24 @@ tools/roster_sheet.py` (docs/acceptance/roster.png).
 Residents live in it: they wander to the things and plants they wished for (`garden_game.gd:favourite()`) and
 show it (💧 at the puddle, 💤 in the chair or tire, 🍂 in the leaves, 🌸 at a flowering plant). When idle they turn
 three-quarters to the viewer. A happy resident leaves a **gift** every 30 s (🌰 🪶 🍄 🐚 💎 🌼 🫐, 2-6 coins) that
-bobs in the grass until you tap it (any tool; gone after two minutes, at most 12 lying about).
+bobs in the grass until you tap it (any tool). Gifts never disappear (they're saved); at most 12 lie about.
 
-A visitor whose wishes stop being met wanders off after ~20 s. Junk isn't all bad: Gerald wants sticks and the
+## Small moments (the design: docs say "a place, not a treadmill")
+
+- **It notices you.** The pet nearest the pointer looks up at you with a curious head tilt (mouse; on touch, tap).
+- **Naps.** Residents sometimes fall asleep wherever they happen to be, however inconvenient: eyes shut, slow breaths,
+  head down, a 💤 now and then. Sometimes one curls up beside a friend who's already napping (💕). They wake on their own,
+  or when you tap them.
+- **Shaking off.** Water a pet with 💧 and it shakes the water off, droplets flying.
+- **A flower, just because.** Every few minutes a resident may grow a single flower somewhere unexpected (up to three
+  each). They're saved, and stay through a regraft.
+- **Coming back.** Nothing decays while you're away. After a long absence the garden welcomes you, a resident or two may
+  have flowered, the truck has been, gifts are where they fell.
+- **No scores.** The journal shows who you've met and the variants you've seen them as, by name: no totals.
+
+`tools/life_check.gd` checks all of it (17 naps and 5 curl-ups in 3 minutes with six residents; a 3-day absence).
+
+A visitor whose wishes stop being met lingers a long while (4 minutes inside, 1.5 at the fence) before wandering home for now. Junk isn't all bad: Gerald wants sticks and the
 puddle, Juniper the tipped chair, Bramble rocks. Clear everything and you lose them.
 
 The wish keys come from `garden_game.gd:garden_counts()`: `puddle sticks branches rocks leaf_pile lawn_chair grill tire pot cleared`
