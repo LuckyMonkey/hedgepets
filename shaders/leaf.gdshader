@@ -1,16 +1,26 @@
 shader_type spatial;
-render_mode cull_disabled, depth_draw_opaque, diffuse_lambert, specular_schlick_ggx;
+render_mode cull_disabled, depth_draw_opaque, diffuse_lambert_wrap, specular_disabled;
 
-// One ivy leaf per MultiMesh instance. The quad's bottom edge is the stalk; the wind moves the tip.
-// INSTANCE_CUSTOM: x = sprite cell (0-7 leaves, 13 flower), y = wind phase, z = reach (how much it moves), w = unused.
+// One leaf per MultiMesh instance (scripts/art/foliage_builder.gd). The quad's bottom edge is the stalk.
+// INSTANCE_CUSTOM: x = sprite cell (0-7 leaves, 13 flower), y = wind phase, z = wind reach, w = rank in its
+// cluster (0 = crown leaf .. 1 = smallest).
+// Look: matte watercolour pigment, ink strong at the creature's silhouette and faint inside the foliage.
 uniform sampler2D leaf_sheet : source_color, filter_linear_mipmap;
 uniform sampler2D leaf_normals : hint_normal, filter_linear_mipmap;
 uniform float cells = 16.0;
-uniform float gust = 0.0;          // a tap or a gust from the pet's own life: shivers every leaf
-uniform vec3 wind_dir = vec3(1.0, 0.0, -0.35);
+uniform float gust = 0.0;                 // a tap: every leaf shivers
+uniform float lod_keep = 1.0;             // ranks above this are not drawn (detail levels)
+uniform float lod_scale = 1.0;            // the kept leaves grow so the masses stay whole
+uniform float detail_ink = 1.0;           // interior ink fades out at lower detail
+uniform vec3 ink_color : source_color = vec3(0.15, 0.19, 0.11);
+uniform float silhouette_ink = 0.85;
+uniform float interior_ink = 0.30;
+uniform float pool_strength = 0.10;       // watercolour pooling: slow pigment variation across the creature
 
 varying float v_cell;
 varying float v_twist;
+varying float v_rim;
+varying vec3 v_world;
 
 float wind_at(float x, float t) {
 	float breeze = 0.25 + 0.10 * sin(t * 0.7);
@@ -21,18 +31,26 @@ float wind_at(float x, float t) {
 
 void vertex() {
 	v_cell = INSTANCE_CUSTOM.x;
+	if (INSTANCE_CUSTOM.w > lod_keep) {
+		VERTEX = vec3(0.0);                                  // dropped at this detail level
+	}
 	float phase = INSTANCE_CUSTOM.y;
 	float reach = INSTANCE_CUSTOM.z;
 	vec3 world = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+	v_world = world;
+	VERTEX.xy *= lod_scale;
 	float w = wind_at(world.x, TIME) + gust;
-	float tip = 1.0 - UV.y;                                  // 0 at the stalk, 1 at the tip
-	float flutter = (sin(TIME * (5.0 + phase) + phase * 3.0) * 0.6 + sin(TIME * (11.0 + phase * 2.0)) * 0.4) * 0.08 * w * reach;
-	float bend = w * 0.22 * reach;
+	float tip = 1.0 - UV.y;
+	float flutter = (sin(TIME * (5.0 + phase) + phase * 3.0) * 0.6 + sin(TIME * (11.0 + phase * 2.0)) * 0.4) * 0.07 * w * reach;
+	float bend = w * 0.18 * reach;
 	v_twist = max(0.0, sin(TIME * (2.6 + phase * 0.5) + phase * 5.0)) * clamp(w - 0.3, 0.0, 1.0) * reach;
-	// bend the tip back along the leaf's normal (away from the wind) and flutter sideways; twist narrows the leaf
-	VERTEX.z += (bend + flutter) * tip * 0.55;
-	VERTEX.x += flutter * tip * 0.25;
-	VERTEX.x *= 1.0 - 0.5 * v_twist;
+	VERTEX.z += (bend + flutter) * tip * 0.45;
+	VERTEX.x += flutter * tip * 0.22;
+	VERTEX.x *= 1.0 - 0.45 * v_twist;
+	// how edge-on this leaf is to the camera: leaves on the silhouette get the strong ink
+	vec3 leaf_normal = normalize((MODEL_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
+	vec3 to_camera = normalize(CAMERA_POSITION_WORLD - world);
+	v_rim = 1.0 - abs(dot(leaf_normal, to_camera));
 }
 
 void fragment() {
@@ -44,13 +62,16 @@ void fragment() {
 	if (fill.a < 0.45 && ink < 0.5) {
 		discard;
 	}
-	vec3 tint = COLOR.rgb;
-	vec3 albedo = tint * fill.rgb;
-	albedo = mix(albedo, albedo + vec3(0.10, 0.12, 0.05), v_twist * 0.6);     // the paler underside shows as it turns
-	albedo = mix(albedo, vec3(0.08, 0.12, 0.05), ink * 0.85);                 // the fine dark outline
+	vec3 albedo = COLOR.rgb * mix(1.0, fill.r, 0.6);
+	// watercolour pooling: pigment gathers and thins in slow patches
+	float pool = sin(v_world.x * 1.7 + v_world.z * 1.1) * sin(v_world.y * 2.3 - v_world.x * 0.7);
+	albedo *= 1.0 + pool * pool_strength;
+	albedo = mix(albedo, albedo + vec3(0.07, 0.08, 0.04), v_twist * 0.6);   // the paler underside as it turns
+	float silhouette = smoothstep(0.55, 0.92, v_rim);
+	float ink_amount = mix(interior_ink * detail_ink, silhouette_ink, silhouette);
+	albedo = mix(albedo, ink_color, ink * ink_amount);
 	ALBEDO = albedo;
 	NORMAL_MAP = texture(leaf_normals, uv_fill).rgb;
-	NORMAL_MAP_DEPTH = 1.2;
-	ROUGHNESS = 0.55;
-	SPECULAR = 0.35;
+	NORMAL_MAP_DEPTH = 0.8;
+	ROUGHNESS = 1.0;
 }

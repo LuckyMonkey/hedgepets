@@ -1,0 +1,135 @@
+class_name FoliageBuilder
+extends RefCounted
+
+## Hierarchical, seeded foliage for one region:
+##   level 1  the region's mass (drawn elsewhere: the inner green under the leaves)
+##   level 2  clusters - evenly spaced clumps with gaps between them (negative space on purpose)
+##   level 3  leaves - each belongs to a cluster: a big crown leaf and smaller ones around it, lying along the
+##            surface and lifting off it no further than the region's max_displacement (the silhouette control)
+##   level 4  flowers on a few clusters (never near the face)
+## Same seed + same profile = the same Gerald, leaf for leaf.
+##
+## Output per leaf: [Transform3D, Color, Color custom]
+##   custom.x sprite cell (0-7 leaves, 13 flower), custom.y wind phase, custom.z wind reach, custom.w rank
+##   (0 = a cluster's crown leaf .. 1 = its smallest; the shader drops high ranks at lower detail levels).
+
+const UP := Vector3.UP
+
+
+static func build(profile: CharacterArtProfile, region_name: String, head_center: Vector3, key_dir: Vector3) -> Dictionary:
+	var region: Dictionary = profile.regions[region_name]
+	# the head (and anything attached to it) is built in its own space, so its leaves turn with it
+	var c: Vector3 = Vector3.ZERO if (region_name == "HEAD" or region.get("parent", "") != "") else region["center"]
+	var r: Vector3 = region["radii"]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(str(profile.seed) + region_name)
+	var items: Array = []
+	var clusters: Array = []
+	var is_head := region_name == "HEAD"
+	var leaf_len: float = profile.leaf_size * float(region["leaf_scale"])
+	var max_disp: float = float(region["max_displacement"]) * profile.silhouette_scale
+	# ---- level 2: cluster centres, evenly spread (Fibonacci sphere, jittered), kept apart, sized by area
+	var area := 4.0 * PI * pow((pow(r.x * r.y, 1.6) + pow(r.x * r.z, 1.6) + pow(r.y * r.z, 1.6)) / 3.0, 1.0 / 1.6)
+	var wanted := int(area * 2.6 * float(region["density"]) * clampf(profile.growth, 0.2, 1.0))
+	var candidates := maxi(wanted * 3, 12)
+	var dirs: Array[Vector3] = []
+	var golden := PI * (3.0 - sqrt(5.0))
+	for i in range(candidates):
+		var y := 1.0 - 2.0 * (float(i) + 0.5) / float(candidates)
+		var rad := sqrt(1.0 - y * y)
+		var d := Vector3(cos(golden * i) * rad, y, sin(golden * i) * rad)
+		d = (d + Vector3(rng.randf_range(-0.12, 0.12), rng.randf_range(-0.12, 0.12), rng.randf_range(-0.12, 0.12))).normalized()
+		if d.y < -0.42:
+			continue                                             # nothing grows on the underside
+		var p := HedgeAnatomy.surface_point(c, r, d)
+		var head_local := (p - c) if is_head else (p - head_center)
+		if HedgeAnatomy.protection(profile, head_local) > 0.72:
+			continue                                             # no cluster is centred on the face
+		var apart := true
+		for other in dirs:
+			if d.angle_to(other) < profile.cluster_min_gap * (0.8 if is_head else 1.0):
+				apart = false
+				break
+		if apart:
+			dirs.append(d)
+	# shuffle deterministically, then keep as many as growth allows
+	for i in range(dirs.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t := dirs[i]
+		dirs[i] = dirs[j]
+		dirs[j] = t
+	dirs = dirs.slice(0, mini(dirs.size(), wanted))
+	# ---- level 3: leaves in each cluster
+	for ci in range(dirs.size()):
+		var cd: Vector3 = dirs[ci]
+		var cp := HedgeAnatomy.surface_point(c, r, cd)
+		var cn := HedgeAnatomy.surface_normal(c, r, cp)
+		var family := _family(profile, cn, key_dir, rng)
+		clusters.append({"position": cp, "normal": cn, "color": family})
+		var count := int(profile.leaves_per_cluster * (0.75 if is_head else 1.0))
+		for li in range(count):
+			var crown := li == 0
+			var offset := Vector2.ZERO if crown else Vector2(rng.randfn(0.0, 0.55), rng.randfn(0.0, 0.55)).limit_length(1.6)
+			var t1 := cn.cross(UP if absf(cn.y) < 0.95 else Vector3.RIGHT).normalized()
+			var t2 := cn.cross(t1).normalized()
+			var d := (cd + (t1 * offset.x + t2 * offset.y) * profile.cluster_spread).normalized()
+			var p := HedgeAnatomy.surface_point(c, r, d)
+			if not is_head and p.y < 0.2:
+				continue                                         # nothing touches the ground
+			var n := HedgeAnatomy.surface_normal(c, r, p)
+			var head_local := (p - c) if is_head else (p - head_center)
+			var protect := HedgeAnatomy.protection(profile, head_local)
+			if not crown and rng.randf() > profile.coverage:
+				continue
+			if rng.randf() < protect:
+				continue                                         # thinning smoothly toward the face
+			var dist := offset.length() / 1.6
+			var size := leaf_len * lerpf(1.18, 0.62, dist) * rng.randf_range(0.88, 1.1) * lerpf(1.0, 0.3, protect)
+			items.append(_leaf(p, n, size, max_disp, float(region["growth_up"]), cd, rng, family, profile, crown, dist))
+		# ---- level 4: a flower on some clusters, well away from the face
+		if region_name == "BODY" and rng.randf() < profile.flowering * 0.55 and cn.y > -0.1:
+			var head_local := cp - head_center
+			if HedgeAnatomy.protection(profile, head_local) < 0.05 and cp.distance_to(head_center) > 1.1:
+				var fsize := leaf_len * 0.62
+				var flower: Array = _leaf(cp + cn * 0.05, cn, fsize, max_disp, 0.0, cd, rng, Color(1.0, 0.98, 0.92), profile, true, 0.0)
+				var custom: Color = flower[2]
+				custom.r = 13.0                                  # the flower sprite
+				custom.a = 0.3                                   # flowers go at FAR detail
+				flower[2] = custom
+				items.append(flower)
+	return {"items": items, "clusters": clusters}
+
+
+## A cluster's colour family: lit, upward clusters lean to matcha and warm yellow-green; shaded ones to deep forest;
+## the middle to muted ivy and sage. Picked deterministically among two neighbours, then gently varied.
+static func _family(profile: CharacterArtProfile, n: Vector3, key_dir: Vector3, rng: RandomNumberGenerator) -> Color:
+	var exposure := clampf(0.5 + 0.35 * n.dot(UP) + 0.35 * n.dot(-key_dir.normalized()), 0.0, 1.0)
+	var ladder := ["deep_forest", "muted_ivy", "soft_sage", "matcha", "warm_yellow_green"]
+	var at := exposure * float(ladder.size() - 1)
+	var i := clampi(int(at + rng.randf_range(-0.6, 0.6)), 0, ladder.size() - 1)
+	var base: Color = profile.palette[ladder[i]]
+	return base.lerp(profile.palette["muted_ivy"], 0.18)
+
+
+static func _leaf(p: Vector3, n: Vector3, size: float, max_disp: float, growth_up: float, cluster_dir: Vector3,
+		rng: RandomNumberGenerator, family: Color, profile: CharacterArtProfile, crown: bool, dist: float) -> Array:
+	# growth tangent: away from the cluster centre and a little upward (ivy climbs), with bounded variation
+	var away := (p.normalized() - cluster_dir).normalized() if not crown else UP
+	var grow := (away * 0.7 + UP * growth_up)
+	var t := (grow - n * grow.dot(n))
+	if t.length() < 0.05:
+		t = n.cross(Vector3.FORWARD)
+	t = t.normalized().rotated(n, rng.randf_range(-0.35, 0.35))
+	# lift the tip off the surface, never further than max_displacement allows
+	var max_lift := asin(clampf(max_disp / maxf(size, 0.01), 0.0, 1.0))
+	var lift := rng.randf_range(0.12, 0.35) if max_lift < 0.12 else rng.randf_range(0.12, maxf(0.13, max_lift))
+	var right := t.cross(n).normalized()
+	var up := (t * cos(lift) + n * sin(lift)).normalized()
+	var normal := right.cross(up).normalized()
+	var basis := Basis(right * size, up * size, normal * size)
+	var color := family.lightened(rng.randf_range(-profile.color_variation, profile.color_variation))
+	if crown:
+		color = color.lightened(0.05)                            # the newest leaf at the crown, a touch paler
+	var rank := 0.0 if crown else clampf(0.2 + dist * 0.6 + rng.randf_range(-0.1, 0.15), 0.05, 1.0)
+	var custom := Color(float(rng.randi_range(0, 7)), rng.randf_range(0.0, TAU), lerpf(0.5, 1.0, dist), rank)
+	return [Transform3D(basis, p - n * 0.02), color, custom]

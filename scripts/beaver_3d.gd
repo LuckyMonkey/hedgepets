@@ -1,172 +1,343 @@
 extends Node3D
 
-## Gerald in 3D: a beaver made of ivy, seen from above and to the side like hedgepetsGoal.jpg.
-##
-## Everything is built here, procedurally: the leafy masses (body, head), thousands of ivy leaves as one MultiMesh
-## (each leaf is a sprite from assets/sprites, lit with its normal map, moved by the wind in shaders/leaf.gdshader),
-## the woven-twig tail, root feet, berry eyes, seed nose and teeth, a warm sun with real shadows, and the camera.
-## Life: he blinks, his head turns a little toward your pointer, gusts roll through his leaves; tap him and he hops,
-## his leaves shiver and a heart floats up.
+## A HedgePet in 3D, assembled from its CharacterArtProfile (res://pets/gerald.tres): a bush that happens to look
+## like a beaver. The silhouette establishes the animal (regions), the foliage the material (clusters of leaves),
+## the face the personality (anchors). Each is built separately so none can destroy the others:
+##   world      paper ground and background, soft illustration light
+##   regions    the inner leafy masses (BODY, HEAD), MUZZLE, TAIL, EARS, FEET
+##   foliage    scripts/art/foliage_builder.gd per region (head foliage is a child of the head and turns with it)
+##   face       eyes, nose, mouth, teeth, cheeks at head-local anchors
+##   life       blinks, looks toward you, a gust now and then; tap him: hop, shiver, a heart
+##   detail     CLOSE / MEDIUM / FAR chosen from his size on screen (mobile first)
+## Developer view: F1 (scripts/art/art_debug.gd). Acceptance captures: tools/capture_views.gd.
 
-const BODY_C := Vector3(0.0, 1.05, 0.0)
-const BODY_R := Vector3(1.55, 1.0, 1.12)
-const HEAD_C := Vector3(1.62, 1.38, 0.0)
-const HEAD_R := Vector3(0.82, 0.72, 0.74)
-const FACE_DIR := Vector3(1.0, -0.08, 0.0)          # the way he faces (+X)
-const PAPER := Color(0.968627, 0.945098, 0.890196)
-const PALETTE := [Color("3b6534"), Color("5d8a37"), Color("8ea64c"), Color("20472a"), Color("4a7a36"), Color("2f5a2c"), Color("6f963e")]
+const PROFILE_PATH := "res://pets/gerald.tres"
+
+@export var profile: CharacterArtProfile
 
 var pet: Node3D
 var head: Node3D
+var camera: Camera3D
+var sun: DirectionalLight3D
+var fill: DirectionalLight3D
 var leaves_mat: ShaderMaterial
-var eyes: Array[MeshInstance3D] = []
+var foliage_nodes: Array[MultiMeshInstance3D] = []
+var cluster_debug: Array = []                 # [{position (local to its region's parent), parent, normal, color}]
+var eyes: Array[Node3D] = []
 var heart: Label3D
+var detail := "CLOSE"
+var auto_detail := true
 var time := 0.0
 var joy := 0.0
 var hop := 0.0
 var _hop_v := 0.0
 var _next_blink := 2.0
 var _blink := 0.0
+var _gust := 0.0
+var _next_gust := 6.0
 var _look := Vector2.ZERO
 var _look_target := Vector2.ZERO
 var _rng := RandomNumberGenerator.new()
+var _materials := {}
 
 
 func _ready() -> void:
-	_rng.seed = 1977
+	if profile == null:
+		profile = load(PROFILE_PATH) as CharacterArtProfile if ResourceLoader.exists(PROFILE_PATH) else CharacterArtProfile.gerald()
+	_rng.seed = profile.seed
 	_build_world()
 	pet = Node3D.new()
+	pet.name = "Pet"
 	add_child(pet)
 	head = Node3D.new()
-	head.position = HEAD_C
+	head.name = "Head"
+	head.position = profile.regions["HEAD"]["center"]
 	pet.add_child(head)
-	_build_masses()
-	_build_tail()
-	_build_feet()
-	_build_leaves()
+	_build_regions()
 	_build_face()
+	rebuild_foliage()
 	_build_ui()
+	set_view("THREE_QUARTER")
 
 
-# ------------------------------------------------------------------ world: camera, sun, ground
+# ------------------------------------------------------------------ world: paper, light, camera
 func _build_world() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = PAPER
+	env.background_color = profile.paper
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.78, 0.80, 0.70)
-	env.ambient_light_energy = 0.16
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED   # the paper background must not shine off everything
+	env.ambient_light_color = profile.ambient_color
+	env.ambient_light_energy = profile.ambient_energy
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR   # an illustration: the paper stays the paper
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
-	var sun := DirectionalLight3D.new()
-	sun.light_color = Color(1.0, 0.94, 0.80)
-	sun.light_energy = 0.36
+	# soft illustration light: a broad warm key with soft, light shadows, and a fill from the viewer so the face
+	# never falls into shadow
+	sun = DirectionalLight3D.new()
+	sun.light_color = profile.key_color
+	sun.light_energy = profile.key_energy
 	sun.shadow_enabled = true
-	sun.shadow_blur = 2.0
-	sun.directional_shadow_max_distance = 30.0
-	sun.rotation_degrees = Vector3(-52.0, -38.0, 0.0)   # from the upper left, behind the viewer's shoulder
+	sun.shadow_blur = profile.shadow_softness
+	sun.directional_shadow_max_distance = 25.0
+	sun.rotation_degrees = profile.key_angle
 	add_child(sun)
-	var fill := DirectionalLight3D.new()   # a soft cool fill from the other side, no shadows
-	fill.light_color = Color(0.75, 0.85, 1.0)
-	fill.light_energy = 0.08
-	fill.rotation_degrees = Vector3(-20.0, 140.0, 0.0)
+	fill = DirectionalLight3D.new()
+	fill.light_color = Color(0.92, 0.95, 1.0)
+	fill.light_energy = profile.fill_energy
+	fill.rotation_degrees = Vector3(-18.0, 35.0, 0.0)    # from the front-right, where the viewer stands
 	add_child(fill)
-	var camera := Camera3D.new()
-	# from the front-right and above, like the goal image; framed by width because the window is portrait
+	camera = Camera3D.new()
 	camera.keep_aspect = Camera3D.KEEP_WIDTH
 	camera.fov = 40.0
-	var target := Vector3(0.1, 0.9, 0.0)
-	camera.position = target + Vector3(0.42, 0.55, 0.72).normalized() * 7.4
 	add_child(camera)
-	camera.look_at(target, Vector3.UP)
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(400, 400)
 	ground.mesh = plane
-	var ground_mat := StandardMaterial3D.new()
-	ground_mat.albedo_color = Color(PAPER.r * 0.82, PAPER.g * 0.84, PAPER.b * 1.0)   # tuned so the lit ground comes out as the paper
-	ground_mat.roughness = 1.0
-	ground_mat.metallic_specular = 0.0
-	ground.material_override = ground_mat
+	var paper_mat := ShaderMaterial.new()
+	paper_mat.shader = load("res://shaders/paper_ground.gdshader")
+	paper_mat.set_shader_parameter("paper", Color(profile.paper.r, profile.paper.g, profile.paper.b))
+	paper_mat.set_shader_parameter("shadow_strength", profile.shadow_strength)
+	ground.material_override = paper_mat
+	ground.name = "Paper"
 	add_child(ground)
 
 
-# ------------------------------------------------------------------ the creature
-func _ellipsoid(parent: Node3D, center: Vector3, radii: Vector3, color: Color, roughness := 0.9) -> MeshInstance3D:
+## Camera presets for looking at him (and for the acceptance captures).
+func set_view(view: String) -> void:
+	var target := Vector3(0.15, 0.85, 0.0)
+	var dir := Vector3(0.42, 0.55, 0.72)
+	var distance := 7.4
+	match view:
+		"FRONT":
+			dir = Vector3(1.0, 0.35, 0.0)
+		"SIDE":
+			dir = Vector3(0.0, 0.3, 1.0)
+		"DISTANT":
+			distance = 17.0
+	camera.position = target + dir.normalized() * distance
+	camera.look_at(target, Vector3.UP)
+
+
+# ------------------------------------------------------------------ regions
+func _mat(kind: String) -> Material:
+	if _materials.has(kind):
+		return _materials[kind]
+	var m := StandardMaterial3D.new()
+	m.roughness = 1.0
+	m.metallic_specular = 0.0
+	match kind:
+		"inner":
+			m.albedo_color = profile.inner_mass
+		"moss":
+			m.albedo_color = profile.palette["matcha"].darkened(0.08)
+		"terracotta":
+			m.albedo_color = Color("94654a")
+		"ear":
+			m.albedo_color = profile.palette["muted_ivy"]
+		"ear_inner":
+			m.albedo_color = profile.palette["muted_ivy"].darkened(0.18)   # a soft cup, not a dark spot
+		"eye":
+			m.albedo_color = Color("1e1814")
+			m.roughness = 0.55
+			m.metallic_specular = 0.2
+		"glint":
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.albedo_color = Color(1, 1, 1, 0.9)
+		"nose":
+			m.albedo_color = Color("3a2a1e")
+			m.roughness = 0.6
+		"tooth":
+			m.albedo_color = Color("f3ead0")
+		"ink":
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.albedo_color = profile.ink_color
+		"cheek":
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m.albedo_color = Color(1.0, 0.70, 0.66, 0.62)   # peach, strong enough to stay pink over green
+		"tail":
+			m.albedo_texture = _engraved_texture()
+			m.uv1_scale = Vector3(3.0, 2.0, 1.0)
+	_materials[kind] = m
+	return m
+
+
+func _ellipsoid(parent: Node3D, center: Vector3, radii: Vector3, kind: String, outline := 0.0) -> MeshInstance3D:
 	var mesh := SphereMesh.new()
 	mesh.radius = 1.0
 	mesh.height = 2.0
-	mesh.radial_segments = 48
-	mesh.rings = 24
+	mesh.radial_segments = 40
+	mesh.rings = 20
 	var node := MeshInstance3D.new()
 	node.mesh = mesh
 	node.position = center
 	node.scale = radii
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = roughness
-	node.material_override = mat
+	node.material_override = _mat(kind)
 	parent.add_child(node)
+	if outline > 0.0 and profile.outline_strength > 0.0:
+		var hull := ShaderMaterial.new()
+		hull.shader = load("res://shaders/ink_hull.gdshader")
+		hull.set_shader_parameter("ink", Color(profile.ink_color.r, profile.ink_color.g, profile.ink_color.b))
+		hull.set_shader_parameter("width", outline * profile.outline_strength)
+		node.material_overlay = hull
 	return node
 
 
-func _build_masses() -> void:
-	# deep leafy shade inside the hedge: whatever shows between the leaves is more plant
-	_ellipsoid(pet, BODY_C, BODY_R * 0.97, Color("1e3214"))
-	_ellipsoid(head, Vector3.ZERO, HEAD_R * 0.96, Color("223817"))
-	# moss over the muzzle
-	_ellipsoid(head, FACE_DIR * HEAD_R.x * 0.62 + Vector3(0, -0.12, 0), Vector3(0.42, 0.34, 0.42), Color("56702c"))
+func _build_regions() -> void:
+	var r: Dictionary = profile.regions
+	# the inner leafy masses: the green that shows between clusters, on purpose
+	_ellipsoid(pet, r["BODY"]["center"], r["BODY"]["radii"] * 0.97, "inner").name = "BODY"
+	_ellipsoid(head, Vector3.ZERO, r["HEAD"]["radii"] * 0.97, "inner").name = "HEAD"
+	_ellipsoid(head, r["MUZZLE"]["center"], r["MUZZLE"]["radii"], "moss", 0.04).name = "MUZZLE"
+	# the tail: one simple paddle, engraved, low and behind; no leaves on it so it stays a beaver tail
+	var tail := _ellipsoid(pet, r["TAIL"]["center"], r["TAIL"]["radii"], "tail", 0.08)
+	tail.name = "TAIL"
+	tail.rotation_degrees = Vector3(0, 6, 7)
+	# ears: small rounded leaf-cups on top of the head
+	for side: float in [1.0, -1.0]:
+		var c: Vector3 = r["EARS"]["center"] * Vector3(1, 1, side)
+		var ear := _ellipsoid(head, c, r["EARS"]["radii"], "ear", 0.16)
+		ear.rotation_degrees = Vector3(-24.0 * side, -20.0 * side, 0)
+		_ellipsoid(head, c + Vector3(0.03, 0.0, 0.0), r["EARS"]["radii"] * Vector3(0.6, 0.62, 0.9), "ear_inner")
+	# feet: little terracotta nubs, short and compact, visible under the foliage
+	for f in profile.feet:
+		var foot := _ellipsoid(pet, f + Vector3(0, r["FEET"]["radii"].y * 0.9, 0), r["FEET"]["radii"], "terracotta", 0.12)
+		foot.name = "FOOT"
 
 
-func _build_tail() -> void:
-	# a paddle of woven twigs, behind and low, tilted up a little
-	var tail := _ellipsoid(pet, Vector3(-2.05, 0.32, 0.12), Vector3(0.95, 0.10, 0.62), Color.WHITE, 1.0)
-	tail.rotation_degrees = Vector3(0, 8, 9)
-	var weave := Image.create(256, 256, false, Image.FORMAT_RGB8)
-	weave.fill(Color("2a1f12"))
-	for i in range(-16, 32):
-		for dir: int in [1, -1]:
-			for k in range(256):
-				var x := i * 16 + (k * dir if dir > 0 else 255 - k)
-				var y := k
-				for w in range(-3, 4):
-					var px := x + w
-					if px >= 0 and px < 256:
-						var c := Color("5a4329") if absi(w) < 3 else Color("7e6342")
-						weave.set_pixel(px, y, c)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_texture = ImageTexture.create_from_image(weave)
-	mat.uv1_scale = Vector3(3, 3, 1)
-	mat.roughness = 0.95
-	tail.material_override = mat
+## Engraved crosshatch for the paddle tail: warm wood with a restrained diamond pattern.
+func _engraved_texture() -> Texture2D:
+	var img := Image.create(128, 128, false, Image.FORMAT_RGB8)
+	img.fill(Color("7a5a3e"))
+	for y in range(128):
+		for x in range(128):
+			var a := posmod(x + y, 32)
+			var b := posmod(x - y, 32)
+			if a < 2 or b < 2:
+				img.set_pixel(x, y, Color("553d2a"))
+	return ImageTexture.create_from_image(img)
 
 
-func _build_feet() -> void:
-	# root clumps: a mossy knot and roots splaying into the ground
-	var root_mat := StandardMaterial3D.new()
-	root_mat.albedo_color = Color("4a3622")
-	root_mat.roughness = 1.0
-	for spot: Vector3 in [Vector3(1.0, 0.0, 0.62), Vector3(1.0, 0.0, -0.62), Vector3(-0.85, 0.0, 0.7), Vector3(-0.85, 0.0, -0.7)]:
-		_ellipsoid(pet, spot + Vector3(0, 0.14, 0), Vector3(0.22, 0.14, 0.2), Color("3f5a24"))
-		for r in range(5):
-			var a := TAU * float(r) / 5.0 + 0.4
-			var root := MeshInstance3D.new()
-			var cyl := CylinderMesh.new()
-			cyl.top_radius = 0.045
-			cyl.bottom_radius = 0.015
-			cyl.height = 0.42
-			root.mesh = cyl
-			root.material_override = root_mat
-			root.position = spot + Vector3(cos(a) * 0.2, 0.08, sin(a) * 0.2)
-			root.rotation = Vector3(sin(a) * 1.2, 0, -cos(a) * 1.2)
-			pet.add_child(root)
+# ------------------------------------------------------------------ the face (head-local anchors)
+func _anchor(name: String) -> Vector3:
+	return HedgeAnatomy.anchor_point(profile, name)
 
 
-## A few vines hanging off his sides and back, leaves all along them, swinging in the same wind.
-func _build_vines() -> void:
+func _build_face() -> void:
+	# eyes: dark, round, a little oversized, like ceramic or ink; one restrained highlight; an ink rim
+	for name in ["EYE_LEFT", "EYE_RIGHT"]:
+		var holder := Node3D.new()
+		holder.position = _anchor(name)
+		var n := HedgeAnatomy.anchor_normal(profile, name)
+		holder.basis = Basis(Quaternion(Vector3.FORWARD, -n))   # -Z of the holder faces out of the head
+		head.add_child(holder)
+		var s := profile.eye_size
+		var eye := _ellipsoid(holder, Vector3(0, 0, -s * 0.35), Vector3(s, s * 1.08, s * 0.7), "eye", 0.06)
+		eye.name = name
+		_ellipsoid(eye, Vector3(-0.32, 0.36, -0.75), Vector3(0.24, 0.24, 0.12), "glint")
+		eyes.append(holder)
+	# nose: a soft dark seed on the front of the muzzle
+	_ellipsoid(head, _anchor("NOSE"), Vector3(0.11, 0.085, 0.14), "nose", 0.05)
+	# mouth: a few strokes - down from the nose, then a small curve each side
+	var nose := _anchor("NOSE")
+	var mouth := _anchor("MOUTH")
+	_stroke([nose + Vector3(0, -0.07, 0), mouth])
+	for side: float in [1.0, -1.0]:
+		var pts: Array[Vector3] = []
+		for k in range(6):
+			var t := float(k) / 5.0
+			pts.append(mouth + Vector3(-0.02 * sin(t * PI), 0.035 * sin(t * PI), side * t * 0.12))
+		_stroke(pts)
+	# teeth: two pale beaver teeth, identifiable from across the room
+	for side: float in [1.0, -1.0]:
+		var tooth := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(0.05, 0.17, 0.085)
+		tooth.mesh = box
+		tooth.material_override = _mat("tooth")
+		tooth.position = _anchor("TEETH") + Vector3(0.06, -0.05, side * 0.046)
+		head.add_child(tooth)
+		var hull := ShaderMaterial.new()
+		hull.shader = load("res://shaders/ink_hull.gdshader")
+		hull.set_shader_parameter("width", 0.008 * profile.outline_strength)
+		tooth.material_overlay = hull
+	# cheeks: a pale pigment wash
+	for name in ["CHEEK_LEFT", "CHEEK_RIGHT"]:
+		var cheek := MeshInstance3D.new()
+		var disc := CylinderMesh.new()
+		disc.top_radius = 0.12
+		disc.bottom_radius = 0.12
+		disc.height = 0.005
+		cheek.mesh = disc
+		cheek.material_override = _mat("cheek")
+		cheek.position = _anchor(name)
+		cheek.basis = Basis(Quaternion(Vector3.UP, HedgeAnatomy.anchor_normal(profile, name))).scaled(Vector3(1.0, 1.0, 0.7))
+		head.add_child(cheek)
+	heart = Label3D.new()
+	heart.text = "♥"
+	heart.font_size = 140
+	heart.modulate = Color(0.93, 0.45, 0.48, 0.0)
+	heart.outline_modulate = Color(0, 0, 0, 0)
+	heart.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	heart.position = Vector3(0.2, 1.1, 0.0)
+	head.add_child(heart)
+
+
+func _stroke(points: Array[Vector3]) -> void:
+	for i in range(points.size() - 1):
+		var a := points[i]
+		var b := points[i + 1]
+		var seg := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.014
+		cyl.bottom_radius = 0.014
+		cyl.height = a.distance_to(b) + 0.01
+		cyl.radial_segments = 6
+		seg.mesh = cyl
+		seg.material_override = _mat("ink")
+		seg.position = (a + b) * 0.5
+		seg.basis = Basis(Quaternion(Vector3.UP, (b - a).normalized()))
+		head.add_child(seg)
+
+
+# ------------------------------------------------------------------ foliage
+func rebuild_foliage() -> void:
+	for node in foliage_nodes:
+		node.queue_free()
+	foliage_nodes.clear()
+	cluster_debug.clear()
+	if leaves_mat == null:
+		var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/hedgeivy.png"))
+		var normals := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/hedgeivy_n.png"))
+		image.generate_mipmaps()
+		normals.generate_mipmaps()
+		leaves_mat = ShaderMaterial.new()
+		leaves_mat.shader = load("res://shaders/leaf.gdshader")
+		leaves_mat.set_shader_parameter("leaf_sheet", ImageTexture.create_from_image(image))
+		leaves_mat.set_shader_parameter("leaf_normals", ImageTexture.create_from_image(normals))
+	leaves_mat.set_shader_parameter("ink_color", Color(profile.ink_color.r, profile.ink_color.g, profile.ink_color.b))
+	leaves_mat.set_shader_parameter("silhouette_ink", profile.silhouette_ink)
+	leaves_mat.set_shader_parameter("interior_ink", profile.interior_ink)
+	var key_dir := -sun.global_transform.basis.z
+	var head_c: Vector3 = profile.regions["HEAD"]["center"]
+	for region_name in profile.regions:
+		if not profile.regions[region_name].get("foliage", false):
+			continue
+		var built := FoliageBuilder.build(profile, region_name, head_c, key_dir)
+		var parent: Node3D = head if region_name == "HEAD" else pet
+		_add_multimesh(parent, built["items"], region_name)
+		for c in built["clusters"]:
+			cluster_debug.append({"position": c["position"], "parent": parent, "normal": c["normal"], "color": c["color"]})
+	_add_multimesh(pet, _tendrils(), "TENDRILS")
+	set_detail(detail)
+
+
+func _add_multimesh(parent: Node3D, items: Array, label: String) -> void:
+	if items.is_empty():
+		return
 	var quad := QuadMesh.new()
 	quad.size = Vector2(1.0, 1.0)
 	quad.center_offset = Vector3(0, 0.5, 0)
@@ -175,186 +346,87 @@ func _build_vines() -> void:
 	mm.use_colors = true
 	mm.use_custom_data = true
 	mm.mesh = quad
-	var items: Array = []
-	for v in range(9):
-		var a := _rng.randf_range(-PI, PI)
-		var d := Vector3(cos(a) * 0.9, _rng.randf_range(-0.15, 0.35), sin(a)).normalized()
-		var p := BODY_C + d * BODY_R
-		var out := Vector3(d.x, 0.0, d.z).normalized()
-		var steps := _rng.randi_range(4, 7)
-		for k in range(steps):
-			var prev := p
-			p += out * 0.16 + Vector3(0, -0.13 - 0.02 * k, 0)
-			if p.y < 0.12:
-				break
-			_stem(prev, p)
-			var size := _rng.randf_range(0.26, 0.36) * (1.0 - 0.06 * k)
-			var leaf_up := (out * 0.4 + Vector3.DOWN).normalized().rotated(out, _rng.randf_range(-0.8, 0.8))
-			var right := leaf_up.cross(out).normalized()
-			var normal := right.cross(leaf_up).normalized()
-			items.append([Transform3D(Basis(right * size, leaf_up * size, normal * size), p), PALETTE[_rng.randi_range(0, PALETTE.size() - 1)], Color(float(_rng.randi_range(0, 7)), _rng.randf_range(0.0, TAU), 1.0, 0.0)])
 	mm.instance_count = items.size()
 	for i in range(items.size()):
 		mm.set_instance_transform(i, items[i][0])
 		mm.set_instance_color(i, items[i][1])
 		mm.set_instance_custom_data(i, items[i][2])
 	var node := MultiMeshInstance3D.new()
-	node.multimesh = mm
-	node.material_override = leaves_mat
-	pet.add_child(node)
-
-
-func _stem(a: Vector3, b: Vector3) -> void:
-	var seg := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.018
-	cyl.bottom_radius = 0.018
-	cyl.height = a.distance_to(b)
-	cyl.radial_segments = 6
-	seg.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color("426633")
-	mat.roughness = 0.9
-	seg.material_override = mat
-	pet.add_child(seg)
-	seg.position = (a + b) * 0.5
-	var dir := (b - a).normalized()
-	seg.basis = Basis(Quaternion(Vector3.UP, dir))
-
-
-## Ivy all over the body and head: thousands of leaves, each a quad on the surface, facing out and a little up.
-func _build_leaves() -> void:
-	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/hedgeivy.png"))
-	var normals := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/hedgeivy_n.png"))
-	image.generate_mipmaps()
-	normals.generate_mipmaps()
-	leaves_mat = ShaderMaterial.new()
-	leaves_mat.shader = load("res://shaders/leaf.gdshader")
-	leaves_mat.set_shader_parameter("leaf_sheet", ImageTexture.create_from_image(image))
-	leaves_mat.set_shader_parameter("leaf_normals", ImageTexture.create_from_image(normals))
-	_scatter(pet, BODY_C, BODY_R, 1900, false)
-	_scatter(head, Vector3.ZERO, HEAD_R, 900, true)
-	_build_vines()
-
-
-func _scatter(parent: Node3D, center: Vector3, radii: Vector3, count: int, is_head: bool) -> void:
-	var quad := QuadMesh.new()
-	quad.size = Vector2(1.0, 1.0)
-	quad.center_offset = Vector3(0, 0.5, 0)   # the stalk at the bottom edge sits on the surface
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.use_custom_data = true
-	mm.mesh = quad
-	var transforms: Array[Transform3D] = []
-	var colors: Array[Color] = []
-	var customs: Array[Color] = []
-	for i in range(count):
-		var d := Vector3(_rng.randfn(), _rng.randfn(), _rng.randfn()).normalized()
-		if d.y < -0.55:
-			continue                                  # nothing grows underneath
-		var p := center + d * radii
-		var normal := (d / radii).normalized()       # the ellipsoid's true normal
-		var size := _rng.randf_range(0.34, 0.52)
-		if is_head:
-			# leaves keep off just the berry eyes, the seed nose and the teeth; the rest of the face is small mossy leaves
-			var clear := false
-			for feature: Vector3 in [Vector3(0.62, 0.38, 0.55).normalized(), Vector3(0.62, 0.38, -0.55).normalized(), Vector3(1.0, -0.05, 0.0), Vector3(0.95, -0.45, 0.0).normalized()]:
-				if d.angle_to(feature) < 0.30:
-					clear = true
-			if clear:
-				continue
-			var face := d.dot(FACE_DIR.normalized())
-			if face > 0.2:
-				size *= lerpf(1.0, 0.38, clampf((face - 0.2) / 0.6, 0.0, 1.0))
-			size *= 0.85
-		# the leaf lies against the surface, pointing outward and up (ivy climbs), tilted out a little
-		var up_hint := (Vector3.UP - normal * normal.dot(Vector3.UP))
-		if up_hint.length() < 0.1:
-			up_hint = Vector3(1, 0, 0) - normal * normal.x
-		var leaf_up := up_hint.normalized().rotated(normal, _rng.randf_range(-0.9, 0.9))
-		var facing := (normal * 0.55 + leaf_up * 0.0).normalized()
-		var leaf_right := leaf_up.cross(facing).normalized()
-		var leaf_normal := leaf_right.cross(leaf_up).normalized()
-		leaf_up = (leaf_up + normal * _rng.randf_range(0.15, 0.6)).normalized()   # lifting off the surface
-		leaf_normal = leaf_right.cross(leaf_up).normalized()
-		var basis := Basis(leaf_right * size, leaf_up * size, leaf_normal * size)
-		transforms.append(Transform3D(basis, p - normal * 0.04))
-		var shade: Color = PALETTE[_rng.randi_range(0, PALETTE.size() - 1)]
-		shade = shade.lightened(_rng.randf_range(-0.05, 0.12))
-		colors.append(shade)
-		var cell := float(_rng.randi_range(0, 7))
-		if _rng.randf() < 0.025:
-			cell = 13.0                               # a white flower now and then
-			colors[colors.size() - 1] = Color(1, 1, 1)
-		var rim := clampf(1.0 - absf(d.dot(Vector3(0.42, 0.55, 0.72).normalized())), 0.2, 1.0)
-		customs.append(Color(cell, _rng.randf_range(0.0, TAU), lerpf(0.4, 1.0, rim), 0.0))
-	mm.instance_count = transforms.size()
-	for i in range(transforms.size()):
-		mm.set_instance_transform(i, transforms[i])
-		mm.set_instance_color(i, colors[i])
-		mm.set_instance_custom_data(i, customs[i])
-	var node := MultiMeshInstance3D.new()
+	node.name = "Foliage_" + label
 	node.multimesh = mm
 	node.material_override = leaves_mat
 	parent.add_child(node)
+	foliage_nodes.append(node)
 
 
-func _build_face() -> void:
-	# berry eyes: glossy, dark with a purple sheen
-	var berry := StandardMaterial3D.new()
-	berry.albedo_color = Color("1c1222")
-	berry.roughness = 0.08
-	berry.metallic_specular = 1.0
-	for side: float in [1.0, -1.0]:
-		var dir := Vector3(0.62, 0.38, 0.55 * side).normalized()
-		var eye := _ellipsoid(head, dir * HEAD_R * 0.98, Vector3(0.13, 0.15, 0.13), Color.BLACK, 0.08)
-		eye.material_override = berry
-		eyes.append(eye)
-	# a seed for a nose, at the front of the muzzle
-	var seed_mat := StandardMaterial3D.new()
-	seed_mat.albedo_color = Color("3b2617")
-	seed_mat.roughness = 0.35
-	var nose := _ellipsoid(head, Vector3(HEAD_R.x * 1.12, -0.04, 0.0), Vector3(0.13, 0.10, 0.17), Color.BLACK)
-	nose.material_override = seed_mat
-	# two pale seeds for teeth
-	for side: float in [1.0, -1.0]:
-		_ellipsoid(head, Vector3(HEAD_R.x * 1.02, -0.36, 0.065 * side), Vector3(0.05, 0.13, 0.055), Color("efe6c4"), 0.5)
-	# leaf ears: two big ivy leaves standing up from the top of the head
-	var quad := QuadMesh.new()
-	quad.size = Vector2(1.0, 1.0)
-	quad.center_offset = Vector3(0, 0.5, 0)
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.use_custom_data = true
-	mm.mesh = quad
-	mm.instance_count = 2
-	for i in range(2):
-		var side := 1.0 if i == 0 else -1.0
-		var basis := Basis.from_euler(Vector3(-0.30 * side, 0.55 * side, 0.0)).scaled(Vector3(0.62, 0.62, 0.62))
-		mm.set_instance_transform(i, Transform3D(basis, Vector3(-0.12, HEAD_R.y * 0.80, 0.40 * side)))
-		mm.set_instance_color(i, Color("6f963e"))
-		mm.set_instance_custom_data(i, Color(2.0, float(i) * 2.0, 0.9, 0.0))
-	var ears := MultiMeshInstance3D.new()
-	ears.multimesh = mm
-	ears.material_override = leaves_mat
-	head.add_child(ears)
-	heart = Label3D.new()
-	heart.text = "♥"
-	heart.font_size = 160
-	heart.modulate = Color(0.93, 0.42, 0.45, 0.0)
-	heart.outline_modulate = Color(0, 0, 0, 0)
-	heart.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	heart.position = Vector3(0.3, 1.2, 0.0)
-	head.add_child(heart)
+## Level 4: a few short tendrils trailing from the lower body; short so the silhouette stays a beaver.
+func _tendrils() -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(str(profile.seed) + "tendrils")
+	var body: Dictionary = profile.regions["BODY"]
+	var items: Array = []
+	for v in range(profile.tendrils):
+		var a := rng.randf_range(-2.6, 2.6)
+		var d := Vector3(cos(a), rng.randf_range(-0.1, 0.2), sin(a)).normalized()
+		var p := HedgeAnatomy.surface_point(body["center"], body["radii"], d)
+		var out := Vector3(d.x, 0.0, d.z).normalized()
+		for k in range(3):
+			p += out * 0.10 + Vector3(0, -0.12, 0)
+			if p.y < 0.2:
+				break
+			var size := profile.leaf_size * 0.7 * (1.0 - 0.12 * k)
+			var up := (out * 0.3 + Vector3.DOWN).normalized()
+			var right := up.cross(out).normalized()
+			var normal := right.cross(up).normalized()
+			items.append([Transform3D(Basis(right * size, up * size, normal * size), p), profile.palette["muted_ivy"], Color(float(rng.randi_range(0, 7)), rng.randf_range(0, TAU), 1.0, 0.4 + 0.2 * k)])
+	return items
+
+
+## Detail levels (mobile first): fewer, bigger leaves keep the masses whole; interior ink fades; flowers go at FAR.
+func set_detail(level: String) -> void:
+	detail = level
+	var l: Dictionary = profile.lod[level]
+	leaves_mat.set_shader_parameter("lod_keep", float(l["leaves"]))
+	leaves_mat.set_shader_parameter("lod_scale", float(l["scale"]))
+	leaves_mat.set_shader_parameter("detail_ink", float(l["ink"]))
+
+
+func _auto_detail() -> void:
+	if not auto_detail or camera == null:
+		return
+	# how tall he is on screen, in pixels
+	var top := camera.unproject_position(pet.global_position + Vector3(0, 2.1, 0))
+	var bottom := camera.unproject_position(pet.global_position)
+	var px := absf(bottom.y - top.y)
+	var level := "CLOSE" if px > 360.0 else ("MEDIUM" if px > 170.0 else "FAR")
+	if level != detail:
+		set_detail(level)
+
+
+## Foliage presets for the acceptance captures.
+func set_foliage(preset: String) -> void:
+	match preset:
+		"LOW":
+			profile.growth = 0.35
+			profile.flowering = 0.0
+		"MEDIUM":
+			profile.growth = 0.65
+			profile.flowering = 0.15
+		"FULL":
+			profile.growth = 1.0
+			profile.flowering = 0.35
+		"FLOWERING":
+			profile.growth = 1.0
+			profile.flowering = 1.0
+	rebuild_foliage()
 
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
+	layer.name = "UI"
 	add_child(layer)
 	var name_tag := Label.new()
-	name_tag.text = "Gerald"
+	name_tag.text = profile.pet_name
 	name_tag.add_theme_font_size_override("font_size", 54)
 	name_tag.add_theme_color_override("font_color", Color(0.36, 0.27, 0.19))
 	name_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -379,18 +451,15 @@ func life_state() -> Dictionary:
 func _process(delta: float) -> void:
 	time += delta
 	joy = maxf(0.0, joy - delta * 0.55)
-	# blink: squash the berries for a moment every few seconds
 	_next_blink -= delta
 	if _next_blink <= 0.0:
 		_blink = 1.0
-		_next_blink = _rng.randf_range(2.4, 5.5)
+		_next_blink = _rng.randf_range(profile.blink_interval.x, profile.blink_interval.y)
 	_blink = maxf(0.0, _blink - delta * 8.0)
 	for eye in eyes:
-		eye.scale.y = 0.15 * (1.0 - 0.85 * sin(_blink * PI))
-	# the head turns a little toward the pointer, and glances around when nobody is pointing
+		eye.scale.y = 1.0 - 0.88 * sin(_blink * PI)
 	_look = _look.lerp(_look_target, clampf(delta * 3.0, 0.0, 1.0))
-	head.rotation = Vector3(0.0, -_look.x * 0.22, -_look.y * 0.12 + sin(time * 0.9) * 0.02)
-	# hop
+	head.rotation = Vector3(0.0, -_look.x * profile.look_strength, -_look.y * profile.look_strength * 0.5 + sin(time * 0.9) * 0.015)
 	if hop > 0.0 or _hop_v != 0.0:
 		_hop_v -= 9.0 * delta
 		hop += _hop_v * delta
@@ -398,20 +467,35 @@ func _process(delta: float) -> void:
 			hop = 0.0
 			_hop_v = 0.0
 	pet.position.y = hop + sin(time * 1.5) * 0.004
-	leaves_mat.set_shader_parameter("gust", joy * 1.4)
+	# every so often a gust goes through his leaves
+	_next_gust -= delta
+	if _next_gust <= 0.0:
+		_gust = 1.0
+		_next_gust = _rng.randf_range(7.0, 14.0)
+	_gust = maxf(0.0, _gust - delta * 0.8)
+	leaves_mat.set_shader_parameter("gust", joy * 1.2 + _gust * 0.5)
 	heart.modulate.a = clampf(joy * 1.4, 0.0, 1.0)
-	heart.position.y = 1.2 + (1.0 - joy) * 0.5
+	heart.position.y = 1.1 + (1.0 - joy) * 0.5
+	_auto_detail()
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_F1:
+		var dbg := get_node_or_null("ArtDebug")
+		if dbg == null:
+			dbg = preload("res://scripts/art/art_debug.gd").new()
+			dbg.name = "ArtDebug"
+			add_child(dbg)
+		else:
+			dbg.queue_free()
+		return
 	if event is InputEventMouseMotion:
 		var size := get_viewport().get_visible_rect().size
 		_look_target = Vector2((event.position.x / size.x - 0.5) * 2.0, (event.position.y / size.y - 0.45) * 2.0).limit_length(1.0)
 	elif event is InputEventMouseButton and event.pressed or event is InputEventScreenTouch and event.pressed:
-		var camera := get_viewport().get_camera_3d()
-		var on_screen := camera.unproject_position(pet.global_position + BODY_C)
+		var on_screen := camera.unproject_position(pet.global_position + Vector3(0.3, 1.0, 0.0))
 		if event.position.distance_to(on_screen) < get_viewport().get_visible_rect().size.x * 0.45:
 			joy = 1.0
 			if hop <= 0.0:
-				_hop_v = 2.6
+				_hop_v = sqrt(2.0 * 9.0 * profile.hop_height)
 				hop = 0.001

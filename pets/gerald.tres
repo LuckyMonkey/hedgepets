@@ -1,0 +1,135 @@
+[gd_resource type="Resource" script_class="CharacterArtProfile" format=3]
+
+[ext_resource type="Script" path="res://scripts/art/character_art_profile.gd" id="1_sf8kk"]
+
+[resource]
+script = ExtResource("1_sf8kk")
+regions = {
+"BODY": {
+"center": Vector3(0, 1, 0),
+"density": 1.3,
+"foliage": true,
+"growth_up": 0.45,
+"leaf_scale": 1.0,
+"material": "foliage",
+"max_displacement": 0.26,
+"parent": "",
+"radii": Vector3(1.48, 0.95, 1.06)
+},
+"EARS": {
+"center": Vector3(-0.1, 0.55, 0.42),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "ear",
+"max_displacement": 0.0,
+"parent": "HEAD",
+"radii": Vector3(0.13, 0.15, 0.06)
+},
+"FEET": {
+"center": Vector3(0, 0, 0),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "terracotta",
+"max_displacement": 0.0,
+"parent": "",
+"radii": Vector3(0.21, 0.13, 0.19)
+},
+"HEAD": {
+"center": Vector3(1.52, 1.3, 0),
+"density": 2.3,
+"foliage": true,
+"growth_up": 0.3,
+"leaf_scale": 0.65,
+"material": "foliage",
+"max_displacement": 0.11,
+"parent": "",
+"radii": Vector3(0.74, 0.66, 0.68)
+},
+"MUZZLE": {
+"center": Vector3(0.58, -0.17, 0),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.25,
+"material": "moss",
+"max_displacement": 0.0,
+"parent": "HEAD",
+"radii": Vector3(0.34, 0.27, 0.36)
+},
+"TAIL": {
+"center": Vector3(-1.86, 0.3, 0.1),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.4,
+"material": "tail",
+"max_displacement": 0.0,
+"parent": "",
+"radii": Vector3(0.82, 0.09, 0.5)
+}
+}
+anchors = {
+"CHEEK_LEFT": {
+"dir": Vector3(0.62, -0.18, 0.72),
+"on": "HEAD"
+},
+"CHEEK_RIGHT": {
+"dir": Vector3(0.62, -0.18, -0.72),
+"on": "HEAD"
+},
+"EYE_LEFT": {
+"dir": Vector3(0.66, 0.36, 0.52),
+"on": "HEAD"
+},
+"EYE_RIGHT": {
+"dir": Vector3(0.66, 0.36, -0.52),
+"on": "HEAD"
+},
+"MOUTH": {
+"dir": Vector3(0.82, -0.5, 0),
+"on": "MUZZLE"
+},
+"NOSE": {
+"dir": Vector3(1, 0.25, 0),
+"on": "MUZZLE"
+},
+"TEETH": {
+"dir": Vector3(0.92, -0.62, 0),
+"on": "MUZZLE"
+}
+}
+protected_zones = {
+"CHEEK_LEFT": {
+"radius": 0.34,
+"strength": 0.6
+},
+"CHEEK_RIGHT": {
+"radius": 0.34,
+"strength": 0.6
+},
+"EYE_LEFT": {
+"radius": 0.42,
+"strength": 1.0
+},
+"EYE_RIGHT": {
+"radius": 0.42,
+"strength": 1.0
+},
+"MOUTH": {
+"radius": 0.5,
+"strength": 1.0
+},
+"NOSE": {
+"radius": 0.55,
+"strength": 1.0
+},
+"TEETH": {
+"radius": 0.5,
+"strength": 1.0
+}
+}
+feet = Array[Vector3]([Vector3(0.95, 0, 0.6), Vector3(0.95, 0, -0.6), Vector3(-0.78, 0, 0.68), Vector3(-0.78, 0, -0.68)])
