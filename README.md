@@ -7,9 +7,10 @@ A tiny Godot 4.7 (GL Compatibility, portrait 1080 × 1920) garden-creature lab. 
 
 ## What is here
 
-- **Gerald**, a beaver grown over with ivy, three-quarters view (the target is `hedgepetsGoal.jpg`). Base layer
-  (`scripts/hedge_pet.gd`): the crosshatched paddle tail, far feet, dark fur under the ivy, tan head and muzzle, ear,
-  light from the upper left. Top layer: eye, nose, teeth, cheek, near feet.
+- **Gerald**, a fully botanical beaver - a plant in the shape of a beaver, not an animal under plants - seen
+  three-quarters (the target is `hedgepetsGoal.jpg`). Base layer (`scripts/hedge_pet.gd`): a paddle tail of woven twigs
+  with leaves sprouting from its edge, root clumps for feet, deep leafy shade under the ivy (no fur anywhere), moss over
+  the muzzle. Top layer: a glossy berry eye, a seed nose, two pale seed teeth, a vine mouth, a cupped-leaf ear.
 - **The ivy** (`scripts/growth_renderer.gd`): an ivy cover over the body and the back of the head, vines from the
   growth curves trailing off the edges with curling tendrils, white flowers. Every leaf is lit by where it sits on the
   round body and foreshortened at the rim. The layout is built once; every frame the leaves rustle in a wind that

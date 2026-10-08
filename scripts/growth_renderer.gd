@@ -137,7 +137,7 @@ func _build() -> void:
 ## The ivy cover: big shingled leaves over the whole body and the back of the head, pointing out and a little up,
 ## parting round the face. Rim leaves are the fullest and catch the most wind (hedgepetsGoal.jpg).
 func _draw_crown_foliage() -> void:
-	var masses := [[Creature.BODY_CENTER, Creature.BODY_RADII, 340.0], [Creature.HEAD_CENTER, Creature.HEAD_RADII, 60.0]]
+	var masses := [[Creature.BODY_CENTER, Creature.BODY_RADII, 340.0], [Creature.HEAD_CENTER, Creature.HEAD_RADII, 170.0]]
 	var rng := RandomNumberGenerator.new()   # a real generator: a sine hash over consecutive keys lays leaves on a spiral
 	rng.seed = PET_SEED * 31 + 7
 	for m_index in range(masses.size()):
@@ -152,14 +152,14 @@ func _draw_crown_foliage() -> void:
 			if point.y > Creature.FEET_Y - 40.0:
 				continue
 			var face_factor := _face_clear_factor(point)
-			if face_factor < (0.32 if m_index == 0 else 0.55):
+			if face_factor < 0.30:
 				continue
 			var outward := (point - center).normalized()
 			var tangent := outward.lerp(Vector2.UP, 0.35).normalized().rotated((rng.randf() - 0.5) * 1.0)
 			var glyph_index: int = rng.randi_range(0, 7)
 			if rng.randf() < 0.035 * (1.0 + profile.flower_probability * 6.0):
 				glyph_index = 13
-			var size := lerpf(52.0, 84.0, rng.randf()) * (1.06 if r > 0.85 else 1.0)
+			var size := lerpf(52.0, 84.0, rng.randf()) * (1.06 if r > 0.85 else 1.0) * lerpf(0.42, 1.0, face_factor)   # mossy near the face
 			var side := -1.0 if index % 2 == 0 else 1.0
 			var depth := 3 if r > 0.86 else 2
 			_draw_hedge_glyph(point, tangent, side, glyph_index, size, key, (rng.randf() - 0.5) * 0.5, 1.05 * face_factor, false, depth)
@@ -207,6 +207,11 @@ func _light_mark(mark: Dictionary) -> void:
 	var n3 := Vector3(n2.x, n2.y, nz).normalized() if n2.length() > 0.001 else Vector3(0, 0, 1)
 	var lambert := n3.dot(LIGHT.normalized())
 	mark["light"] = clampf(0.62 + 0.5 * lambert, 0.32, 1.12)
+	# the head sits on the body: body leaves just behind and under it are in its shadow, so the head stands forward
+	if c == Creature.BODY_CENTER:
+		var under_head := ((center - Creature.HEAD_CENTER - Vector2(-30.0, 25.0)) / (Creature.HEAD_RADII * 1.22)).length()
+		if under_head < 1.0:
+			mark["light"] = float(mark["light"]) * lerpf(0.55, 1.0, under_head * under_head)
 	mark["turn"] = lerpf(0.58, 1.0, nz)              # rim leaves face away: thinner across
 	mark["radial"] = n2.angle() if n2.length() > 0.001 else 0.0
 	mark["rim"] = smoothstep(0.55, 1.05, r)          # rim leaves catch more wind

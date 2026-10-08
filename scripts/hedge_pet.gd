@@ -10,16 +10,17 @@ extends Node2D
 
 const Creature = preload("res://scripts/creature_definition.gd")
 
-const LINE := Color("3b2a1c")              # dark brown ink for fur, tail, face
-const FUR_DEEP := Color("4f4a26")          # the body under the ivy: dark, so gaps read as shade
-const FUR := Color("8a7342")
-const MUZZLE := Color("d9bf8a")
-const TAIL := Color("7a5134")
-const TAIL_DARK := Color("4f321f")
-const FOOT := Color("6b4529")
-const EYE_INK := Color("1d1612")
-const NOSE := Color("3a2418")
-const TOOTH := Color("f7ecd0")
+const LINE := Color("2b2a17")              # ink: dark olive, never black
+const DEEP := Color("1f3316")              # the inside of the hedge: deep leafy shade between the leaves
+const DEEP_2 := Color("2c4a1e")
+const MOSS := Color("6f8f3a")
+const TWIG := Color("6e5536")              # woven twigs (the tail), roots (the feet)
+const TWIG_DARK := Color("3f2f1c")
+const TWIG_LIGHT := Color("a8875a")
+const LEAF := Color("5d8a37")
+const EYE_INK := Color("1a1420")           # a glossy dark berry
+const NOSE := Color("3b2617")              # a seed
+const TOOTH := Color("efe6c4")             # two pale seeds
 const BLUSH := Color(0.90, 0.50, 0.42, 0.22)
 const MASK_PATHS := [
 	"res://assets/watercolor/mask_00.png", "res://assets/watercolor/mask_01.png",
@@ -68,55 +69,91 @@ func _draw_base() -> void:
 	for foot in Creature.FEET:
 		if foot[2]:
 			_draw_foot(foot[0], foot[1], true)
-	# the body: dark fur under the ivy, rounded by light from the upper left
-	var body := _ellipse_points(Creature.BODY_CENTER, Creature.BODY_RADII, 64)
-	draw_colored_polygon(body, FUR_DEEP)
-	_draw_watercolor_rect(Rect2(Creature.BODY_CENTER - Creature.BODY_RADII, Creature.BODY_RADII * 2.0), [2, 7],
-		[Color(0.42, 0.40, 0.18, 0.35), Color(0.30, 0.36, 0.14, 0.30)], [Vector2(-8, 4), Vector2(10, -6)])
-	_shade_sphere(Creature.BODY_CENTER, Creature.BODY_RADII, 1.0)
-	# the head: tan fur, a lighter muzzle at the front
-	var head := _ellipse_points(Creature.HEAD_CENTER, Creature.HEAD_RADII, 56)
-	draw_colored_polygon(head, FUR)
-	_draw_watercolor_rect(Rect2(Creature.HEAD_CENTER - Creature.HEAD_RADII, Creature.HEAD_RADII * 2.0), [1, 6],
-		[Color(0.60, 0.48, 0.26, 0.35), Color(0.42, 0.34, 0.18, 0.25)], [Vector2(6, 0), Vector2(-10, 6)])
-	draw_colored_polygon(_ellipse_points(Vector2(918, 968), Vector2(84, 66), 40), MUZZLE)
-	draw_colored_polygon(_ellipse_points(Vector2(908, 958), Vector2(56, 42), 32), Color(0.95, 0.87, 0.68, 0.6))
-	_draw_fur_strokes(Creature.HEAD_CENTER + Vector2(40, 30), Vector2(130, 100), 70, Color(LINE, 0.22))
-	_shade_sphere(Creature.HEAD_CENTER, Creature.HEAD_RADII, 0.8)
-	_draw_outline(head, Color(LINE, 0.55), 5.0)
-	# the ear, peeking out of the ivy
-	draw_circle(Creature.EAR, 40.0, FUR)
-	draw_circle(Creature.EAR + Vector2(4, 4), 22.0, Color("5e4226"))
-	draw_arc(Creature.EAR, 40.0, 0.0, TAU, 32, LINE, 5.0, true)
+	# the body and head are foliage all the way through: deep leafy shade under the ivy, rounded by the light
+	for mass in [[Creature.BODY_CENTER, Creature.BODY_RADII], [Creature.HEAD_CENTER, Creature.HEAD_RADII]]:
+		var center: Vector2 = mass[0]
+		var radii: Vector2 = mass[1]
+		draw_colored_polygon(_ellipse_points(center, radii * 0.98, 64), DEEP)
+		_draw_watercolor_rect(Rect2(center - radii, radii * 2.0), [2, 7], [Color(DEEP_2, 0.6), Color(0.16, 0.26, 0.10, 0.5)], [Vector2(-8, 4), Vector2(10, -6)])
+		_shade_sphere(center, radii, 1.0)
+	# moss over the muzzle: soft, light green, the features sit in it
+	draw_colored_polygon(_ellipse_points(Vector2(905, 962), Vector2(92, 70), 40), Color(MOSS, 0.85))
+	draw_colored_polygon(_ellipse_points(Vector2(895, 950), Vector2(60, 44), 32), Color(0.62, 0.72, 0.36, 0.6))
+	_draw_moss_dots(Vector2(905, 962), Vector2(88, 64), 120)
+
+func _draw_ear() -> void:
+	# the ear: a cupped leaf, standing up out of the ivy
+	var ear_dir := Vector2(-0.35, -1.0).normalized()
+	var ear := _leaf_points(Creature.EAR + ear_dir * 6.0, ear_dir, 96.0, 64.0)
+	draw_colored_polygon(ear, LEAF)
+	draw_colored_polygon(_leaf_points(Creature.EAR + ear_dir * 10.0, ear_dir, 64.0, 34.0), Color(DEEP_2, 0.9))
+	_draw_outline(ear, Color(LINE, 0.8), 3.5)
+	draw_line(Creature.EAR - ear_dir * 36.0, Creature.EAR + ear_dir * 40.0, Color(0.75, 0.85, 0.5, 0.6), 2.5, true)
 
 
 func _draw_tail() -> void:
-	# the flat paddle tail with its crosshatch, tucked behind the body
+	# the paddle tail, woven from twigs, tucked behind the body; a few leaves sprout from its edge
 	var turn := -0.18
 	var points := PackedVector2Array()
 	for p in _ellipse_points(Vector2.ZERO, Creature.TAIL_RADII, 48):
 		points.append(Creature.TAIL_CENTER + p.rotated(turn))
-	draw_colored_polygon(points, TAIL)
-	_shade_sphere(Creature.TAIL_CENTER, Creature.TAIL_RADII * 0.95, 0.7)
-	for i in range(-6, 7):
+	draw_colored_polygon(points, TWIG_DARK)
+	for i in range(-7, 8):
 		for dir: float in [1.0, -1.0]:
-			var a := Vector2(float(i) * 34.0 - 120.0 * dir, -130.0)
-			var b := Vector2(float(i) * 34.0 + 120.0 * dir, 130.0)
-			var seg := _clip_to_ellipse(a, b, Creature.TAIL_RADII * 0.9)
+			var a := Vector2(float(i) * 26.0 - 120.0 * dir, -130.0)
+			var b := Vector2(float(i) * 26.0 + 120.0 * dir, 130.0)
+			var seg := _clip_to_ellipse(a, b, Creature.TAIL_RADII * 0.97)
 			if seg.size() == 2:
-				draw_line(Creature.TAIL_CENTER + seg[0].rotated(turn), Creature.TAIL_CENTER + seg[1].rotated(turn), Color(TAIL_DARK, 0.6), 3.0, true)
-	_draw_outline(points, LINE, 6.0)
+				var p0 := Creature.TAIL_CENTER + seg[0].rotated(turn)
+				var p1 := Creature.TAIL_CENTER + seg[1].rotated(turn)
+				var bow := (p1 - p0).orthogonal().normalized() * 4.0 * dir
+				draw_polyline(PackedVector2Array([p0, (p0 + p1) * 0.5 + bow, p1]), TWIG, 9.0, true)
+				draw_polyline(PackedVector2Array([p0, (p0 + p1) * 0.5 + bow, p1]), Color(TWIG_LIGHT, 0.55), 3.0, true)
+	_shade_sphere(Creature.TAIL_CENTER, Creature.TAIL_RADII * 0.95, 1.2)
+	for k in range(9):   # twig ends poking out of the weave, and a few sprouting leaves
+		var a := TAU * float(k) / 9.0 + 0.3
+		var rim := Creature.TAIL_CENTER + (Vector2(cos(a), sin(a)) * Creature.TAIL_RADII).rotated(turn)
+		var out := (rim - Creature.TAIL_CENTER).normalized()
+		draw_line(rim - out * 6.0, rim + out * 16.0, TWIG, 5.0, true)
+		if k % 3 == 0:
+			var leaf := _leaf_points(rim + out * 24.0, out.rotated(0.5), 34.0, 18.0)
+			draw_colored_polygon(leaf, LEAF)
+			_draw_outline(leaf, Color(LINE, 0.7), 2.5)
 
 
 func _draw_foot(center: Vector2, size: float, far: bool) -> void:
-	var color := FOOT.darkened(0.25) if far else FOOT
-	var foot := _ellipse_points(center, Vector2(52, 26) * size, 28)
-	draw_colored_polygon(foot, color)
-	for t: float in [-1.0, 0.0, 1.0]:   # toes
-		draw_circle(center + Vector2(34.0 + t * 4.0, 8.0 + t * 12.0) * size, 11.0 * size, color.lightened(0.08))
-	_draw_outline(foot, Color(LINE, 0.8), 4.0)
-	for t: float in [-1.0, 0.0, 1.0]:
-		draw_line(center + Vector2(18.0, 4.0 + t * 10.0) * size, center + Vector2(40.0, 8.0 + t * 12.0) * size, Color(LINE, 0.7), 2.5, true)
+	# a clump of roots where a foot would be: a mossy knot with roots splaying into the ground
+	var color := TWIG.darkened(0.3) if far else TWIG
+	for r in range(5):
+		var a := lerpf(0.15, PI - 0.15, float(r) / 4.0)
+		var tip := center + Vector2(cos(a) * 58.0, 10.0 + sin(a) * 14.0) * size
+		var mid := center.lerp(tip, 0.5) + Vector2(0, 6) * size
+		draw_polyline(PackedVector2Array([center, mid, tip]), color, (7.0 - absf(float(r) - 2.0)) * size, true)
+		draw_polyline(PackedVector2Array([mid, mid + Vector2((float(r) - 2.0) * 8.0, 12.0) * size]), color, 3.0 * size, true)
+	var knot := _ellipse_points(center + Vector2(0, -4) * size, Vector2(26, 15) * size, 24)
+	draw_colored_polygon(knot, MOSS.darkened(0.25) if not far else MOSS.darkened(0.5))
+	_draw_moss_dots(center + Vector2(0, -4) * size, Vector2(22, 12) * size, 12)
+	_draw_outline(knot, Color(LINE, 0.5), 3.0)
+
+
+func _draw_moss_dots(center: Vector2, radii: Vector2, count: int) -> void:
+	for i in range(count):
+		var a := TAU * _deterministic_unit(i * 7 + 3)
+		var r := sqrt(_deterministic_unit(i * 11 + 5))
+		var p := center + Vector2(cos(a) * radii.x * r, sin(a) * radii.y * r)
+		draw_circle(p, 2.0 + 2.5 * _deterministic_unit(i * 3), Color(0.78, 0.86, 0.48, 0.35) if i % 3 else Color(0.22, 0.34, 0.12, 0.35))
+
+
+func _leaf_points(center: Vector2, direction: Vector2, length: float, width: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	var normal := Vector2(-direction.y, direction.x)
+	for i in range(16):
+		var u := float(i) / 15.0 * 2.0 - 1.0
+		points.append(center + direction * u * length * 0.5 + normal * sqrt(maxf(0.0, 1.0 - u * u)) * width * 0.5)
+	for i in range(16):
+		var u := 1.0 - float(i) / 15.0 * 2.0
+		points.append(center + direction * u * length * 0.5 - normal * sqrt(maxf(0.0, 1.0 - u * u)) * width * 0.5)
+	return points
 
 
 ## Light from the upper left: soft layers make a flat ellipse read as a round mass.
@@ -139,23 +176,24 @@ func _draw_features(life: Dictionary) -> void:
 	for foot in Creature.FEET:
 		if not foot[2]:
 			_draw_foot(foot[0], foot[1], false)
-	draw_colored_polygon(_ellipse_points(Vector2(872, 960), Vector2(30, 18), 20), Color(BLUSH, BLUSH.a + 0.3 * joy))
+	_draw_ear()
+	draw_colored_polygon(_ellipse_points(Vector2(870, 962), Vector2(26, 15), 20), Color(BLUSH, BLUSH.a + 0.3 * joy))   # a pink flush in the moss
 	_draw_eye(Creature.EYE + look * Vector2(5, 4), look, float(life["blink"]), joy)
+	# the nose: a dark seed with a little cap
 	var nose := Creature.NOSE + look * 2.0
-	var nose_shape := PackedVector2Array([nose + Vector2(-26, -12), nose + Vector2(22, -16), nose + Vector2(26, 6), nose + Vector2(2, 20), nose + Vector2(-22, 8)])
-	draw_colored_polygon(_smooth(nose_shape), NOSE)
-	draw_circle(nose + Vector2(-6, -7), 6.0, Color(1, 1, 1, 0.35))
+	draw_colored_polygon(_ellipse_points(nose, Vector2(22, 16), 24), NOSE)
+	draw_arc(nose + Vector2(0, -10), 20.0, PI + 0.5, TAU - 0.5, 10, TWIG_LIGHT, 4.0, true)
+	draw_circle(nose + Vector2(-7, -4), 5.0, Color(1, 1, 1, 0.35))
+	# a thin vine for a mouth, and two pale seeds for teeth
 	var mouth := Creature.TEETH + Vector2(0, -18)
-	draw_line(nose + Vector2(0, 20), mouth, Color(LINE, 0.8), 4.0, true)
-	draw_arc(mouth + Vector2(-16, -2), 16.0, 0.2, PI - 0.6, 10, Color(LINE, 0.8), 4.0, true)
-	draw_arc(mouth + Vector2(16, -2), 16.0, 0.6, PI - 0.2, 10, Color(LINE, 0.8), 4.0, true)
+	draw_line(nose + Vector2(0, 16), mouth, Color(LINE, 0.8), 3.0, true)
+	draw_arc(mouth + Vector2(-15, -2), 15.0, 0.2, PI - 0.6, 10, Color(LINE, 0.8), 3.0, true)
+	draw_arc(mouth + Vector2(15, -2), 15.0, 0.6, PI - 0.2, 10, Color(LINE, 0.8), 3.0, true)
 	var drop := 6.0 * joy
 	for i in range(2):
-		var r := Rect2(mouth + Vector2(-17.0 + float(i) * 17.0, 2.0 + drop), Vector2(16, 34))
-		draw_rect(r, TOOTH)
-		draw_rect(r, LINE, false, 3.0)
-	for p: Vector2 in [Vector2(-34, -8), Vector2(-26, 4), Vector2(-40, 6)]:
-		draw_circle(nose + p + Vector2(0, 26), 2.5, Color(LINE, 0.5))
+		var seed := _ellipse_points(mouth + Vector2(-8.5 + float(i) * 17.0, 20.0 + drop), Vector2(8, 17), 18)
+		draw_colored_polygon(seed, TOOTH)
+		_draw_outline(seed, Color(LINE, 0.8), 2.5)
 	if joy > 0.05:
 		var h := Vector2(910, 760 - 70.0 * (1.0 - joy))
 		_draw_heart(h, 22.0 + 5.0 * sin(t * 9.0), Color(0.93, 0.42, 0.45, clampf(joy * 1.4, 0.0, 1.0)))
@@ -170,9 +208,14 @@ func _draw_eye(center: Vector2, look: Vector2, blink: float, joy: float) -> void
 	if open < 0.2:
 		draw_arc(center + Vector2(0, -4), r, 0.3, PI - 0.3, 14, EYE_INK, 4.5, true)
 		return
-	draw_colored_polygon(_ellipse_points(center, Vector2(r, r * 1.12 * open), 28), EYE_INK)
-	draw_circle(center + Vector2(-5, -6 * open) + look * 2.0, r * 0.36, Color(1, 1, 1, 0.92))
-	draw_circle(center + Vector2(5, 6 * open), r * 0.15, Color(1, 1, 1, 0.7))
+	# a glossy berry: dark, a deep purple sheen, two highlights, a tiny calyx on top
+	draw_colored_polygon(_ellipse_points(center, Vector2(r, r * 1.08 * open), 28), EYE_INK)
+	draw_colored_polygon(_ellipse_points(center + Vector2(3, 4), Vector2(r * 0.7, r * 0.6 * open), 20), Color(0.30, 0.12, 0.32, 0.5))
+	draw_circle(center + Vector2(-6, -6 * open) + look * 2.0, r * 0.32, Color(1, 1, 1, 0.92))
+	draw_circle(center + Vector2(6, 7 * open), r * 0.13, Color(1, 1, 1, 0.7))
+	for k in range(3):
+		var a := -PI * 0.5 + (float(k) - 1.0) * 0.6
+		draw_line(center + Vector2(0, -r * open), center + Vector2(0, -r * open) + Vector2(cos(a), sin(a)) * 9.0, Color(LEAF.darkened(0.2), 0.9), 3.0, true)
 
 
 func _draw_heart(center: Vector2, size: float, color: Color) -> void:

@@ -4,7 +4,7 @@ extends RefCounted
 ## Authored creature grammar. Plant composition reads this data but never
 ## needs to know how the face is drawn.
 ##
-## The pet is a beaver grown over with ivy (hedgepetsGoal.jpg), seen three-quarters from the front-right: a big
+## The pet is a beaver made of ivy - a botanical creature, not an animal under plants (hedgepetsGoal.jpg), seen three-quarters from the front-right: a big
 ## rounded body, the head forward and to the right, the flat tail behind, four little feet (the far ones smaller).
 ## Everything is in viewport pixels (1080 x 1920).
 const BODY_CENTER := Vector2(505.0, 1045.0)
@@ -46,13 +46,13 @@ static func remap_legacy(point: Vector2) -> Vector2:
 
 
 static func feature_anchors() -> Array[Dictionary]:
-	# Leaves keep off the face: the eye, the nose, the teeth, and the fur round the muzzle.
+	# A fully botanical creature: leaves grow right up to the features and only part around the berry eye, the
+	# seed nose and the seed teeth. The muzzle is mossy (smaller, lighter leaves), not bare.
 	return [
-		{"name": "eye", "center": EYE, "radius": 58.0, "weight": 1.0},
-		{"name": "nose", "center": NOSE, "radius": 62.0, "weight": 1.0},
-		{"name": "teeth", "center": TEETH, "radius": 66.0, "weight": 0.95},
-		{"name": "face", "center": Vector2(895.0, 955.0), "radius": 128.0, "weight": 1.0},
-		{"name": "cheek", "center": Vector2(850.0, 975.0), "radius": 80.0, "weight": 0.9},
+		{"name": "eye", "center": EYE, "radius": 34.0, "weight": 1.0},
+		{"name": "nose", "center": NOSE, "radius": 36.0, "weight": 1.0},
+		{"name": "teeth", "center": TEETH, "radius": 38.0, "weight": 0.95},
+		{"name": "muzzle", "center": Vector2(905.0, 960.0), "radius": 95.0, "weight": 0.45},
 	]
 
 
