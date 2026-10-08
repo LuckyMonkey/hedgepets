@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/hedge_pet.gd" id="1_pet"]
 [ext_resource type="Script" path="res://scripts/growth_renderer.gd" id="2_growth"]
 [ext_resource type="Script" path="res://scripts/hedge_ink_specimen.gd" id="3_specimen"]
+[ext_resource type="Script" path="res://scripts/pet_life.gd" id="4_life"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(0.988235, 0.972549, 0.929412, 0.96)
@@ -28,28 +29,54 @@ offset_bottom = 1920.0
 mouse_filter = 2
 color = Color(0.968627, 0.945098, 0.890196, 1)
 
-[node name="HedgePet" type="Node2D" parent="."]
-position = Vector2(540, 900)
+[node name="Pet" type="Node2D" parent="."]
+position = Vector2(540, 1262)
+script = ExtResource("4_life")
+
+[node name="HedgePet" type="Node2D" parent="Pet"]
+position = Vector2(-540, -1262)
 script = ExtResource("1_pet")
 draw_features = false
 
-[node name="GrowthRenderer" type="Node2D" parent="."]
+[node name="GrowthRenderer" type="Node2D" parent="Pet"]
+position = Vector2(-540, -1262)
 script = ExtResource("2_growth")
 growth = 0.90
-amplitude = 110.0
+amplitude = 70.0
 frequency = 1.0
 leaf_spacing = 50.0
-overflow = 0.80
+overflow = 0.32
 shoot_count = 8
 profile_id = "ivy"
 
-[node name="FeatureInk" type="Node2D" parent="."]
+[node name="FeatureInk" type="Node2D" parent="Pet"]
 z_index = 10
-position = Vector2(540, 900)
+position = Vector2(-540, -1262)
 script = ExtResource("1_pet")
 features_only = true
 
+[node name="NameTag" type="Label" parent="."]
+offset_left = 140.0
+offset_top = 1330.0
+offset_right = 940.0
+offset_bottom = 1470.0
+theme_override_colors/font_color = Color(0.36, 0.27, 0.19, 1)
+theme_override_font_sizes/font_size = 54
+horizontal_alignment = 1
+text = "Gerald"
+
+[node name="Adopted" type="Label" parent="."]
+offset_left = 140.0
+offset_top = 1405.0
+offset_right = 940.0
+offset_bottom = 1460.0
+theme_override_colors/font_color = Color(0.45, 0.38, 0.30, 0.8)
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+text = "adopted October 6, 2026  ·  tap me"
+
 [node name="DebugPanel" type="Panel" parent="."]
+visible = false
 offset_left = 64.0
 offset_top = 1500.0
 offset_right = 1016.0
@@ -195,11 +222,11 @@ max_value = 1.0
 step = 0.01
 value = 0.80
 
-[connection signal="value_changed" from="DebugPanel/VBox/GrowthRow/GrowthSlider" to="GrowthRenderer" method="_on_growth_changed"]
-[connection signal="value_changed" from="DebugPanel/VBox/AmplitudeRow/AmplitudeSlider" to="GrowthRenderer" method="_on_amplitude_changed"]
-[connection signal="value_changed" from="DebugPanel/VBox/FrequencyRow/FrequencySlider" to="GrowthRenderer" method="_on_frequency_changed"]
-[connection signal="value_changed" from="DebugPanel/VBox/SpacingRow/SpacingSlider" to="GrowthRenderer" method="_on_spacing_changed"]
-[connection signal="value_changed" from="DebugPanel/VBox/OverflowRow/OverflowSlider" to="GrowthRenderer" method="_on_overflow_changed"]
+[connection signal="value_changed" from="DebugPanel/VBox/GrowthRow/GrowthSlider" to="Pet/GrowthRenderer" method="_on_growth_changed"]
+[connection signal="value_changed" from="DebugPanel/VBox/AmplitudeRow/AmplitudeSlider" to="Pet/GrowthRenderer" method="_on_amplitude_changed"]
+[connection signal="value_changed" from="DebugPanel/VBox/FrequencyRow/FrequencySlider" to="Pet/GrowthRenderer" method="_on_frequency_changed"]
+[connection signal="value_changed" from="DebugPanel/VBox/SpacingRow/SpacingSlider" to="Pet/GrowthRenderer" method="_on_spacing_changed"]
+[connection signal="value_changed" from="DebugPanel/VBox/OverflowRow/OverflowSlider" to="Pet/GrowthRenderer" method="_on_overflow_changed"]
 [connection signal="pressed" from="DebugPanel/VBox/SpecimenButton" to="SpecimenPanel" method="_on_toggle_pressed"]
 
 [node name="SpecimenPanel" type="Control" parent="."]

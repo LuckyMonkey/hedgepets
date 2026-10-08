@@ -172,7 +172,7 @@ func _draw_major_canopy_clusters() -> void:
 	for index in range(anchors.size()):
 		if _deterministic_unit(8300 + index * 31) < 0.12:
 			continue
-		var center: Vector2 = anchors[index]
+		var center: Vector2 = Creature.remap_legacy(anchors[index])
 		var face_factor := _face_clear_factor(center)
 		if face_factor < 0.35:
 			continue
@@ -232,7 +232,7 @@ func _draw_accent_flowers() -> void:
 	]
 	var flower_count := clampi(3 + int(profile.flower_probability * 18.0), 3, positions.size())
 	for index in range(flower_count):
-		var point: Vector2 = positions[index]
+		var point: Vector2 = Creature.remap_legacy(positions[index])
 		var face_factor := _face_clear_factor(point)
 		if face_factor < 0.35:
 			continue
@@ -280,8 +280,8 @@ func _draw_silhouette_foliage() -> void:
 	for index in range(anchors.size()):
 		if _deterministic_unit(index * 43 + 9) > 0.62:
 			continue
-		var anchor: Vector2 = anchors[index]
-		var outward := (anchor - BODY_CENTER).normalized()
+		var anchor: Vector2 = Creature.remap_legacy(anchors[index])
+		var outward := (anchor - _mass_center(anchor)).normalized()
 		var tangent := Vector2(-outward.y, outward.x)
 		var key := 600 + index * 31
 		var offset := outward * (6.0 + _profile_overflow() * (25.0 + _deterministic_unit(key) * 35.0))
@@ -323,8 +323,10 @@ func _draw_interior_botanical_texture() -> void:
 
 func _interior_sample(index: int) -> Array:
 	var head := index % 5 == 0
-	var center := Vector2(795.0, 918.0) if head else Vector2(515.0, 1055.0)
-	var radii := Vector2(158.0, 124.0) if head else Vector2(300.0, 165.0)
+	# the head is the bigger mass now, so it gets most of the interior leaves
+	head = index % 5 != 0
+	var center := Creature.HEAD_CENTER if head else Creature.BODY_CENTER
+	var radii := Creature.HEAD_RADII * 0.9 if head else Creature.BODY_RADII * 0.9
 	var angle := TAU * _deterministic_unit(index * 29 + 5)
 	# Keep a broad uniform distribution inside the wash. The explicit edge pass
 	# supplies the silhouette rhythm; the interior still needs a few leaves in
@@ -343,7 +345,7 @@ func _interior_flow(point: Vector2) -> Vector2:
 			if distance < nearest_distance:
 				nearest_distance = distance
 				nearest_tangent = (points[index + 1] - points[index]).normalized()
-	var radial := (point - BODY_CENTER).normalized()
+	var radial := (point - _mass_center(point)).normalized()
 	var blended := nearest_tangent.lerp(radial, 0.24)
 	return blended.normalized() if blended.length_squared() > 0.01 else Vector2.UP
 
@@ -571,7 +573,7 @@ func _select_profile(index: int) -> void:
 	leaf_font = load(profile.font_path) as Font
 	_load_geometry(profile.geometry_path)
 	_update_plant_selector()
-	var specimen := get_node_or_null("../SpecimenPanel")
+	var specimen := get_node_or_null("../../SpecimenPanel")
 	if specimen != null and specimen.has_method("set_profile"):
 		specimen.set_profile(profile)
 	queue_redraw()
@@ -632,12 +634,19 @@ func _habit_length_scale() -> float:
 
 
 func _shoot_direction(shoot_id: int) -> Vector2:
-	var raw: Vector2 = (SHOOT_ORIGINS[shoot_id] - BODY_CENTER).normalized()
+	var raw: Vector2 = (Creature.remap_legacy(SHOOT_ORIGINS[shoot_id]) - _mass_center(Creature.remap_legacy(SHOOT_ORIGINS[shoot_id]))).normalized()
 	if profile.growth_habit == "climbing":
 		raw = raw.lerp(Vector2.UP, 0.14).normalized()
 	elif profile.growth_habit == "low":
 		raw = raw.lerp(Vector2(0.0, 0.45), 0.16).normalized()
 	return raw.rotated((_deterministic_unit(shoot_id * 73 + 5) - 0.5) * (0.11 if profile.growth_habit == "frond" else 0.17))
+
+
+## The centre of whichever mass (head or body) a point belongs to: leaves on the rim point away from it.
+func _mass_center(point: Vector2) -> Vector2:
+	var head_delta := (point - Creature.HEAD_CENTER) / Creature.HEAD_RADII
+	var body_delta := (point - Creature.BODY_CENTER) / Creature.BODY_RADII
+	return Creature.HEAD_CENTER if head_delta.length() < body_delta.length() else Creature.BODY_CENTER
 
 
 func _creature_sdf(point: Vector2) -> float:
@@ -671,7 +680,7 @@ func _shoot_point(shoot_id: int, t: float, full_length: float) -> Vector2:
 	var bounded_amplitude := minf(max_amplitude * 0.46, 78.0)
 	var sway := sin(t * PI * local_frequency + phase) * minf(bounded_amplitude, 14.0 + bounded_amplitude * 0.78 * t)
 	var slow_curve := (_deterministic_unit(shoot_id * 131 + 41) - 0.5) * 58.0
-	return SHOOT_ORIGINS[shoot_id] + direction * (t * full_length) + normal * (sway + slow_curve * t * t)
+	return Creature.remap_legacy(SHOOT_ORIGINS[shoot_id]) + direction * (t * full_length) + normal * (sway + slow_curve * t * t)
 
 
 func _shoot_tangent(shoot_id: int, t: float, full_length: float) -> Vector2:
@@ -698,7 +707,7 @@ func _deterministic_unit(key: int) -> float:
 
 
 func _bind_plant_selector() -> void:
-	var selector := get_node_or_null("../DebugPanel/VBox/HeaderRow/PlantOption") as OptionButton
+	var selector := get_node_or_null("../../DebugPanel/VBox/HeaderRow/PlantOption") as OptionButton
 	if selector == null:
 		return
 	selector.clear()
@@ -708,7 +717,7 @@ func _bind_plant_selector() -> void:
 
 
 func _update_plant_selector() -> void:
-	var selector := get_node_or_null("../DebugPanel/VBox/HeaderRow/PlantOption") as OptionButton
+	var selector := get_node_or_null("../../DebugPanel/VBox/HeaderRow/PlantOption") as OptionButton
 	if selector != null and selector.item_count > profile_index:
 		selector.select(profile_index)
 
