@@ -236,7 +236,7 @@ func tap() -> void:
 
 
 func _mat(kind: String, region := {}) -> Material:
-	var key := kind + str(region.get("color", ""))
+	var key := kind + str(region.get("color", "")) + str(region.get("mass_color", ""))
 	if _materials.has(key):
 		return _materials[key]
 	var m := StandardMaterial3D.new()
@@ -244,7 +244,7 @@ func _mat(kind: String, region := {}) -> Material:
 	m.metallic_specular = 0.0
 	match kind:
 		"inner", "foliage":
-			m.albedo_color = profile.inner_mass
+			m.albedo_color = region.get("mass_color", profile.inner_mass)   # a head can be fur under its leaves
 		"moss":
 			m.albedo_color = profile.palette["matcha"].darkened(0.08)
 		"sage":
@@ -254,19 +254,20 @@ func _mat(kind: String, region := {}) -> Material:
 		"terracotta":
 			m.albedo_color = Color("87634c")
 		"ear":
-			m.albedo_color = profile.palette["muted_ivy"]
+			m.albedo_color = profile.palette["muted_ivy"].darkened(0.15) if region.get("foliage", false) else profile.palette["muted_ivy"]
 		"ear_inner":
 			m.albedo_color = profile.palette["muted_ivy"].darkened(0.18)
 		"eye":
-			m.albedo_color = Color("1e1814")
-			m.roughness = 0.55
-			m.metallic_specular = 0.2
+			m.albedo_color = Color("1a120c")
+			m.roughness = 0.22
+			m.metallic_specular = 0.75
 		"glint":
 			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.albedo_color = Color(1, 1, 1, 0.9)
 		"nose":
-			m.albedo_color = Color("3a2a1e")
-			m.roughness = 0.6
+			m.albedo_color = Color("2e2018")
+			m.roughness = 0.32                            # a glossy nose
+			m.metallic_specular = 0.6
 		"tooth":
 			m.albedo_color = Color("f3ead0")
 		"ink":
@@ -281,6 +282,8 @@ func _mat(kind: String, region := {}) -> Material:
 			m.uv1_scale = Vector3(3.0, 2.0, 1.0)
 	if region.has("color"):
 		m.albedo_color = region["color"]
+		if kind == "ear_inner":
+			m.albedo_color = (region["color"] as Color).darkened(0.3)
 	_materials[key] = m
 	return m
 
@@ -320,7 +323,14 @@ func _build_regions() -> void:
 		if name == "FEET":
 			var lift: float = r["radii"].y * float(HedgeAnatomy._shape(r).get("flat_bottom", 1.0))
 			for f in profile.feet:
-				_primitive(pet, r, f + Vector3(0, lift, 0), kind, outline).name = "FOOT"
+				var foot := _primitive(pet, r, f + Vector3(0, lift, 0), kind, outline)
+				foot.name = "FOOT"
+				# little toes along the front of each foot
+				var rr: Vector3 = r["radii"]
+				for k in range(int(r.get("toes", 0))):
+					var z := (float(k) / maxf(1.0, float(r.get("toes", 1)) - 1.0) - 0.5) * rr.z * 1.1
+					var toe := {"radii": rr * Vector3(0.3, 0.42, 0.26), "shape": {"exponent": 2.0, "flat_bottom": 0.4}}
+					_primitive(foot, toe, Vector3(rr.x * 0.86, -rr.y * 0.35, z), kind, outline * 0.7)
 			continue
 		var sides := [1.0, -1.0] if r.get("mirror", false) else [1.0]
 		for side: float in sides:
@@ -336,11 +346,17 @@ func _build_regions() -> void:
 ## Engraved crosshatch for a paddle tail: warm wood with a restrained diamond pattern.
 func _engraved_texture() -> Texture2D:
 	var img := Image.create(128, 128, false, Image.FORMAT_RGB8)
-	img.fill(Color("7a5a3e"))
 	for y in range(128):
 		for x in range(128):
-			if posmod(x + y, 32) < 2 or posmod(x - y, 32) < 2:
-				img.set_pixel(x, y, Color("553d2a"))
+			# warm wood, a little lighter in the middle of each diamond, crisp dark scale lines
+			var u := posmod(x + y, 21)
+			var v := posmod(x - y, 21)
+			var mid := (1.0 - absf(u - 10.5) / 10.5) * (1.0 - absf(v - 10.5) / 10.5)
+			var c := Color("6e4a2e").lerp(Color("9a6c44"), mid * 0.8)
+			if u < 2 or v < 2:
+				c = Color("3a2416")
+			img.set_pixel(x, y, c)
+	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
 
 
@@ -362,9 +378,12 @@ func _build_face() -> void:
 		holder.basis = Basis(Quaternion(Vector3.FORWARD, -HedgeAnatomy.anchor_normal(profile, name)))
 		head.add_child(holder)
 		var s := profile.eye_size
-		var eye := _ellipsoid(holder, Vector3(0, 0, -s * 0.35), Vector3(s, s * 1.08, s * 0.7), "eye", 0.06 * s / 0.155)
+		# a soft vertical oval set into the leaves, glossy deep brown-black; a big sheen up toward the light and a
+		# small second sparkle below it; a fine ink line round it (the drawing's eye, not a marble)
+		var eye := _ellipsoid(holder, Vector3(0, 0, -s * 0.28), Vector3(s * 0.88, s * 1.12, s * 0.55), "eye", 0.035 * s / 0.155)
 		eye.name = name
-		_ellipsoid(eye, Vector3(-0.32 * s, 0.36 * s, -0.75 * s * 0.7), Vector3(0.24, 0.24, 0.12) * s, "glint")
+		_ellipsoid(eye, Vector3(-0.3 * s, 0.4 * s, s * 0.22), Vector3(0.27, 0.32, 0.06) * s, "glint")
+		_ellipsoid(eye, Vector3(0.26 * s, -0.34 * s, s * 0.22), Vector3(0.11, 0.11, 0.04) * s, "glint")
 		eyes.append(holder)
 	if profile.anchors.has("NOSE"):
 		_ellipsoid(head, _anchor("NOSE"), f.get("nose", Vector3(0.1, 0.08, 0.12)), "nose", 0.012)
@@ -542,26 +561,92 @@ func _add_multimesh(parent: Node3D, items: Array, label: String) -> void:
 
 
 ## Level 4: a few short tendrils trailing from the lower body; short so the silhouette stays the animal.
+## Vines: stems that run over the body (between the leaves, so they weave in and out), with fresh leaves along them
+## and a curling tendril where each one escapes the silhouette (the goal image's growth curves).
+var _vine_nodes: Array[Node3D] = []
+
+
 func _tendrils() -> Array:
+	for n in _vine_nodes:
+		n.queue_free()
+	_vine_nodes.clear()
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(str(profile.seed) + "tendrils")
+	rng.seed = hash(str(profile.seed) + "vines")
 	var body: Dictionary = profile.regions["BODY"]
+	var c: Vector3 = body["center"]
 	var items: Array = []
+	var stem := StandardMaterial3D.new()
+	stem.albedo_color = profile.palette["warm_yellow_green"].darkened(0.25)
+	stem.roughness = 1.0
 	for v in range(profile.tendrils):
-		var a := rng.randf_range(-2.6, 2.6)
-		var d := Vector3(cos(a), rng.randf_range(-0.1, 0.2), sin(a)).normalized()
-		var p := HedgeAnatomy.shape_point(body, body["center"], d)
-		var out := Vector3(d.x, 0.0, d.z).normalized()
-		for k in range(3):
-			p += out * 0.10 + Vector3(0, -0.12, 0)
-			if p.y < 0.2:
+		# start on the upper body, walk around it along a tilted great circle
+		var d := Vector3(rng.randf_range(-1, 1), rng.randf_range(0.2, 1.0), rng.randf_range(-1, 1)).normalized()
+		var axis := d.cross(Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.3, 0.3), rng.randf_range(-1, 1))).normalized()
+		var steps := rng.randi_range(9, 15)
+		var pts: Array[Vector3] = []
+		for k in range(steps):
+			d = d.rotated(axis, 0.16 + 0.04 * sin(k * 1.3))
+			if d.y < -0.25:
 				break
-			var size := profile.leaf_size * 0.7 * (1.0 - 0.12 * k)
-			var up := (out * 0.3 + Vector3.DOWN).normalized()
-			var right := up.cross(out).normalized()
-			var normal := right.cross(up).normalized()
-			items.append([Transform3D(Basis(right * size, up * size, normal * size), p), profile.palette["muted_ivy"], Color(float(rng.randi_range(0, 7)), rng.randf_range(0, TAU), 1.0, 0.4 + 0.2 * k)])
+			var p := HedgeAnatomy.shape_point(body, c, d)
+			var n := HedgeAnatomy.shape_normal(body, c, p)
+			pts.append(p + n * (0.13 + 0.05 * sin(k * 2.1 + v)))
+		if pts.size() < 4:
+			continue
+		# the end lifts off and curls out into the air
+		var last: Vector3 = pts[-1]
+		var out := (last - c).normalized()
+		for k in range(3):
+			last += out * 0.1 + Vector3(0, 0.05 - k * 0.06, 0) + out.cross(Vector3.UP).normalized() * 0.04 * k
+			pts.append(last)
+		for k in range(1, pts.size() - 1):
+			if k % 2 != 0:
+				continue
+			var t: Vector3 = (pts[k + 1] - pts[k - 1]).normalized()
+			var n: Vector3 = (pts[k] - c).normalized()
+			var side := t.cross(n).normalized() * (1.0 if k % 4 == 0 else -1.0)
+			var up := (side * 0.8 + t * 0.4 + n * 0.3).normalized()
+			var right := up.cross(n).normalized()
+			var size := profile.leaf_size * rng.randf_range(0.5, 0.75)
+			items.append([Transform3D(Basis(right * size, up * size, right.cross(up).normalized() * size), pts[k]),
+				profile.palette["warm_yellow_green"].lerp(profile.palette["matcha"], rng.randf()), Color(float(rng.randi_range(0, 7)), rng.randf_range(0, TAU), 1.0, 0.3)])
+		var tip: Vector3 = pts[-1]
+		var tdir: Vector3 = (pts[-1] - pts[-2]).normalized()
+		var tright := tdir.cross(Vector3.UP).normalized()
+		var tsize := profile.leaf_size * 0.9
+		items.append([Transform3D(Basis(tright * tsize, tdir * tsize, tright.cross(tdir).normalized() * tsize), tip), profile.palette["muted_ivy"], Color(11.0, rng.randf_range(0, TAU), 1.0, 0.5)])
+		_vine_nodes.append(_tube(pts, 0.022, stem))
 	return items
+
+
+## A thin stem along points (with an ink outline), on the pet.
+func _tube(pts: Array[Vector3], radius: float, m: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var ring := 6
+	for i in range(pts.size() - 1):
+		var a: Vector3 = pts[i]
+		var b: Vector3 = pts[i + 1]
+		var dir := (b - a).normalized()
+		var x := dir.cross(Vector3.UP if absf(dir.y) < 0.9 else Vector3.RIGHT).normalized()
+		var y := dir.cross(x).normalized()
+		var ra := radius * (1.0 - 0.5 * float(i) / pts.size())
+		var rb := radius * (1.0 - 0.5 * float(i + 1) / pts.size())
+		for k in range(ring):
+			var a0 := TAU * k / ring
+			var a1 := TAU * (k + 1) / ring
+			var n0 := x * cos(a0) + y * sin(a0)
+			var n1 := x * cos(a1) + y * sin(a1)
+			for vtx: Array in [[a + n0 * ra, n0], [b + n0 * rb, n0], [b + n1 * rb, n1], [a + n0 * ra, n0], [b + n1 * rb, n1], [a + n1 * ra, n1]]:
+				st.set_normal(vtx[1])
+				st.add_vertex(vtx[0])
+	var node := MeshInstance3D.new()
+	node.mesh = st.commit()
+	node.material_override = m
+	node.material_overlay = _hull(0.008)
+	node.name = "Vine"
+	pet.add_child(node)
+	return node
 
 
 ## Set a uniform on the leaves and their ink shell together.

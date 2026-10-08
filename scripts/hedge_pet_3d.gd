@@ -149,7 +149,7 @@ func _place_camera() -> void:
 	if profile == null or camera == null:
 		return
 	var target: Vector3 = profile.frame_target
-	var dir := Vector3(0.42, 0.55, 0.72)
+	var dir := Vector3(0.42, 0.46, 0.8)         # three-quarter from the side: the face, the flank, the tail behind
 	var distance: float = profile.frame_distance
 	match _view:
 		"FRONT":

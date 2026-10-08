@@ -25,7 +25,7 @@ import random
 
 from PIL import Image, ImageDraw, ImageFilter
 
-from make_ivy_sprites import CELL, SS, SPAN, ivy_leaf, px
+from make_ivy_sprites import CELL, SS, SPAN, HandInk, ivy_leaf, px, watercolor_cell
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -256,12 +256,12 @@ def bloom(kind):
 def render(kind):
     rng = random.Random(sum(map(ord, kind)))
     sheet = Image.new('RGBA', (CELL * 16, CELL * 2), (0, 0, 0, 0))
-    w_ink = int(0.022 / SPAN * CELL * SS)
+    w_ink = int(0.016 / SPAN * CELL * SS)                  # a fine pen line
     w_vein = int(0.014 / SPAN * CELL * SS)
     for index in range(16):
         big = CELL * SS
         fill, ink, veins = (Image.new('L', (big, big), 0) for _ in range(3))
-        fd, idr, vd = ImageDraw.Draw(fill), ImageDraw.Draw(ink), ImageDraw.Draw(veins)
+        fd, idr, vd = ImageDraw.Draw(fill), HandInk(ink, rng), ImageDraw.Draw(veins)
         if index == 13:
             polys, lines = bloom(kind)
             for p in polys:
@@ -311,23 +311,23 @@ def render(kind):
         fill = fill.resize((CELL, CELL), Image.LANCZOS)
         ink = ink.resize((CELL, CELL), Image.LANCZOS)
         veins = veins.resize((CELL, CELL), Image.LANCZOS)
-        inner = fill.filter(ImageFilter.GaussianBlur(6 if kind != 'pine' else 2))
+        wc = watercolor_cell(fill, veins, rng, 0.7 if kind != 'pine' else 0.78)
+        inner = fill.filter(ImageFilter.GaussianBlur(6))
         cell = Image.new('RGBA', (CELL, CELL))
-        cp, fp, ip, vp = cell.load(), fill.load(), inner.load(), veins.load()
+        cp, wp, ip, vp = cell.load(), wc.load(), inner.load(), veins.load()
         for y in range(CELL):
             for x in range(CELL):
-                a = fp[x, y]
+                t8, a = wp[x, y]
                 if a == 0:
                     continue
-                depth = ip[x, y] / 255.0
-                tone = 0.70 + 0.30 * depth
-                tone = min(1.0, tone + (0.22 if kind != 'sage' else 0.12) * vp[x, y] / 255.0)
+                tone = t8 / 255.0
                 if kind == 'sage':
                     tone = min(1.0, tone + 0.05 * math.sin(x * 1.7 + y * 2.3))   # felted
                 if kind == 'variegated' and index < 8:                          # cream margin, darker heart
+                    depth = ip[x, y] / 255.0
                     edge = 1.0 - min(1.0, max(0.0, (depth - 0.8) / 0.08))
-                    tone = 0.5 + 0.12 * vp[x, y] / 255.0 + 0.5 * edge
-                v = int(255 * tone)
+                    tone = tone * 0.68 + 0.5 * edge
+                v = int(255 * min(1.0, tone))
                 cp[x, y] = (v, v, v, a)
         sheet.paste(cell, (index * CELL, 0))
         ink_rgba = Image.new('RGBA', (CELL, CELL), (255, 255, 255, 0))

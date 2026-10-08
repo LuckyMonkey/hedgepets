@@ -146,3 +146,25 @@ facial anchors; rounded ellipsoid proportions.
 
 1,108 leaves built. 60 fps at every level with vsync; without vsync CLOSE 579 fps (1.7 ms), MEDIUM 563, FAR 624.
 Deterministic: the same seed rebuilds identically; another seed differs.
+
+
+## The goal-image pass (2026-10-08)
+
+`docs/acceptance/goal_compare.png`: hedgepetsGoal.jpg beside Gerald.
+
+- **All plant, except feet and tail.** Head, face, muzzle and ears are leaves. Only the eyes, nose and teeth are
+  features. The face is younger, lighter leaves (a region `tint`, like the drawing's lighter face area). The leafy
+  muzzle keeps leaves off only the nose and mouth.
+- **Hand-drawn watercolour leaves** (`tools/make_ivy_sprites.py`: `HandInk`, `watercolor_cell`, shared by
+  `make_leaf_styles.py`):
+  - a fine pen line that wanders, swells with pressure and lifts off once or twice
+  - paint slightly off the line, a darker wet edge, soft blooms, paper grain, pale veins
+  - the shader keeps the fine line crisp with a small mip bias
+- **Leaves you can tell apart:** bigger and fewer per cluster, with gaps showing a dark matte mass. Regions can override
+  `coverage` and `leaves_per_cluster` (head and ears full, body with gaps).
+- **Vines:** stems along the body, between the leaves, with fresh leaves along them and a tendril where each escapes.
+- **Flowers** sit on top of the leaves, facing out, with their own colours (white petals, a yellow eye). Whether a pet
+  flowers is dynamic: its flowering, the surprise flowers, the plant it's made of.
+- **Eyes:** a soft vertical oval, glossy deep brown-black, a big sheen and a small sparkle, a fine outline.
+- **Feet** dark brown with toes; **tail** a finer, darker crosshatch with a heavier outline.
+- Any plant on any animal: the plant is separate from the shape (`SpeciesBuilder.restyle`).

@@ -4,6 +4,12 @@
 
 [resource]
 script = ExtResource("1_sf8kk")
+features = {
+"cheeks": true,
+"mouth": "beaver",
+"nose": Vector3(0.15, 0.11, 0.18),
+"teeth": true
+}
 wants = {
 "notice": {
 "puddle": 1
@@ -24,15 +30,15 @@ hints = {
 starts_resident = true
 regions = {
 "BODY": {
-"center": Vector3(0, 0.95, 0),
+"center": Vector3(0, 1.05, 0),
 "density": 1.3,
 "foliage": true,
 "growth_up": 0.45,
 "leaf_scale": 1.0,
 "material": "foliage",
-"max_displacement": 0.26,
+"max_displacement": 0.32,
 "parent": "",
-"radii": Vector3(1.34, 0.95, 1.04),
+"radii": Vector3(1.3, 1.08, 1.06),
 "shape": {
 "exponent": 2.15,
 "flat_bottom": 0.88,
@@ -40,17 +46,19 @@ regions = {
 }
 },
 "EARS": {
-"center": Vector3(-0.12, 0.66, 0.46),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.0,
+"center": Vector3(-0.14, 0.72, 0.5),
+"coverage": 1.0,
+"density": 7.0,
+"foliage": true,
+"growth_up": 0.1,
+"leaf_scale": 0.42,
+"leaves_per_cluster": 14,
 "material": "ear",
-"max_displacement": 0.0,
+"max_displacement": 0.05,
 "mirror": true,
 "outline": 0.018,
 "parent": "HEAD",
-"radii": Vector3(0.12, 0.17, 0.07),
+"radii": Vector3(0.17, 0.23, 0.09),
 "rotation": Vector3(-24, -20, 0),
 "shape": {
 "exponent": 2.3
@@ -58,6 +66,7 @@ regions = {
 },
 "FEET": {
 "center": Vector3(0, 0, 0),
+"color": Color(0.41568628, 0.27450982, 0.1882353, 1),
 "density": 0.0,
 "foliage": false,
 "growth_up": 0.0,
@@ -70,38 +79,47 @@ regions = {
 "shape": {
 "exponent": 2.6,
 "flat_bottom": 0.12
-}
+},
+"toes": 3
 },
 "HEAD": {
-"center": Vector3(1.3, 1.4, 0),
-"density": 2.3,
+"center": Vector3(1.26, 1.58, 0),
+"coverage": 0.97,
+"density": 3.2,
 "foliage": true,
 "growth_up": 0.3,
-"leaf_scale": 0.62,
+"leaf_scale": 0.55,
+"leaves_per_cluster": 18,
 "material": "foliage",
-"max_displacement": 0.11,
+"max_displacement": 0.12,
 "parent": "",
-"radii": Vector3(0.84, 0.78, 0.8),
+"radii": Vector3(0.9, 0.84, 0.86),
 "shape": {
 "exponent": 2.1,
 "taper": -0.05
-}
+},
+"tint": "warm_yellow_green",
+"tint_amount": 0.45
 },
 "MUZZLE": {
 "center": Vector3(0.7, -0.22, 0),
-"density": 0.0,
-"foliage": false,
-"growth_up": 0.0,
-"leaf_scale": 0.25,
-"material": "moss",
-"max_displacement": 0.0,
+"coverage": 1.0,
+"density": 5.0,
+"foliage": true,
+"growth_up": 0.2,
+"leaf_scale": 0.36,
+"leaves_per_cluster": 14,
+"material": "foliage",
+"max_displacement": 0.05,
 "outline": 0.016,
 "parent": "HEAD",
 "radii": Vector3(0.34, 0.27, 0.37),
 "shape": {
 "exponent": 2.4,
 "taper": -0.15
-}
+},
+"tint": "pale_highlight",
+"tint_amount": 0.4
 },
 "TAIL": {
 "center": Vector3(-1.62, 0.16, 0.08),
@@ -111,7 +129,7 @@ regions = {
 "leaf_scale": 0.4,
 "material": "tail",
 "max_displacement": 0.0,
-"outline": 0.025,
+"outline": 0.034,
 "parent": "",
 "radii": Vector3(0.74, 0.075, 0.56),
 "rotation": Vector3(0, 6, 7),
@@ -152,32 +170,49 @@ anchors = {
 }
 protected_zones = {
 "CHEEK_LEFT": {
-"radius": 0.34,
-"strength": 0.6
+"radius": 0.2,
+"strength": 0.5
 },
 "CHEEK_RIGHT": {
-"radius": 0.34,
-"strength": 0.6
+"radius": 0.2,
+"strength": 0.5
 },
 "EYE_LEFT": {
-"radius": 0.42,
+"radius": 0.36,
 "strength": 1.0
 },
 "EYE_RIGHT": {
-"radius": 0.42,
+"radius": 0.36,
 "strength": 1.0
 },
 "MOUTH": {
-"radius": 0.5,
-"strength": 1.0
+"radius": 0.16,
+"strength": 0.9
 },
 "NOSE": {
-"radius": 0.55,
+"radius": 0.2,
 "strength": 1.0
 },
 "TEETH": {
-"radius": 0.5,
+"radius": 0.18,
 "strength": 1.0
 }
 }
 feet = Array[Vector3]([Vector3(0.82, 0, 0.56), Vector3(0.82, 0, -0.56), Vector3(-0.66, 0, 0.62), Vector3(-0.66, 0, -0.62)])
+leaf_size = 0.56
+leaves_per_cluster = 12
+coverage = 0.78
+tendrils = 8
+palette = {
+"deep_forest": Color(0.11372549, 0.22745098, 0.105882354, 1),
+"matcha": Color(0.3372549, 0.57254905, 0.22745098, 1),
+"muted_ivy": Color(0.21176471, 0.38431373, 0.16470589, 1),
+"pale_highlight": Color(0.7764706, 0.85490197, 0.44705883, 1),
+"soft_sage": Color(0.37254903, 0.5411765, 0.32156864, 1),
+"warm_yellow_green": Color(0.5764706, 0.69803923, 0.23529412, 1)
+}
+inner_mass = Color(0.08235294, 0.16078432, 0.101960786, 1)
+ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
+silhouette_ink = 1.0
+interior_ink = 0.6
+eye_size = 0.125

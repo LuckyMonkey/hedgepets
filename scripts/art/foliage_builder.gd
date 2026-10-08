@@ -84,8 +84,10 @@ static func _build_live(profile: CharacterArtProfile, region_name: String, head_
 		var cp := HedgeAnatomy.shape_point(region, c, cd)
 		var cn := HedgeAnatomy.shape_normal(region, c, cp)
 		var family := _family(profile, cn, key_dir, rng)
+		if region.has("tint"):                                   # e.g. a face of younger, lighter leaves
+			family = family.lerp(profile.palette[region["tint"]], float(region.get("tint_amount", 0.5)))
 		clusters.append({"position": cp, "normal": cn, "color": family})
-		var count := int(profile.leaves_per_cluster * (0.75 if is_head else 1.0))
+		var count := int(float(region.get("leaves_per_cluster", profile.leaves_per_cluster)) * (0.75 if is_head else 1.0))
 		for li in range(count):
 			var crown := li == 0
 			var offset := Vector2.ZERO if crown else Vector2(rng.randfn(0.0, 0.55), rng.randfn(0.0, 0.55)).limit_length(1.6)
@@ -98,7 +100,7 @@ static func _build_live(profile: CharacterArtProfile, region_name: String, head_
 			var n := HedgeAnatomy.shape_normal(region, c, p)
 			var head_local := p if is_head else (p - head_center)
 			var protect := HedgeAnatomy.protection(profile, head_local)
-			if not crown and rng.randf() > profile.coverage:
+			if not crown and rng.randf() > float(region.get("coverage", profile.coverage)):
 				continue
 			if rng.randf() < protect:
 				continue                                         # thinning smoothly toward the face
@@ -115,12 +117,13 @@ static func _build_live(profile: CharacterArtProfile, region_name: String, head_
 		if region_name == "BODY" and not flowers_only and rng.randf() < profile.flowering * 0.55 and cn.y > -0.1:
 			var head_local := cp - head_center
 			if HedgeAnatomy.protection(profile, head_local) < 0.05 and cp.distance_to(head_center) > 1.1:
-				var fsize := leaf_len * 0.62
-				var flower: Array = _leaf(cp + cn * 0.05, cn, fsize, max_disp, 0.0, cd, rng, profile.flower_color, profile, true, 0.0)
-				var custom: Color = flower[2]
-				custom.r = 13.0                                  # the flower sprite
-				custom.a = 0.3                                   # flowers go at FAR detail
-				flower[2] = custom
+				# a flower sits ON the leaves, facing out (not tucked under them), a little turned
+				var fsize := leaf_len * 0.78
+				var tan := cn.cross(Vector3.UP if absf(cn.y) < 0.9 else Vector3.RIGHT).normalized().rotated(cn, rng.randf_range(0.0, TAU))
+				var up := cn.cross(tan).normalized()
+				var centre := cp + cn * (max_disp * 0.85 + 0.05)
+				var flower: Array = [Transform3D(Basis(tan * fsize, up * fsize, cn * fsize), centre - up * fsize * 0.62),
+					profile.flower_color, Color(13.0, rng.randf_range(0.0, TAU), 0.6, 0.3)]   # the flower sprite; drawn at FAR detail
 				items.append(flower)
 	return {"items": items, "clusters": clusters}
 

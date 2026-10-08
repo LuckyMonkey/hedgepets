@@ -112,24 +112,28 @@ static func gerald() -> CharacterArtProfile:
 	# Primitives (scripts/art/hedge_anatomy.gd): BODY a pear-bean that sits flat; HEAD big and round (baby
 	# proportions); MUZZLE a soft cushion; TAIL a rounded-rectangle paddle; EARS small cups; FEET flat-bottomed domes.
 	p.regions = {
-		"BODY": {"center": Vector3(0.0, 0.95, 0.0), "radii": Vector3(1.34, 0.95, 1.04), "parent": "", "foliage": true,
-			"density": 1.3, "leaf_scale": 1.0, "max_displacement": 0.26, "growth_up": 0.45, "material": "foliage",
+		"BODY": {"center": Vector3(0.0, 1.05, 0.0), "radii": Vector3(1.3, 1.08, 1.06), "parent": "", "foliage": true,
+			"density": 1.3, "leaf_scale": 1.0, "max_displacement": 0.32, "growth_up": 0.45, "material": "foliage",
 			"shape": {"exponent": 2.15, "taper": -0.14, "flat_bottom": 0.88}},
-		"HEAD": {"center": Vector3(1.30, 1.40, 0.0), "radii": Vector3(0.84, 0.78, 0.80), "parent": "", "foliage": true,
-			"density": 2.3, "leaf_scale": 0.62, "max_displacement": 0.11, "growth_up": 0.3, "material": "foliage",
+		"HEAD": {"center": Vector3(1.26, 1.58, 0.0), "radii": Vector3(0.9, 0.84, 0.86), "parent": "", "foliage": true,
+			"density": 3.2, "leaf_scale": 0.55, "max_displacement": 0.12, "growth_up": 0.3, "material": "foliage",
+			"tint": "warm_yellow_green", "tint_amount": 0.45, "coverage": 0.97, "leaves_per_cluster": 18,   # the face: younger, lighter leaves (the drawing's face area)
 			"shape": {"exponent": 2.1, "taper": -0.05}},
-		"MUZZLE": {"center": Vector3(0.70, -0.22, 0.0), "radii": Vector3(0.34, 0.27, 0.37), "parent": "HEAD", "foliage": false,
-			"density": 0.0, "leaf_scale": 0.25, "max_displacement": 0.0, "growth_up": 0.0, "material": "moss",
+		"MUZZLE": {"center": Vector3(0.70, -0.22, 0.0), "radii": Vector3(0.34, 0.27, 0.37), "parent": "HEAD", "foliage": true,
+			"density": 5.0, "leaf_scale": 0.36, "max_displacement": 0.05, "growth_up": 0.2, "material": "foliage",   # a snout of tiny leaves
+			"coverage": 1.0, "leaves_per_cluster": 14,
+			"tint": "pale_highlight", "tint_amount": 0.4,
 			"shape": {"exponent": 2.4, "taper": -0.15}, "outline": 0.016},
 		"TAIL": {"center": Vector3(-1.62, 0.16, 0.08), "radii": Vector3(0.74, 0.075, 0.56), "parent": "", "foliage": false,
 			"density": 0.0, "leaf_scale": 0.4, "max_displacement": 0.0, "growth_up": 0.0, "material": "tail",
-			"shape": {"exponent": 4.0}, "rotation": Vector3(0, 6, 7), "outline": 0.025},   # a rounded-rectangle paddle
-		"EARS": {"center": Vector3(-0.12, 0.66, 0.46), "radii": Vector3(0.12, 0.17, 0.07), "parent": "HEAD", "foliage": false,
-			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "ear",
+			"shape": {"exponent": 4.0}, "rotation": Vector3(0, 6, 7), "outline": 0.034},   # a rounded-rectangle paddle
+		"EARS": {"center": Vector3(-0.14, 0.72, 0.5), "radii": Vector3(0.17, 0.23, 0.09), "parent": "HEAD", "foliage": true,
+			"density": 7.0, "leaf_scale": 0.42, "max_displacement": 0.05, "growth_up": 0.1, "material": "ear",
+			"coverage": 1.0, "leaves_per_cluster": 14,
 			"shape": {"exponent": 2.3}, "rotation": Vector3(-24, -20, 0), "mirror": true, "outline": 0.018},
 		"FEET": {"center": Vector3.ZERO, "radii": Vector3(0.23, 0.16, 0.2), "parent": "", "foliage": false,
 			"density": 0.0, "leaf_scale": 0.0, "max_displacement": 0.0, "growth_up": 0.0, "material": "terracotta",
-			"shape": {"exponent": 2.6, "flat_bottom": 0.12}, "outline": 0.016},
+			"shape": {"exponent": 2.6, "flat_bottom": 0.12}, "outline": 0.016, "color": Color("6a4630"), "toes": 3},
 	}
 	p.anchors = {
 		"EYE_LEFT": {"dir": Vector3(0.76, 0.36, 0.46), "on": "HEAD"},
@@ -141,13 +145,13 @@ static func gerald() -> CharacterArtProfile:
 		"CHEEK_RIGHT": {"dir": Vector3(0.62, -0.18, -0.72), "on": "HEAD"},
 	}
 	p.protected_zones = {
-		"EYE_LEFT": {"radius": 0.42, "strength": 1.0},
-		"EYE_RIGHT": {"radius": 0.42, "strength": 1.0},
-		"NOSE": {"radius": 0.55, "strength": 1.0},
-		"MOUTH": {"radius": 0.5, "strength": 1.0},
-		"TEETH": {"radius": 0.5, "strength": 1.0},
-		"CHEEK_LEFT": {"radius": 0.34, "strength": 0.6},
-		"CHEEK_RIGHT": {"radius": 0.34, "strength": 0.6},
+		"EYE_LEFT": {"radius": 0.36, "strength": 1.0},
+		"EYE_RIGHT": {"radius": 0.36, "strength": 1.0},
+		"NOSE": {"radius": 0.2, "strength": 1.0},
+		"MOUTH": {"radius": 0.16, "strength": 0.9},
+		"TEETH": {"radius": 0.18, "strength": 1.0},
+		"CHEEK_LEFT": {"radius": 0.2, "strength": 0.5},
+		"CHEEK_RIGHT": {"radius": 0.2, "strength": 0.5},
 	}
 	p.frame_target = Vector3(0.15, 0.85, 0.0)
 	p.frame_distance = 7.4
@@ -155,6 +159,19 @@ static func gerald() -> CharacterArtProfile:
 	p.wants = {"notice": {"puddle": 1}, "visit": {"sticks": 3}, "resident": {"ivy_grown": 1, "puddle": 1}}
 	p.hints = {"notice": "Gerald likes the sound of water.", "visit": "He collects sticks. Leave a few lying about.",
 		"resident": "He'd stay for good with some ivy to chew and his puddle."}
+	# the goal image's look: deep-to-bright ivy with firm ink, white flowers, vines; brown feet with toes
+	p.palette = {"deep_forest": Color("1d3a1b"), "muted_ivy": Color("36622a"), "matcha": Color("56923a"),
+		"warm_yellow_green": Color("93b23c"), "soft_sage": Color("5f8a52"), "pale_highlight": Color("c6da72")}
+	p.inner_mass = Color("15291a")              # the gaps read as shadow, not as a green ball
+	p.ink_color = Color("1c2213")
+	p.interior_ink = 0.6
+	p.silhouette_ink = 1.0
+	p.tendrils = 8
+	p.leaf_size = 0.56                          # fewer, bigger leaves you can tell apart, like the drawing
+	p.leaves_per_cluster = 12
+	p.coverage = 0.78                           # gaps between them show the darker mass underneath
+	p.eye_size = 0.125
+	p.features = {"teeth": true, "mouth": "beaver", "cheeks": true, "nose": Vector3(0.15, 0.11, 0.18)}
 	p.feet = [Vector3(0.82, 0.0, 0.56), Vector3(0.82, 0.0, -0.56), Vector3(-0.66, 0.0, 0.62), Vector3(-0.66, 0.0, -0.62)]
 	return p
 

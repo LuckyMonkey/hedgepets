@@ -47,11 +47,14 @@ void fragment() {
 	vec2 uv_fill = vec2((cell + UV.x) / cells, UV.y * 0.5);
 	vec2 uv_ink = vec2((cell + UV.x) / cells, 0.5 + UV.y * 0.5);
 	vec4 fill = texture(leaf_sheet, uv_fill);
-	float ink = texture(leaf_sheet, uv_ink).a;
+	// the pen lines are fine and hand-drawn; a little mip bias keeps them crisp when a leaf is small on screen
+	float ink = smoothstep(0.08, 0.7, texture(leaf_sheet, uv_ink, -1.0).a);   // a fine line kept crisp, not bolded
 	if (fill.a < 0.45 && ink < 0.5) {
 		discard;
 	}
-	vec3 albedo = COLOR.rgb * mix(1.0, fill.r, 0.6);
+	// leaves: the tint shaped by the sprite's tone (strong: a lit middle, darker edges, pale veins); the flower cell
+	// carries its own colours (white petals, a yellow eye), tinted by the profile's flower colour
+	vec3 albedo = cell > 12.5 && cell < 13.5 ? COLOR.rgb * fill.rgb : COLOR.rgb * mix(1.0, fill.r, 0.8);
 	// watercolour pooling: pigment gathers and thins in slow patches
 	float pool = sin(v_world.x * 1.7 + v_world.z * 1.1) * sin(v_world.y * 2.3 - v_world.x * 0.7);
 	albedo *= 1.0 + pool * pool_strength;

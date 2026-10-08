@@ -146,8 +146,9 @@ static func region(profile: CharacterArtProfile, name: String) -> Dictionary:
 ## An anchor's position in head-local space (on the head or the muzzle surface).
 static func anchor_point(profile: CharacterArtProfile, name: String) -> Vector3:
 	var a: Dictionary = profile.anchors[name]
-	if a.get("on", "HEAD") == "MUZZLE":
-		var m: Dictionary = region(profile, "MUZZLE")
+	var on: String = a.get("on", "HEAD")
+	if on != "HEAD" and profile.regions.has(on):         # a part on the head (MUZZLE, FACE...): its own surface
+		var m: Dictionary = region(profile, on)
 		return shape_point(m, m["center"], a["dir"])
 	return shape_point(region(profile, "HEAD"), Vector3.ZERO, a["dir"])
 
@@ -155,8 +156,9 @@ static func anchor_point(profile: CharacterArtProfile, name: String) -> Vector3:
 ## The outward normal at an anchor, in head-local space.
 static func anchor_normal(profile: CharacterArtProfile, name: String) -> Vector3:
 	var a: Dictionary = profile.anchors[name]
-	if a.get("on", "HEAD") == "MUZZLE":
-		var m: Dictionary = region(profile, "MUZZLE")
+	var on: String = a.get("on", "HEAD")
+	if on != "HEAD" and profile.regions.has(on):
+		var m: Dictionary = region(profile, on)
 		return shape_normal(m, m["center"], anchor_point(profile, name))
 	return shape_normal(region(profile, "HEAD"), Vector3.ZERO, anchor_point(profile, name))
 
@@ -165,7 +167,8 @@ static func anchor_normal(profile: CharacterArtProfile, name: String) -> Vector3
 ## smooth gaussian of the angle (seen from the head centre) to its anchor. The muzzle is always clear.
 static func protection(profile: CharacterArtProfile, head_local: Vector3) -> float:
 	var m: Dictionary = region(profile, "MUZZLE")
-	if not m.is_empty() and ((head_local - m["center"]) / (m["radii"] * 1.12)).length() < 1.0:
+	# a bare muzzle keeps the leaves off it; a leafy muzzle (all-plant pets) only keeps them off the nose and mouth
+	if not m.is_empty() and not m.get("foliage", false) and ((head_local - m["center"]) / (m["radii"] * 1.12)).length() < 1.0:
 		return 1.0
 	var best := 0.0
 	var dir := head_local.normalized()
