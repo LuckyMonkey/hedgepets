@@ -10,7 +10,7 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var scene: Node = (load("res://main.tscn") as PackedScene).instantiate()
+	var scene: Node = (load(ProjectSettings.get_setting("application/run/main_scene")) as PackedScene).instantiate()
 	root.add_child(scene)
 	var started := Time.get_ticks_msec()
 	var tapped := false

@@ -5,7 +5,20 @@ A tiny Godot 4.7 (GL Compatibility, portrait 1080 × 1920) garden-creature lab. 
 
 ![Gerald](docs-gerald.png)
 
-## What is here
+## Gerald in 3D (the main scene, `main3d.tscn`)
+
+Seen from above and to the side like `hedgepetsGoal.jpg`. Everything is built in `scripts/beaver_3d.gd`: leafy
+masses for the body and head (deep shade inside, no fur), about 2,000 ivy leaves as MultiMeshes placed on the
+surface (the same sprites and normal maps as the 2D version), vines hanging off his sides, a woven-twig tail, root
+feet, berry eyes, a seed nose and seed teeth, leaf ears, a warm sun with real shadows. The wind runs on the GPU
+(`shaders/leaf.gdshader`): gusts roll across him, leaves bend, flutter and twist. He blinks, turns his head a little
+toward your pointer, and hops with a heart when you tap him. ~59 fps.
+
+![Gerald in 3D](docs-gerald-3d.png)
+
+The 2D version is still `main.tscn` (open it in the editor, or set it as the main scene).
+
+## What is here (2D)
 
 - **Gerald**, a fully botanical beaver - a plant in the shape of a beaver, not an animal under plants - seen
   three-quarters (the target is `hedgepetsGoal.jpg`). Base layer (`scripts/hedge_pet.gd`): a paddle tail of woven twigs
