@@ -278,3 +278,169 @@ static func tipped_pot(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
 	part(r, cyl(0.38, 0.26, 0.6, 14), mat("pot", Color("b06c48")), Vector3(0, 0.33, 0), Vector3(0, 0, 90), 0.012)
 	part(r, blob(Vector3(0.55, 0.08, 0.45), "pebble"), mat("soil", Color("5a4230")), Vector3(0.55, 0.03, 0), Vector3.ZERO, 0.0)
 	return r
+
+
+# ------------------------------------------------------------------ things you can put in the garden (🧺)
+## A wooden post with a little roofed feeder and a seed tray.
+static func bird_feeder(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "Feeder", at, yaw)
+	var wood := mat("feederwood", Color("8a6a48"))
+	part(r, cyl(0.05, 0.06, 1.5, 8), wood, Vector3(0, 0.75, 0), Vector3.ZERO, 0.008)
+	part(r, box(Vector3(0.5, 0.05, 0.5)), wood, Vector3(0, 1.52, 0), Vector3.ZERO, 0.008)
+	part(r, box(Vector3(0.36, 0.3, 0.36)), mat("feederglass", Color("c8d4cc")), Vector3(0, 1.7, 0), Vector3.ZERO, 0.006)
+	var roof := PrismMesh.new()
+	roof.size = Vector3(0.62, 0.22, 0.56)
+	part(r, roof, mat("feederroof", Color("6a3a2a")), Vector3(0, 1.97, 0), Vector3.ZERO, 0.01)
+	part(r, blob(Vector3(0.2, 0.04, 0.2), "dome"), mat("seed", Color("c8a060")), Vector3(0, 1.56, 0), Vector3.ZERO, 0.0)
+	return r
+
+
+## A concrete bird bath: pedestal and a shallow bowl of water.
+static func bird_bath(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "Bath", at, yaw)
+	var stone := mat("bathstone", Color("b4ae9e"))
+	part(r, cyl(0.12, 0.2, 0.7, 12), stone, Vector3(0, 0.35, 0), Vector3.ZERO, 0.01)
+	part(r, cyl(0.5, 0.3, 0.16, 18), stone, Vector3(0, 0.76, 0), Vector3.ZERO, 0.012)
+	var water := ShaderMaterial.new()
+	water.shader = load("res://shaders/water.gdshader")
+	water.set_shader_parameter("drip", Vector2(0.5, 0.5))
+	var disc := PlaneMesh.new()
+	disc.size = Vector2(1.05, 1.05)
+	var w := MeshInstance3D.new()
+	w.mesh = disc
+	w.material_override = water
+	w.position = Vector3(0, 0.845, 0)
+	w.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	r.add_child(w)
+	return r
+
+
+## Split logs stacked in a little pyramid.
+static func log_pile(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "LogPile", at, yaw)
+	var bark := mat("logbark", Color("6a5038"))
+	var rows := [[-0.36, 0.0, 0.36], [-0.18, 0.18], [0.0]]
+	for y in range(rows.size()):
+		for x: float in rows[y]:
+			part(r, cyl(0.17, 0.17, 1.1, 10), bark, Vector3(x, 0.17 + y * 0.3, 0), Vector3(90, 0, 0), 0.012)
+	return r
+
+
+## A nest box on a post, with a round door.
+static func nest_box(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "NestBox", at, yaw)
+	var wood := mat("boxwood_plank", Color("9a7a52"))
+	part(r, cyl(0.05, 0.06, 1.3, 8), mat("feederwood", Color("8a6a48")), Vector3(0, 0.65, 0), Vector3.ZERO, 0.008)
+	part(r, box(Vector3(0.34, 0.42, 0.32)), wood, Vector3(0, 1.45, 0), Vector3.ZERO, 0.01)
+	var roof := PrismMesh.new()
+	roof.size = Vector3(0.48, 0.18, 0.44)
+	part(r, roof, mat("feederroof", Color("6a3a2a")), Vector3(0, 1.75, 0), Vector3.ZERO, 0.01)
+	part(r, cyl(0.06, 0.06, 0.02, 12), mat("hole", Color("2a2018")), Vector3(0.17, 1.5, 0), Vector3(0, 0, 90), 0.0)
+	return r
+
+
+## A ribbed pumpkin with a curly stem.
+static func pumpkin(parent: Node3D, at: Vector3, size: float, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "Pumpkin", at, rng.randf_range(0, 360))
+	var orange := mat("pumpkin%d" % rng.randi_range(0, 2), Color("d8782a").lerp(Color("e89a3a"), rng.randf()))
+	for k in range(8):
+		var a := TAU * k / 8.0
+		part(r, blob(Vector3(size * 0.42, size * 0.5, size * 0.3), {"exponent": 2.0}), orange, Vector3(cos(a), 0.0, sin(a)) * size * 0.32 + Vector3(0, size * 0.48, 0), Vector3(0, -rad_to_deg(a), 0), 0.01 if k % 2 == 0 else 0.0)
+	part(r, cyl(0.03, 0.05, size * 0.3, 6), mat("stem", Color("5a6a2a")), Vector3(0, size * 1.02, 0), Vector3(0, 0, 14), 0.008)
+	return r
+
+
+## A wooden crate of windfall apples, a few spilled.
+static func apple_crate(parent: Node3D, at: Vector3, yaw: float, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "Apples", at, yaw)
+	var slat := mat("crate", Color("b08a5a"))
+	for side: float in [-1.0, 1.0]:
+		part(r, box(Vector3(0.9, 0.36, 0.05)), slat, Vector3(0, 0.18, side * 0.3), Vector3.ZERO, 0.008)
+		part(r, box(Vector3(0.05, 0.36, 0.6)), slat, Vector3(side * 0.43, 0.18, 0), Vector3.ZERO, 0.008)
+	var red := mat("apple", Color("b8322a"))
+	var green := mat("apple2", Color("8aa03a"))
+	for k in range(9):
+		part(r, blob(Vector3(0.12, 0.11, 0.12), {"exponent": 2.0}), red if k % 4 else green, Vector3(rng.randf_range(-0.3, 0.3), 0.32 + rng.randf_range(0, 0.05), rng.randf_range(-0.2, 0.2)), Vector3.ZERO, 0.006)
+	for k in range(3):
+		part(r, blob(Vector3(0.12, 0.11, 0.12), {"exponent": 2.0}), red, Vector3(0.7 + k * 0.2, 0.1, rng.randf_range(-0.4, 0.5)), Vector3.ZERO, 0.006)
+	return r
+
+
+# ------------------------------------------------------------------ the old burying ground past the fence
+## A slate headstone: a thin slab with a rounded top (and shoulders), leaning a little, lichen on some.
+static func headstone(parent: Node3D, at: Vector3, yaw: float, height: float, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "Headstone", at, yaw)
+	var slate := Color("555a62").lerp(Color("6e6a64"), rng.randf())
+	if rng.randf() < 0.35:
+		slate = slate.lerp(Color("8a9a6a"), 0.35)                  # lichen
+	var stone := part(r, blob(Vector3(height * 0.34, height * 0.5, 0.05), {"exponent": 3.2, "taper": -0.12, "taper_axis": "y", "flat_bottom": 0.7}),
+		mat("slate%d" % int(slate.r * 100 + slate.g * 10), slate), Vector3(0, height * 0.42, 0), Vector3(rng.randf_range(-7, 7), 0, rng.randf_range(-6, 6)), 0.01)
+	stone.name = "Slate"
+	return r
+
+
+## A bare old tree: no leaves at all, a twisted trunk and a crown of grey limbs. Autumn, not gloom: a perch.
+static func dead_tree(parent: Node3D, at: Vector3, height: float, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "BareTree", at, 0.0)
+	var bark := mat("deadbark", Color("7a726a"))
+	var limb := func(a: Vector3, b: Vector3, r0: float, r1: float) -> void:
+		var node := MeshInstance3D.new()
+		node.mesh = cyl(r1, r0, a.distance_to(b), 7)
+		var y := (b - a).normalized()
+		var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
+		node.transform = Transform3D(Basis(x, y, x.cross(y)), (a + b) * 0.5)
+		node.material_override = bark
+		node.material_overlay = hull(0.015)
+		r.add_child(node)
+	var top := Vector3(rng.randf_range(-0.5, 0.5), height * 0.55, rng.randf_range(-0.5, 0.5))
+	limb.call(Vector3.ZERO, top, 0.45, 0.25)
+	var tips: Array = [[top, 0.22, 0]]
+	while not tips.is_empty():
+		var t: Array = tips.pop_back()
+		var from: Vector3 = t[0]
+		var rad: float = t[1]
+		var depth: int = t[2]
+		if depth >= 3:
+			continue
+		for k in range(3 if depth < 2 else 2):
+			var a := rng.randf_range(0, TAU)
+			var len := height * (0.32 - depth * 0.08) * rng.randf_range(0.7, 1.1)
+			var to := from + Vector3(cos(a) * len * 0.75, len * rng.randf_range(0.45, 0.8), sin(a) * len * 0.75)
+			limb.call(from, to, rad, rad * 0.55)
+			tips.append([to, rad * 0.55, depth + 1])
+	return r
+
+
+## Merge every mesh under `r` (static scenery: walls, stones, fences) into one mesh per material, keeping each
+## part's outline. Hundreds of draw calls become a handful; nothing looks different.
+static func bake_static(r: Node3D) -> Node3D:
+	var groups := {}                 # material -> [SurfaceTool, overlay]
+	var parts: Array = []
+	var stack: Array = [r]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		for c in n.get_children():
+			stack.append(c)
+		if n is MeshInstance3D and n != r:
+			parts.append(n)
+	var inv := r.global_transform.affine_inverse()
+	for mi: MeshInstance3D in parts:
+		var key: Material = mi.material_override
+		if not groups.has(key):
+			var st := SurfaceTool.new()
+			st.begin(Mesh.PRIMITIVE_TRIANGLES)
+			groups[key] = [st, mi.material_overlay]
+		var xf: Transform3D = inv * mi.global_transform
+		for surf in range(mi.mesh.get_surface_count()):
+			(groups[key][0] as SurfaceTool).append_from(mi.mesh, surf, xf)
+	for mi: MeshInstance3D in parts:
+		mi.get_parent().remove_child(mi)
+		mi.queue_free()
+	for key in groups:
+		var st: SurfaceTool = groups[key][0]
+		var merged := MeshInstance3D.new()
+		merged.mesh = st.commit()
+		merged.material_override = key
+		merged.material_overlay = groups[key][1]
+		r.add_child(merged)
+	return r

@@ -44,6 +44,7 @@ func _ready() -> void:
 	_build_props()
 	_build_grass()
 	_spawn_pets()
+	_leaf_litter()
 	_build_ambience()
 	_build_tilt_shift()
 	game = preload("res://scripts/garden/garden_game.gd").new()
@@ -206,11 +207,10 @@ func _build_backdrop() -> void:
 	var hedge_palette := {"deep_forest": Color("2c4628"), "muted_ivy": Color("3f6234"), "matcha": Color("5d8440"),
 		"warm_yellow_green": Color("7a9246"), "soft_sage": Color("647e5e"), "pale_highlight": Color("9fb47a")}
 	# a ragged hedge along the back, behind the fence, with a gap where it has thinned
-	_bush(Vector3(-8.5, 1.4, -12.5), Vector3(7.5, 1.6, 1.4), "hedgeivy", hedge_palette, Color("2a4223"), 0.7, 0.55, "cushion")
+	_burying_ground()
 	_bush(Vector3(12.5, 1.2, -12.8), Vector3(4.6, 1.4, 1.3), "hedgeivy", hedge_palette, Color("2a4223"), 0.7, 0.55, "cushion")
 	# tall trees: their crowns go off the top of the screen, their shadows fall across the lawn
 	_tree(Vector3(-7.4, 0, 2.2), 12.0, hedge_palette)          # near, at the edge: a trunk, and its shade on the lawn
-	_tree(Vector3(-4.5, 0, -14.5), 11.0, hedge_palette)
 	_pine(Vector3(5.5, 0, -15.0), 14.0)
 	_pine(Vector3(9.0, 0, -12.5), 11.0)
 	_pine(Vector3(-9.5, 0, -7.0), 12.0)
@@ -220,6 +220,80 @@ func _build_backdrop() -> void:
 	for at: Vector3 in [Vector3(8.5, 0.0, -6.5), Vector3(-9.5, 0.0, -6.8)]:
 		_bush(at + Vector3(0, 0.15, 0), Vector3(1.3, 0.5, 1.1), "hedgeivy", autumn, Color("7a5332"), 0.45, 0.9, "dome")
 		_thing("leaf_pile", get_child(get_child_count() - 1), Vector2(at.x, at.z), 1.4, 3)
+
+
+## Past the back fence on the left: an old New England burying ground. Slate stones in uneven rows inside a low
+## field-stone wall, a big sugar maple gone crimson, one bare old tree, and leaves over everything. Autumn, not spooky:
+## warm light, pumpkins, birds' perches.
+func _burying_ground() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 1692
+	var ground := Node3D.new()
+	ground.name = "BuryingGround"
+	add_child(ground)
+	GardenProps.stone_wall(ground, Vector3(-16.0, 0, -12.6), Vector3(-0.6, 0, -12.6), r)
+	GardenProps.stone_wall(ground, Vector3(-0.6, 0, -12.6), Vector3(-0.2, 0, -24.0), r)
+	for row in range(4):
+		for k in range(6):
+			if r.randf() < 0.2:
+				continue
+			var at := Vector3(-14.0 + k * 2.1 + r.randf_range(-0.4, 0.4), 0, -15.0 - row * 2.2 + r.randf_range(-0.3, 0.3))
+			GardenProps.headstone(ground, at, r.randf_range(-8, 8), r.randf_range(0.8, 1.35), r)
+	var crimson := SpeciesBuilder.palette_of("crimson")
+	_tree(Vector3(-12.0, 0, -20.0), 13.0, crimson, "hedgemaple")
+	GardenProps.dead_tree(ground, Vector3(-5.5, 0, -18.5), 9.0, r)
+	GardenProps.bake_static(ground)
+	for at: Vector3 in [Vector3(-1.4, 0, -11.6), Vector3(-2.2, 0, -11.9), Vector3(5.6, 0, -10.4)]:
+		_thing("pumpkin", GardenProps.pumpkin(self, at, r.randf_range(0.5, 0.75), r), Vector2(at.x, at.z), 0.5, 1)
+
+
+## Fallen leaves lying on the ground everywhere, thickest under the trees (one MultiMesh of flat leaf cards).
+func _leaf_litter() -> void:
+	var image := Image.load_from_file(ProjectSettings.globalize_path("res://assets/sprites/hedgemaple.png"))
+	var tex := ImageTexture.create_from_image(image.get_region(Rect2i(0, 0, 160 * 8, 160)))
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = tex
+	m.uv1_scale = Vector3(1.0 / 8.0, 1.0, 1.0)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	m.alpha_scissor_threshold = 0.4
+	m.vertex_color_use_as_albedo = true
+	m.roughness = 1.0
+	m.metallic_specular = 0.0
+	var quad := PlaneMesh.new()
+	quad.size = Vector2(1, 1)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = quad
+	var sources: Array = _crowns.duplicate()
+	sources.append(Vector3(-12.0, 0, -20.0))
+	var items: Array = []
+	var colors := [Color("c9923c"), Color("b8702e"), Color("9a3428"), Color("c0482e"), Color("d8a848"), Color("8a6a3a")]
+	for i in range(4200):
+		var under := i % 3 != 0
+		var p: Vector3
+		if under:
+			var c: Vector3 = sources.pick_random()
+			var rr := sqrt(_rng.randf()) * 5.5
+			var a := _rng.randf() * TAU
+			p = Vector3(c.x + cos(a) * rr, 0, c.z + sin(a) * rr)
+		else:
+			p = Vector3(_rng.randf_range(-18, 18), 0, _rng.randf_range(-24, 10))
+		if _in_puddle(Vector2(p.x, p.z)):
+			continue
+		var s := _rng.randf_range(0.22, 0.4)
+		var b := Basis.from_euler(Vector3(_rng.randf_range(-0.25, 0.25), _rng.randf() * TAU, _rng.randf_range(-0.25, 0.25))).scaled(Vector3(s, s, s))
+		items.append([Transform3D(b, p + Vector3(0, 0.015 + _rng.randf() * 0.02, 0)), (colors.pick_random() as Color).darkened(_rng.randf() * 0.15)])
+	mm.instance_count = items.size()
+	for i in range(items.size()):
+		mm.set_instance_transform(i, items[i][0])
+		mm.set_instance_color(i, items[i][1])
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = mm
+	node.material_override = m
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.name = "LeafLitter"
+	add_child(node)
 
 
 ## A limb from a to b (a tapered cylinder with an ink hull).
@@ -236,7 +310,7 @@ func _limb(a: Vector3, b: Vector3, r0: float, r1: float, m: Material) -> MeshIns
 
 
 ## A big broadleaf tree: a leaning trunk, a few branches forking up and out, a leaf clump at each branch end.
-func _tree(at: Vector3, height: float, palette: Dictionary) -> void:
+func _tree(at: Vector3, height: float, palette: Dictionary, sheet := "hedgeoak") -> void:
 	var bark := GardenProps.mat("bark", Color("5c4634"))
 	var lean := Vector3(_rng.randf_range(-0.6, 0.6), 0, _rng.randf_range(-0.6, 0.6))
 	var top := at + Vector3(0, height * 0.62, 0) + lean
@@ -253,8 +327,8 @@ func _tree(at: Vector3, height: float, palette: Dictionary) -> void:
 		var twig := to + Vector3(cos(a + 0.8) * 0.9, 0.7, sin(a + 0.8) * 0.9)
 		_limb(to, twig, 0.08, 0.03, bark)
 		var r := _rng.randf_range(1.6, 2.3)
-		_bush(to + Vector3(0, 0.6, 0), Vector3(r, r * 0.72, r), "hedgeoak", palette, Color("2f4a27"), 0.8, 0.5, "egg")
-	_bush(top + Vector3(0, 2.6, 0), Vector3(2.6, 2.0, 2.6), "hedgeoak", palette, Color("2f4a27"), 0.85, 0.5, "egg")
+		_bush(to + Vector3(0, 0.6, 0), Vector3(r, r * 0.72, r), sheet, palette, Color(palette["deep_forest"]).darkened(0.2), 0.8, 0.5, "egg")
+	_bush(top + Vector3(0, 2.6, 0), Vector3(2.6, 2.0, 2.6), sheet, palette, Color(palette["deep_forest"]).darkened(0.2), 0.85, 0.5, "egg")
 	_crowns.append(top + Vector3(0, 1.5, 0))
 	obstacles.append([Vector2(at.x, at.z), 1.0])
 
@@ -343,8 +417,8 @@ func _thing(kind: String, node: Node3D, at: Vector2, radius: float, value: int, 
 
 func _build_props() -> void:
 	var r := _rng
-	GardenProps.broken_fence(self, -16.0, 16.0, -11.0, r, Vector2(0.5, 4.5))
-	GardenProps.stone_wall(self, Vector3(7.2, 0, -10.2), Vector3(9.6, 0, 5.0), r)      # the old field wall down the side
+	GardenProps.bake_static(GardenProps.broken_fence(self, -16.0, 16.0, -11.0, r, Vector2(0.5, 4.5)))
+	GardenProps.bake_static(GardenProps.stone_wall(self, Vector3(7.2, 0, -10.2), Vector3(9.6, 0, 5.0), r))      # the old field wall down the side
 	obstacles.append([Vector2(8.0, -5.0), 0.6])
 	obstacles.append([Vector2(8.8, 0.0), 0.6])
 	_thing("lawn_chair", GardenProps.lawn_chair(self, Vector3(-5.2, 0, -3.2), 28), Vector2(-5.0, -3.2), 1.3, 6)

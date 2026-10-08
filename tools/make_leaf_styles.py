@@ -10,6 +10,9 @@ x -0.6..0.6, y -0.05..1.15, stalk at y = 0; see make_ivy_sprites.py):
     hedgewillow long narrow leaves in fans; cell 13 a fuzzy catkin
     hedgerose   serrated leaflets; cell 13 a rose
     hedgelavender grey needles; cell 13 a spike of florets
+    hedgebostonivy  glossy three-lobed, toothed leaves; cell 13 dark berries
+    hedgecreeper    five leaflets from one point (Virginia creeper); cell 13 dark berries
+    hedgevariegated ivy with a pale cream margin (the tone, not the tint: any palette shows it); cell 13 an umbel
 
 Cells 0-7 leaves, 8-11 stems, 12/14/15 buds and berries. The fill is white (tinted by the pet's palette; the
 cell-13 bloom by profile.flower_color).
@@ -22,7 +25,7 @@ import random
 
 from PIL import Image, ImageDraw, ImageFilter
 
-from make_ivy_sprites import CELL, SS, SPAN, px
+from make_ivy_sprites import CELL, SS, SPAN, ivy_leaf, px
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -119,6 +122,40 @@ def maple_leaf(size, lean, rng):
     return [rot(p) for p in pts], [[rot(p) for p in v] for v in veins]
 
 
+def boston_leaf(size, lean, rng):
+    rot = rot_fn(lean)
+    lobes = [(0.0, 0.42), (58.0, 0.36), (-58.0, 0.36)]
+    pts = []
+    for i in range(240):
+        th = -math.pi + math.tau * i / 240.0
+        bump = 0.0
+        for at, h in lobes:
+            d = abs((th - math.radians(at) + math.pi) % math.tau - math.pi)
+            bump = max(bump, h * math.exp(-d / 0.32))
+        r = 0.5 * size * (0.52 + bump) * (1.0 + 0.035 * math.sin(th * 31))     # toothed
+        r *= 1.0 - 0.38 * math.exp(-((abs(th) - math.pi) / 0.35) ** 2)
+        pts.append((math.sin(th) * r, math.cos(th) * r))
+    low = min(y for _, y in pts)
+    pts = [(x, y - low + 0.02) for x, y in pts]
+    c = (0.0, -low + 0.02)
+    veins = [[(0, 0.0), c, (math.sin(math.radians(a)) * size * (0.25 + h * 0.5), c[1] + math.cos(math.radians(a)) * size * (0.25 + h * 0.5))] for a, h in lobes]
+    return [rot(p) for p in pts], [[rot(p) for p in v] for v in veins]
+
+
+def creeper_leaf(size, lean, rng):
+    """Virginia creeper: five toothed leaflets fanning from the top of the stalk."""
+    rot = rot_fn(lean)
+    polys, lines = [], [[(0, 0), (0, 0.32 * size)]]
+    for k, ang in enumerate((-72, -36, 0, 36, 72)):
+        length = size * (0.62 if k == 2 else (0.55 if k in (1, 3) else 0.42))
+        o = oval(0.0, 0.32 * size, 0.1 * size, length, ang, 40)
+        o = [(x + 0.01 * math.sin(i * 2.6), y) for i, (x, y) in enumerate(o)]
+        polys.append(o)
+        a = math.radians(ang)
+        lines.append([(0, 0.32 * size), (math.sin(a) * length * 0.9, 0.32 * size + math.cos(a) * length * 0.9)])
+    return [[rot(p) for p in poly] for poly in polys], [[rot(p) for p in ln] for ln in lines]
+
+
 def oval(cx, cy, w, h, ang, n=28):
     a = math.radians(ang)
     out = []
@@ -173,6 +210,18 @@ def bloom(kind):
                 sc = [(cx + math.cos(t) * w * 0.55, y + math.sin(t) * 0.07) for t in [i / 16 * math.tau for i in range(16)]]
                 polys.append(sc)
                 lines.append(sc + [sc[0]])
+        return polys, lines
+    if kind in ('bostonivy', 'creeper'):
+        centers = [(-0.11, 0.6), (0.08, 0.68), (0.13, 0.5), (-0.02, 0.45), (0.0, 0.78)]
+        polys = [[(cx + math.cos(t) * 0.075, cy + math.sin(t) * 0.075) for t in [i / 16 * math.tau for i in range(16)]] for cx, cy in centers]
+        return polys, [p + [p[0]] for p in polys] + [[(0, 0), (0, 0.45)]]
+    if kind == 'variegated':
+        polys, lines = [], [[(0, 0), (0, 0.5)]]
+        for i in range(9):
+            a = math.tau * i / 9
+            c = [(math.cos(a) * 0.15 + math.cos(t) * 0.05, 0.62 + math.sin(a) * 0.15 + math.sin(t) * 0.05) for t in [k / 12 * math.tau for k in range(12)]]
+            polys.append(c)
+            lines.append([(0, 0.5), (math.cos(a) * 0.15, 0.62 + math.sin(a) * 0.15)])
         return polys, lines
     if kind == 'maple':
         polys = [oval(0.0, 0.3, 0.12, 0.62, a) for a in (38, -38)]
@@ -231,8 +280,8 @@ def render(kind):
         else:
             size = rng.uniform(0.85, 1.0)
             lean = rng.uniform(-12, 12)
-            if kind in ('boxwood', 'willow', 'rose', 'lavender'):
-                polys, vlines = sprig(kind, size, lean, rng)
+            if kind in ('boxwood', 'willow', 'rose', 'lavender', 'creeper'):
+                polys, vlines = creeper_leaf(size, lean, rng) if kind == 'creeper' else sprig(kind, size, lean, rng)
                 for p in polys:
                     fd.polygon([px(x, y) for x, y in p], fill=255)
                     idr.line([px(x, y) for x, y in p + [p[0]]], fill=255, width=max(1, int(w_ink * 0.75)), joint='curve')
@@ -245,8 +294,15 @@ def render(kind):
                 idr.line([px(x, y) for x, y in twig], fill=255, width=w_ink, joint='curve')
                 for p in polys[::3]:                                   # a few needles inked, not all
                     idr.line([px(*p[0]), px(*p[1])], fill=255, width=max(1, w_vein // 2))
+            elif kind == 'variegated':
+                outline, (cx, cy), tips = ivy_leaf(rng.choice([3, 5]), size, lean, rng)
+                pts = [px(x, y) for x, y in outline]
+                fd.polygon(pts, fill=255)
+                idr.line(pts + [pts[0]], fill=255, width=int(w_ink * 0.8), joint='curve')
+                for a, l in tips:
+                    vd.line([px(0.0, 0.03), px(cx, cy), px(cx + math.sin(a) * l * size * 0.40, cy + math.cos(a) * l * size * 0.40)], fill=255, width=w_vein, joint='curve')
             else:
-                outline, vlines = {'oak': oak_leaf, 'sage': sage_leaf, 'maple': maple_leaf}[kind](size, lean, rng)
+                outline, vlines = {'oak': oak_leaf, 'sage': sage_leaf, 'maple': maple_leaf, 'bostonivy': boston_leaf}[kind](size, lean, rng)
                 pts = [px(x, y) for x, y in outline]
                 fd.polygon(pts, fill=255)
                 idr.line(pts + [pts[0]], fill=255, width=w_ink if kind == 'oak' else int(w_ink * 0.7), joint='curve')
@@ -268,6 +324,9 @@ def render(kind):
                 tone = min(1.0, tone + (0.22 if kind != 'sage' else 0.12) * vp[x, y] / 255.0)
                 if kind == 'sage':
                     tone = min(1.0, tone + 0.05 * math.sin(x * 1.7 + y * 2.3))   # felted
+                if kind == 'variegated' and index < 8:                          # cream margin, darker heart
+                    edge = 1.0 - min(1.0, max(0.0, (depth - 0.8) / 0.08))
+                    tone = 0.5 + 0.12 * vp[x, y] / 255.0 + 0.5 * edge
                 v = int(255 * tone)
                 cp[x, y] = (v, v, v, a)
         sheet.paste(cell, (index * CELL, 0))
@@ -279,5 +338,6 @@ def render(kind):
 
 
 if __name__ == '__main__':
-    for k in ('oak', 'pine', 'sage', 'maple', 'boxwood', 'willow', 'rose', 'lavender'):
+    import sys
+    for k in (sys.argv[1:] or ('oak', 'pine', 'sage', 'maple', 'boxwood', 'willow', 'rose', 'lavender', 'bostonivy', 'creeper', 'variegated')):
         render(k)

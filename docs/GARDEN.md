@@ -11,7 +11,9 @@ like a tabletop model.
 |---|---|
 | ✋ hand | pet a pet (it hops and says how it feels), look at things |
 | 🪏 shovel | clear junk for coins (each thing has a scrap value); dig a seedbed on bare lawn |
-| 🌱 seeds | 12 plants: ivy, clover, fern, sage, jasmine, oak, pine, maple, boxwood, willow, rose, lavender |
+| 🌱 seeds | 17 plants: ivy, Boston ivy, Virginia creeper, variegated ivy, clover, fern, sage, jasmine, oak, pine, maple, boxwood, willow, rose, lavender, moss, holly |
+| ✂️ shears | regraft a pet in the chosen seed's plant (its price) |
+| 🧺 build | bird feeder 8, bird bath 10, log pile 6, nest box 7, pumpkin 3, crate of apples 5 (shovel them back for half) |
 | 💧 water | a watered plant grows: mound → sprout → bush → flowering (~18 s a stage; water lasts ~40 s) |
 
 Each pet has three sets of wishes in its profile (`CharacterArtProfile.wants`, with journal `hints`):
@@ -27,6 +29,17 @@ bobcat, spring peeper, red eft, garter snake, wild turkey, black-capped chickade
 American robin, mallard, barred owl, little brown bat, star-nosed mole, snowshoe hare, deer mouse, monarch
 caterpillar. Names are our own: nothing that echoes another game's or show's characters (checked 2026-10-08; e.g. no Hoot,
 Waddle, Chip, Woody, Ruby, Rascal). The roster is closed for now: polish before more animals. Some want each other: `has_<species>` counts residents (the jay wants the chipmunk to argue with).
+
+**Attracting more.** *Appeal* = kinds of plants grown + kinds of things built + residents. More appeal means more
+guests at once (3, up to 6) and new faces at the fence sooner (every 14 s, down to 5). Many wishes use the built things:
+feeders bring the chickadee, cardinal, dove and jay; apples bring the bear cub and fawn; pumpkins the woodchuck and
+the luna moth; the bath the robin; the nest box the bluebird; log piles the chipmunk, skunk, woodpecker and bobcat.
+
+**Variants.** Every pet can come in up to four related plants (`SpeciesBuilder.GROUPS`), each with its own name: the
+plant's word + the animal ("Maple Fox", "Creeper Fox", "Mossback Turtle", "Frostleaf Beaver", "Briar Bunny"). When a
+pet arrives, it often comes made of one of its variant plants that you grow (stage 2+). New variants go in the
+journal's collection (📖: appeal ★, variants found / total, each pet's row of variants, ? for unseen). Regrafting
+with ✂️ doesn't count.
 
 Pacing: at most 3 guests (peeking or visiting) at once, and a new face at the fence at most every 14 s. A pet's
 node is only built the first time it comes by.
@@ -46,6 +59,10 @@ puddle, Juniper the tipped chair, Bramble rocks. Clear everything and you lose t
 
 The wish keys come from `garden_game.gd:garden_counts()`: `puddle sticks branches rocks leaf_pile lawn_chair grill tire pot cleared`
 and `<plant>_planted/_grown/_flowering`.
+
+Past the back fence: an old New England burying ground, autumn and not spooky. Slate stones in uneven rows, a low
+field-stone wall, a big sugar maple gone crimson, one bare old tree, pumpkins along the fence, and fallen leaves
+over the lawn (`_leaf_litter`). Static scenery is merged into one mesh per material (`GardenProps.bake_static`).
 
 The scenery: a real puddle (`shaders/water.gdshader`: muddy rim, sky sheen, drip ripples; no grass in it), a New
 England dry-stone wall down the side, maple leaves drifting from the oak crowns, six butterflies that visit flowering
@@ -76,6 +93,6 @@ its palette and bloom; `tools/capture_plants.gd` -> docs/acceptance/plants.png.
     godot --headless --path . --script tools/game_check.gd     # plays the loop: clear, plant, grow, a pet moves in
     HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/capture_garden.gd   # /tmp/hedgepets-views/garden.png
                                                                # FRAMES=700 later in time, DIST=30 zoomed out
-    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/garden_fps.gd       # ~4 ms/frame on the RTX 3050 (close other game windows first)
+    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/garden_fps.gd       # ~3.5 ms/frame on the RTX 3050 (close other game windows first)
 
 HEDGEPETS_FRESH=1 starts from a new garden and never reads or writes the player's save.

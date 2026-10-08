@@ -26,6 +26,18 @@ const SEEDS := {
 	"lavender": {"icon": "🪻", "price": 5, "sheet": "hedgelavender"},
 	"moss": {"icon": "🍃", "price": 3, "sheet": "hedgemoss"},
 	"holly": {"icon": "🎄", "price": 7, "sheet": "hedgeholly"},
+	"bostonivy": {"icon": "🧱", "price": 5, "sheet": "hedgebostonivy"},
+	"creeper": {"icon": "🍇", "price": 5, "sheet": "hedgecreeper"},
+	"variegated": {"icon": "🤍", "price": 6, "sheet": "hedgevariegated"},
+}
+## Things to put in the garden (🧺): bought with coins, placed with a tap, cleared with the shovel for half back.
+const BUILDS := {
+	"feeder": {"icon": "🐦", "price": 8, "name": "bird feeder", "radius": 0.5},
+	"bath": {"icon": "⛲", "price": 10, "name": "bird bath", "radius": 0.6},
+	"log_pile": {"icon": "🪵", "price": 6, "name": "log pile", "radius": 0.8},
+	"nest_box": {"icon": "🏠", "price": 7, "name": "nest box", "radius": 0.4},
+	"pumpkin": {"icon": "🎃", "price": 3, "name": "pumpkin", "radius": 0.5},
+	"apples": {"icon": "🍎", "price": 5, "name": "crate of apples", "radius": 0.7},
 }
 const STAGE_SECONDS := 18.0        # watered growth time per stage
 const WATER_SECONDS := 40.0        # how long one watering lasts
@@ -38,6 +50,9 @@ var tool := "hand"
 var seed_choice := "ivy"
 var seedbeds: Array = []           # {at: Vector2, node, plant (or null)}
 var plants: Array = []             # {species, at, stage, water, progress, node, bed}
+var build_choice := "feeder"
+var placed: Array = []              # {kind, x, z, yaw}: what you built (saved)
+var discovered := {}                # pet name -> [plants it has visited in]: the variant collection
 var pet_plant := {}                # pet name -> the plant it was regrafted in with ✂️ (SpeciesBuilder.PLANTS)
 var pet_state := {}                # pet name -> "away" | "noticed" | "visiting" | "resident"
 var _since := {}                   # pet name -> seconds its current step's wishes have been unmet
@@ -49,6 +64,9 @@ var _coin_label: Label
 var _toast: Label
 var _tool_buttons := {}
 var _seed_row: GridContainer
+var _build_row: HBoxContainer
+const BUILD_AT := Vector2(60, 1650)
+var _builds_shown := false
 var _journal: PanelContainer
 var _journal_text: RichTextLabel
 
@@ -71,6 +89,8 @@ func garden_counts() -> Dictionary:
 	var c := {"puddle": garden.count("sprinkler"), "sticks": garden.count("stick"), "branches": garden.count("branch"),
 		"rocks": garden.count("rock"), "leaf_pile": garden.count("leaf_pile"), "lawn_chair": garden.count("lawn_chair"),
 		"grill": garden.count("grill"), "tire": garden.count("tire"), "pot": garden.count("pot"),
+		"feeder": garden.count("feeder"), "bath": garden.count("bath"), "log_pile": garden.count("log_pile"),
+		"nest_box": garden.count("nest_box"), "pumpkin": garden.count("pumpkin"), "apples": garden.count("apples"),
 		"cleared": cleared}
 	for p: CharacterArtProfile in garden.roster:
 		if pet_state.get(p.pet_name, "") == "resident":
@@ -119,8 +139,31 @@ func _process(delta: float) -> void:
 
 
 
-const MAX_GUESTS := 3              # peeking + visiting at once: a garden is visited, not mobbed
-const NOTICE_GAP := 14.0           # seconds between new faces at the fence
+## Appeal: how inviting the garden is. Every kind of plant grown, every kind of thing built and every resident adds
+## to it; more appeal = more guests at once and new faces sooner.
+func appeal() -> int:
+	var a := 0
+	var kinds := {}
+	for pl in plants:
+		if pl["stage"] >= 2:
+			kinds[pl["species"]] = true
+	a += kinds.size()
+	var built := {}
+	for b in placed:
+		built[b["kind"]] = true
+	a += built.size()
+	for k in pet_state:
+		if pet_state[k] == "resident":
+			a += 1
+	return a
+
+
+func max_guests() -> int:
+	return mini(3 + appeal() / 4, 6)
+
+
+func notice_gap() -> float:
+	return maxf(5.0, 14.0 - appeal() * 0.6)
 var _notice_wait := 4.0
 
 
@@ -139,11 +182,11 @@ func _visitors() -> void:
 		var next := state
 		match state:
 			"away":
-				if guests < MAX_GUESTS and _notice_wait <= 0.0 and _met(p.wants["notice"], counts):
+				if guests < max_guests() and _notice_wait <= 0.0 and _met(p.wants["notice"], counts):
 					guests += 1
-					_notice_wait = NOTICE_GAP
+					_notice_wait = notice_gap()
 					next = "noticed"
-					toast("Someone's peeking through the gap in the fence…")
+					_choose_variant(p)
 			"noticed":
 				if _met(p.wants["visit"], counts):
 					next = "visiting"
@@ -167,12 +210,33 @@ func _visitors() -> void:
 			_refresh()
 
 
+## Which variant turns up depends on what you grow: if any of this pet's variant plants are grown here, it often
+## comes made of one of them. A new variant goes in the collection.
+func _choose_variant(p: CharacterArtProfile) -> void:
+	var grown := {}
+	for pl in plants:
+		if pl["stage"] >= 2:
+			grown[pl["species"]] = true
+	var options: Array = SpeciesBuilder.variants_of(p).filter(func(v) -> bool: return grown.has(v))
+	var plant := SpeciesBuilder.native_plant(p)
+	if not options.is_empty() and randf() < 0.75:
+		plant = options.pick_random()
+	pet_plant[p.pet_name] = plant
+	var seen: Array = discovered.get(p.pet_name, [])
+	if not seen.has(plant):
+		seen.append(plant)
+		discovered[p.pet_name] = seen
+		toast("✨ Someone new at the fence: a %s!" % SpeciesBuilder.variant_name(p, plant))
+	else:
+		toast("A %s is peeking through the gap in the fence…" % SpeciesBuilder.variant_name(p, plant))
+
+
 ## The pet's node in the garden, grown in whatever plant you last regrafted it in.
 func _node(p: CharacterArtProfile) -> HedgePetNode:
 	var node: HedgePetNode = garden.node_for(p)
 	var want: String = pet_plant.get(p.pet_name, "")
 	if want != "" and SpeciesBuilder.plant_of(node.profile) != want:
-		node.set_plant(want)
+		node.set_plant(want, node.visible)
 	return node
 
 
@@ -335,6 +399,19 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 				toast("✂️ %s is growing in %s now." % [pet.profile.pet_name, seed_choice])
 				_refresh()
 			return true
+		"build":
+			var item: Dictionary = BUILDS[build_choice]
+			if coins < int(item["price"]):
+				toast("A %s costs 🪙 %d." % [item["name"], item["price"]])
+				return true
+			if not garden.BOUNDS.has_point(p2) or garden._blocked(p2, float(item["radius"]) + 0.2) or _bed_at(p2) != null:
+				toast("Not here - too close to something.")
+				return true
+			coins -= int(item["price"])
+			_place(build_choice, p2, randf_range(-40, 40))
+			toast("%s Put down a %s." % [item["icon"], item["name"]])
+			_refresh()
+			return true
 		"water":
 			var pl = _plant_at(p2)
 			if pl == null:
@@ -345,6 +422,26 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 			_splash(Vector3(pl["at"].x, 0.2, pl["at"].y))
 			return true
 	return false
+
+
+func _place(kind: String, p2: Vector2, yaw: float, animate := true) -> void:
+	var at := Vector3(p2.x, 0, p2.y)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(p2.x * 1000 + p2.y * 7)
+	var node: Node3D
+	match kind:
+		"feeder": node = GardenProps.bird_feeder(garden, at, yaw)
+		"bath": node = GardenProps.bird_bath(garden, at, yaw)
+		"log_pile": node = GardenProps.log_pile(garden, at, yaw)
+		"nest_box": node = GardenProps.nest_box(garden, at, yaw)
+		"pumpkin": node = GardenProps.pumpkin(garden, at, rng.randf_range(0.55, 0.8), rng)
+		"apples": node = GardenProps.apple_crate(garden, at, yaw, rng)
+	garden._thing(kind, node, p2, float(BUILDS[kind]["radius"]), int(BUILDS[kind]["price"]) / 2)
+	garden.things[-1]["placed"] = true
+	garden.things[-1]["id"] = "placed_%d_%d" % [Time.get_ticks_usec(), randi()]
+	placed.append({"kind": kind, "x": p2.x, "z": p2.y, "yaw": yaw, "node": node})
+	if animate:
+		Motion.appear(node, Vector3.ONE)
 
 
 func _thing_at(p: Vector2):
@@ -383,6 +480,7 @@ func _blocked_for_bed(p: Vector2) -> bool:
 
 func _clear(t: Dictionary) -> void:
 	garden.things.erase(t)
+	placed = placed.filter(func(b) -> bool: return b["node"] != t["node"])
 	cleared += 1
 	coins += int(t["value"])
 	Motion.vanish(t["node"], true, Motion.BASE)
@@ -469,18 +567,19 @@ func _thing_line(t: Dictionary) -> String:
 
 func _pet_line(pet: HedgePetNode) -> String:
 	var p: CharacterArtProfile = pet.profile
+	var who := "%s the %s" % [p.pet_name, SpeciesBuilder.variant_name(p)]
 	match pet_state[p.pet_name]:
 		"resident":
-			return "%s lives here. %s" % [p.pet_name, "Happy as anything." if _met(p.wants["resident"], garden_counts()) else "Something's missing: " + p.hints["resident"]]
+			return "%s lives here. %s" % [who, "Happy as anything." if _met(p.wants["resident"], garden_counts()) else "Something's missing: " + p.hints["resident"]]
 		"visiting":
-			return "%s is visiting. %s" % [p.pet_name, p.hints["resident"]]
+			return "%s is visiting. %s" % [who, p.hints["resident"]]
 		_:
-			return "%s is peeking in. %s" % [p.pet_name, p.hints["visit"]]
+			return "%s is peeking in. %s" % [who, p.hints["visit"]]
 
 
 # ------------------------------------------------------------------ ui
 const TOAST_AT := Vector2(90, 140)
-const SEEDS_AT := Vector2(68, 1560)
+const SEEDS_AT := Vector2(68, 1460)
 const JOURNAL_AT := Vector2(90, 260)
 var _shown_coins := -1
 var _seeds_shown := false
@@ -526,6 +625,16 @@ func _refresh() -> void:
 			Motion.slide_in(_seed_row, SEEDS_AT, Vector2(0, 26))
 		else:
 			Motion.fade(_seed_row, 0.0, Motion.FAST)
+	var want_builds := tool == "build"
+	if want_builds != _builds_shown:
+		_builds_shown = want_builds
+		if want_builds:
+			Motion.slide_in(_build_row, BUILD_AT, Vector2(0, 26))
+		else:
+			Motion.fade(_build_row, 0.0, Motion.FAST)
+	for b in _build_row.get_children():
+		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if b.name == build_choice else 0.55, Motion._d(Motion.FAST))
+		Motion.scale_to(b, 1.08 if b.name == build_choice else 1.0)
 	for b in _seed_row.get_children():
 		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if b.name == seed_choice else 0.55, Motion._d(Motion.FAST))
 		Motion.scale_to(b, 1.08 if b.name == seed_choice else 1.0)
@@ -534,7 +643,12 @@ func _refresh() -> void:
 
 
 func _fill_journal() -> void:
-	var lines := "[b]Journal[/b]\n\n"
+	var total := 0
+	var found := 0
+	for p: CharacterArtProfile in garden.roster:
+		total += SpeciesBuilder.variants_of(p).size()
+		found += (discovered.get(p.pet_name, []) as Array).size()
+	var lines := "[b]Journal[/b]   appeal %s %d · variants %d/%d\n\n" % ["★", appeal(), found, total]
 	var counts := garden_counts()
 	var unseen: Array = []
 	for p: CharacterArtProfile in garden.roster:
@@ -547,7 +661,9 @@ func _fill_journal() -> void:
 		var hint: String = p.hints[step] if state != "away" or cleared > 0 else "???"
 		if state == "away" and not _met(p.wants["notice"], counts):
 			hint = p.hints["notice"]
-		lines += "[b]%s[/b] the %s - %s\n%s\n\n" % [p.pet_name, p.species, label, hint]
+		var seen: Array = discovered.get(p.pet_name, [])
+		var vs: Array = SpeciesBuilder.variants_of(p).map(func(v) -> String: return SpeciesBuilder.variant_name(p, v) if seen.has(v) else "?")
+		lines += "[b]%s[/b] the %s - %s\n%s\n[color=#7a6a50]%s[/color]\n\n" % [p.pet_name, SpeciesBuilder.variant_name(p, pet_plant.get(p.pet_name, "")), label, hint, " · ".join(vs)]
 	# rumours: a few of the ones you haven't met, the nearest to noticing first
 	lines += "[b]Around the neighbourhood[/b] (%d not seen yet)\n\n" % unseen.size()
 	unseen.sort_custom(func(a, b) -> bool: return _missing(a.wants["notice"], counts) < _missing(b.wants["notice"], counts))
@@ -622,7 +738,7 @@ func _build_ui() -> void:
 	_ui.add_child(panel)
 	panel.add_child(bar)
 	for t: Array in [["hand", "✋", "Hand: pet them, look at things"], ["shovel", "🪏", "Shovel: clear junk for coins, or dig a seedbed"],
-			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["water", "💧", "Water: watered plants grow"]]:
+			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["build", "🧺", "Build: put a feeder, bath, logs, pumpkins... in the garden"], ["water", "💧", "Water: watered plants grow"]]:
 		var b := _button(t[1], t[2])
 		var key: String = t[0]
 		b.pressed.connect(func() -> void:
@@ -632,7 +748,7 @@ func _build_ui() -> void:
 		_tool_buttons[key] = b
 	_seed_row = GridContainer.new()
 	_seed_row.columns = 7
-	_seed_row.position = Vector2(68, 1560)
+	_seed_row.position = SEEDS_AT
 	_seed_row.add_theme_constant_override("h_separation", 8)
 	_seed_row.add_theme_constant_override("v_separation", 6)
 	for sp in SEEDS:
@@ -645,6 +761,20 @@ func _build_ui() -> void:
 		_seed_row.add_child(b)
 	_seed_row.visible = false
 	_ui.add_child(_seed_row)
+	_build_row = HBoxContainer.new()
+	_build_row.position = BUILD_AT
+	_build_row.add_theme_constant_override("separation", 10)
+	for kind in BUILDS:
+		var item: Dictionary = BUILDS[kind]
+		var b := _button("%s%d" % [item["icon"], item["price"]], "%s (🪙 %d)" % [item["name"], item["price"]], 34)
+		b.name = kind
+		b.custom_minimum_size = Vector2(140, 90)
+		b.pressed.connect(func() -> void:
+			build_choice = kind
+			_refresh())
+		_build_row.add_child(b)
+	_build_row.visible = false
+	_ui.add_child(_build_row)
 	_journal = PanelContainer.new()
 	_journal.add_theme_stylebox_override("panel", style)
 	_journal.position = Vector2(90, 260)
@@ -664,7 +794,8 @@ func _build_ui() -> void:
 func save() -> void:
 	if OS.get_environment("HEDGEPETS_FRESH") != "":
 		return                                           # captures and checks never touch the player's garden
-	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state, "plants": pet_plant}
+	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state, "plants": pet_plant,
+		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["x"], "z": b["z"], "yaw": b["yaw"]})}
 	var present := {}
 	for t in garden.things:
 		present[t["id"]] = true
@@ -703,6 +834,9 @@ func _load() -> void:
 		if pl != null:
 			_plant(str(pl["species"]), bed, int(pl["stage"]), float(pl["water"]), float(pl["progress"]))
 	pet_plant = data.get("plants", {})
+	discovered = data.get("discovered", {})
+	for b in data.get("placed", []):
+		_place(str(b["kind"]), Vector2(float(b["x"]), float(b["z"])), float(b["yaw"]), false)
 	var saved: Dictionary = data.get("pets", {})
 	for name in saved:
 		if pet_state.has(name):

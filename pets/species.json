@@ -52,13 +52,13 @@
    },
    "resident": {
     "oak_flowering": 1,
-    "rocks": 3
+    "log_pile": 1
    }
   },
   "hints": [
    "Chipmunks live under stone walls. Keep some rocks.",
    "An oak sapling: future acorns.",
-   "Acorns, and rocks to stash them under."
+   "Acorns and a log pile to stash them in."
   ],
   "size": 0.55,
   "skin": "b07848",
@@ -86,7 +86,8 @@
     "fern_grown": 1
    },
    "visit": {
-    "fern_grown": 2
+    "apples": 1,
+    "fern_grown": 1
    },
    "resident": {
     "fern_flowering": 1,
@@ -95,7 +96,7 @@
   },
   "hints": [
    "A fawn hides in tall ferns.",
-   "More ferns. She's shy.",
+   "Apples. Fawns love windfalls.",
    "Ferns to hide in and clover to nibble."
   ],
   "skin": "b07848",
@@ -122,7 +123,7 @@
   "palette": "dark",
   "wants": {
    "notice": {
-    "grill": 1
+    "apples": 1
    },
    "visit": {
     "rose_planted": 1
@@ -134,7 +135,7 @@
    }
   },
   "hints": [
-   "A bear cub can smell that grill from the woods.",
+   "A bear cub can smell windfall apples a mile off.",
    "Rose hips. Bears love them.",
    "Roses in bloom, the grill to sniff, a tire to sit in."
   ],
@@ -161,7 +162,7 @@
     "tire": 1
    },
    "visit": {
-    "cleared": 3
+    "log_pile": 1
    },
    "resident": {
     "tire": 1,
@@ -170,7 +171,7 @@
   },
   "hints": [
    "Skunks den in old tires. Don't move it.",
-   "A bit of tidying, but not too much.",
+   "A log pile to snuffle under.",
    "The tire and a leaf pile. She's polite, honestly."
   ],
   "size": 0.8,
@@ -204,13 +205,13 @@
    "resident": {
     "pot": 1,
     "sage_grown": 1,
-    "leaf_pile": 1
+    "pumpkin": 1
    }
   },
   "hints": [
    "Opossums nap in tipped pots.",
    "Sage. He rolls in it.",
-   "His pot, his sage, a leaf pile. He eats the ticks, too."
+   "His pot, his sage, and a pumpkin to nibble."
   ],
   "size": 0.85,
   "skin": "eeeae0",
@@ -232,7 +233,7 @@
   "palette": "bark",
   "wants": {
    "notice": {
-    "clover_grown": 1
+    "pumpkin": 2
    },
    "visit": {
     "cleared": 4
@@ -243,7 +244,7 @@
    }
   },
   "hints": [
-   "A woodchuck noticed your clover.",
+   "Woodchucks can't resist pumpkins.",
    "Room to dig. Clear some junk.",
    "Lots of clover and lots of room. He'll stay till spring."
   ],
@@ -344,7 +345,8 @@
     "lawn_chair": 1
    },
    "visit": {
-    "branches": 2
+    "log_pile": 1,
+    "branches": 1
    },
    "resident": {
     "lawn_chair": 1,
@@ -353,7 +355,7 @@
   },
   "hints": [
    "A bobcat would nap under that chair.",
-   "Branches to stalk along.",
+   "Logs and branches to stalk along.",
    "Two oaks and her chair. She'll pretend she doesn't care."
   ],
   "skin": "c08a58",
@@ -517,7 +519,7 @@
     "pine_planted": 1
    },
    "visit": {
-    "sticks": 3
+    "feeder": 1
    },
    "resident": {
     "pine_grown": 1,
@@ -526,7 +528,7 @@
   },
   "hints": [
    "Chick-a-dee-dee-dee! A pine seedling caught her eye.",
-   "Twigs for a nest.",
+   "A feeder full of seed.",
    "A pine and a boxwood to dart between."
   ],
   "size": 0.55,
@@ -551,7 +553,7 @@
   "palette": "crimson",
   "wants": {
    "notice": {
-    "rose_planted": 1
+    "feeder": 1
    },
    "visit": {
     "maple_planted": 1
@@ -562,7 +564,7 @@
    }
   },
   "hints": [
-   "A flash of red near the roses.",
+   "Cardinals come to feeders first.",
    "A maple.",
    "A maple to sing from and roses below."
   ],
@@ -595,13 +597,14 @@
    },
    "resident": {
     "oak_flowering": 1,
-    "has_chipmunk": 1
+    "has_chipmunk": 1,
+    "feeder": 1
    }
   },
   "hints": [
    "A loud jay is shouting about your oak.",
    "Sticks for a big messy nest.",
-   "Acorns, and the chipmunk to argue with."
+   "Acorns, a feeder to boss, and the chipmunk to argue with."
   ],
   "size": 0.7,
   "skin": "6a8ab8",
@@ -631,7 +634,7 @@
     "puddle": 1
    },
    "resident": {
-    "puddle": 1,
+    "bath": 1,
     "cleared": 5,
     "fern_grown": 1
    }
@@ -639,7 +642,7 @@
   "hints": [
    "Robins hunt worms on open lawn.",
    "A puddle to bathe in.",
-   "Open lawn, a bath, and a fern for the nest."
+   "A bird bath, open lawn and a fern for the nest."
   ],
   "size": 0.65,
   "skin": "5a5048",
@@ -910,13 +913,14 @@
    },
    "resident": {
     "oak_flowering": 1,
+    "feeder": 1,
     "sticks": 2
    }
   },
   "hints": [
    "A gray squirrel is running the fence rail.",
    "An oak. Always an oak.",
-   "Acorns to bury and twigs for a drey."
+   "Acorns, a feeder to raid, and twigs for a drey."
   ],
   "size": 0.75,
   "skin": "9a9a90",
@@ -1218,13 +1222,13 @@
    },
    "resident": {
     "holly_flowering": 1,
-    "branches": 2
+    "log_pile": 1
    }
   },
   "hints": [
    "Tap tap tap... on the fallen branch.",
    "Holly berries.",
-   "Berries and branches to drum on."
+   "Holly berries and a log pile full of grubs."
   ],
   "size": 0.55,
   "skin": "f2f0ea",
@@ -1251,7 +1255,7 @@
     "cleared": 2
    },
    "visit": {
-    "boxwood_planted": 1
+    "feeder": 1
    },
    "resident": {
     "boxwood_grown": 1,
@@ -1260,7 +1264,7 @@
   },
   "hints": [
    "Coo-OO-oo, from the fence.",
-   "A boxwood to nest in.",
+   "Seed spilled under a feeder.",
    "Boxwood and a drink. She just likes it here."
   ],
   "size": 0.7,
@@ -1317,6 +1321,7 @@
   "palette": "spring",
   "wants": {
    "notice": {
+    "pumpkin": 1,
     "lavender_flowering": 1
    },
    "visit": {
@@ -1328,7 +1333,7 @@
    }
   },
   "hints": [
-   "Something pale green flutters at night.",
+   "A pale moth circling the pumpkins at dusk.",
    "A willow to rest on.",
    "Lavender blooms and a flowering willow. Magical."
   ],
@@ -1434,14 +1439,14 @@
     "boxwood_planted": 1
    },
    "resident": {
-    "boxwood_grown": 1,
-    "pot": 1
+    "nest_box": 1,
+    "boxwood_grown": 1
    }
   },
   "hints": [
    "A flash of blue on the fence post.",
    "A boxwood.",
-   "Boxwood and the pot as a nest box."
+   "A nest box and a boxwood."
   ],
   "size": 0.6,
   "skin": "4a7ac0",

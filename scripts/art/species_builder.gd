@@ -35,6 +35,9 @@ const PALETTES := {
 	"blue": ["24365a", "34507a", "4a6c98", "6a88b0", "6a7a90", "a8c0dc", "1e2c48"],
 	"moss": ["2e4a1e", "4a6e26", "6e9430", "8eac3a", "6a8a4a", "c4d870", "2e4418"],
 	"holly": ["14301e", "1e4228", "2a5a34", "3e7040", "3a5a44", "7aa070", "142a1a"],
+	"bostonivy": ["5a2a20", "8a3a28", "a8502e", "6e7a3a", "7a5a3a", "d08a50", "4a2418"],
+	"creeper": ["5a1820", "8a2430", "b03838", "c85a3a", "7a3a3a", "e0806a", "4a1418"],
+	"frost": ["2e4a2a", "4a6a3a", "6a8a4a", "8aa05a", "7a907a", "dcd8b0", "34502a"],
 }
 ## Every plant a pet can be made of (a leaf sheet baked from a font or drawn by tools/make_leaf_styles.py), with the
 ## look it brings: its palette, the colour of its bloom (cell 13) and how much it blooms.
@@ -44,7 +47,51 @@ const PLANTS := {
 	"sage": ["silver", "c8b4e6", 0.3], "maple": ["crimson", "b0502a", 0.3], "boxwood": ["green", "f6f0e0", 0.2],
 	"willow": ["spring", "e6e0b0", 0.3], "rose": ["green", "e86a7a", 0.6], "lavender": ["lavender", "9a7ad0", 0.7],
 	"moss": ["moss", "c86a3a", 0.5], "holly": ["holly", "d42a2a", 0.6],
+	"bostonivy": ["bostonivy", "2a3050", 0.3], "creeper": ["creeper", "2a2a48", 0.35], "variegated": ["frost", "f4f0d8", 0.3],
 }
+
+## Variants: every pet can also come in the plants related to its own (its plant's groups), and each variant has a
+## name: the plant's word + the animal ("Creeper Fox", "Mossback Turtle", "Frostleaf Beaver"). Which one turns up
+## depends on what you grow (garden_game.gd).
+const GROUPS := [
+	["ivy", "bostonivy", "creeper", "variegated"],
+	["oak", "maple", "creeper", "bostonivy"],
+	["pine", "holly", "boxwood", "moss"],
+	["jasmine", "rose", "lavender", "clover"],
+	["fern", "willow", "sage", "moss"],
+	["clover", "fern", "boxwood", "variegated"],
+]
+const PREFIX := {"ivy": "Ivy", "bostonivy": "Boston", "creeper": "Creeper", "variegated": "Frostleaf", "oak": "Oakleaf",
+	"maple": "Maple", "pine": "Pine", "holly": "Holly", "boxwood": "Box", "moss": "Mossback", "jasmine": "Jasmine",
+	"rose": "Briar", "lavender": "Lavender", "clover": "Clover", "fern": "Fern", "willow": "Willow", "sage": "Sage"}
+const PLANT_NAMES := {"ivy": "English ivy", "bostonivy": "Boston ivy", "creeper": "Virginia creeper",
+	"variegated": "variegated ivy", "boxwood": "boxwood", "moss": "moss", "holly": "holly"}
+
+
+## The plant a pet is made of by nature (its profile's own), not a regraft.
+static func native_plant(p: CharacterArtProfile) -> String:
+	return p.get_meta("native_plant", plant_of(p))
+
+
+static func variants_of(p: CharacterArtProfile) -> Array:
+	var native := native_plant(p)
+	var out: Array = [native]
+	for g: Array in GROUPS:
+		if g.has(native):
+			for plant in g:
+				if not out.has(plant) and out.size() < 4:
+					out.append(plant)
+	return out
+
+
+static func animal_noun(p: CharacterArtProfile) -> String:
+	var words := p.species.split(" ")
+	return words[words.size() - 1].capitalize()
+
+
+static func variant_name(p: CharacterArtProfile, plant := "") -> String:
+	var pl := plant if plant != "" else plant_of(p)
+	return "%s %s" % [PREFIX.get(pl, pl.capitalize()), animal_noun(p)]
 
 
 static func palette_of(name: String) -> Dictionary:
@@ -58,6 +105,7 @@ static func palette_of(name: String) -> Dictionary:
 ## The same pet grown in another plant: a copy of its profile with that plant's leaves, palette and bloom.
 static func restyle(p: CharacterArtProfile, plant: String) -> CharacterArtProfile:
 	var q: CharacterArtProfile = p.duplicate(true)
+	q.set_meta("native_plant", native_plant(p))
 	var look: Array = PLANTS[plant]
 	q.leaf_sheet = "hedge" + plant
 	q.palette = palette_of(look[0])

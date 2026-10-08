@@ -67,6 +67,24 @@ func _run() -> void:
 	gerald.set_plant("holly")
 	if SpeciesBuilder.plant_of(gerald.profile) != "holly" or gerald.get_node_or_null("ContactShadow") == null:
 		return _fail("regraft lost the plant or the contact shadow")
+	# build, appeal, variants
+	var a0: int = game.appeal()
+	game.coins = 100
+	game._place("feeder", Vector2(-3.0, 4.5), 0.0)
+	if game.garden_counts()["feeder"] != 1 or game.appeal() <= a0:
+		return _fail("feeder not counted / appeal unchanged")
+	var fox: CharacterArtProfile = garden.roster.filter(func(q) -> bool: return q.pet_name == "Russet")[0]
+	var vs: Array = SpeciesBuilder.variants_of(fox)
+	print("Russet variants: ", vs.map(func(v) -> String: return SpeciesBuilder.variant_name(fox, v)))
+	var bed3: Dictionary = game._dig(Vector2(4.0, 3.0))
+	game._plant(vs[1], bed3, 2)
+	var got := {}
+	for i in range(30):
+		game._choose_variant(fox)
+		got[game.pet_plant["Russet"]] = true
+	if not got.has(vs[1]):
+		return _fail("growing %s never brought a %s" % [vs[1], SpeciesBuilder.variant_name(fox, vs[1])])
+	print("appeal ", game.appeal(), " guests ", game.max_guests(), " gap ", game.notice_gap(), " discovered ", game.discovered.get("Russet"))
 	game.save_path = "user://garden_check.json"
 	OS.set_environment("HEDGEPETS_FRESH", "")
 	game.save()
