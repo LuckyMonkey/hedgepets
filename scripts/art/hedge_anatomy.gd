@@ -9,6 +9,7 @@ extends RefCounted
 ##   |x/a|^n + |y/(b*s)|^n + |z/(c*s)|^n = 1,  s = 1 + taper * x/a   (s scales the cross-section along x)
 ##   "exponent" n  2 = ellipsoid, 2.5-4 = a soft cushion / rounded slab, < 2 = pinched
 ##   "taper"       > 0 grows toward +x (front), < 0 toward the back (a pear, a teardrop, a snout)
+##   "taper_axis"  "x" (default) or "y": taper bottom-to-top instead (a sitting body, an ear narrowing to its tip)
 ##   "flat_bottom" cut at y = -flat_bottom * b (1 = no cut); the cut face is flat, so it can sit on the ground
 ## Points on the surface are found along a direction by bisection; normals from the field's gradient.
 
@@ -36,6 +37,10 @@ static func field(region: Dictionary, q: Vector3) -> float:
 	var r: Vector3 = region["radii"]
 	var sh := _shape(region)
 	var n: float = sh.get("exponent", 2.0)
+	# taper along x (default: front/back) or y (bottom/top: a sitting body, an ear that narrows to its tip)
+	if sh.get("taper_axis", "x") == "y":
+		var sy := clampf(1.0 + float(sh.get("taper", 0.0)) * q.y / r.y, 0.25, 2.5)
+		return pow(absf(q.x / (r.x * sy)), n) + pow(absf(q.y / r.y), n) + pow(absf(q.z / (r.z * sy)), n)
 	var s := clampf(1.0 + float(sh.get("taper", 0.0)) * q.x / r.x, 0.25, 2.5)
 	return pow(absf(q.x / r.x), n) + pow(absf(q.y / (r.y * s)), n) + pow(absf(q.z / (r.z * s)), n)
 

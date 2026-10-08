@@ -12,7 +12,7 @@ the renderer builds the three separately so none can destroy the others. Accepta
 | `pets/gerald.tres` | Gerald's profile (re-save with `godot --headless --path . --script tools/save_profile.gd`). Future pets = new profiles. |
 | `scripts/art/hedge_anatomy.gd` | Region geometry (ellipsoid surface points and normals), head-local facial anchors, smooth face protection. |
 | `scripts/art/foliage_builder.gd` | Seeded hierarchical foliage: region -> clusters -> leaves -> flowers. |
-| `scripts/beaver_3d.gd` | Assembles the pet from the profile: world, regions, face, foliage, life, detail levels, view presets. |
+| `scripts/hedge_pet_3d.gd` | Assembles the pet from the profile: world, regions, face, foliage, life, detail levels, view presets. |
 | `shaders/leaf.gdshader` | Leaf sprite + normal map; matte watercolour pigment; silhouette ink vs. faint interior ink; GPU wind; detail-level culling. |
 | `shaders/paper_ground.gdshader` | The ground *is* the paper: shows the paper colour, softly darkened only by shadow. |
 | `shaders/ink_hull.gdshader` | Inverted-hull ink outline for tail, feet, ears, muzzle, eyes, nose, teeth. |
@@ -46,6 +46,26 @@ A region's `shape` is a dictionary of numbers or a preset name:
 
 Gerald: BODY bean (1.34 x 0.95 x 1.04), HEAD a big round head (0.84 x 0.78 x 0.80, baby proportions, close to the
 body), MUZZLE cushion, TAIL paddle (exponent 4), EARS small cups, FEET flat domes (terracotta).
+
+## Pets
+
+Every pet is a `CharacterArtProfile` (`CharacterArtProfile.<name>()`, saved to `pets/<name>.tres` by
+`tools/save_profile.gd`) on the same renderer (`scripts/hedge_pet_3d.gd`). Per pet: `leaf_sheet` (the plant),
+`palette`, `features` (teeth, mouth style beaver/bunny/smile, cheeks, nose size), `frame_target`/`frame_distance`, and
+regions with optional `shape`, `rotation`, `mirror`, `flowers` (a region made of blossom), `outline`, `color`.
+
+![pets](acceptance/pets.png)
+
+| Pet | Species | Plant | Built from |
+|---|---|---|---|
+| Gerald | beaver | ivy | bean body, big round head, cushion muzzle, paddle tail, cup ears, dome feet, teeth |
+| Clover | bunny (sitting) | clover | pear body tapered along y, egg head, tall leafy ears (mirrored, rotated), a cotton tail of blossom, teeth |
+| Juniper | hedgehog | fern | low bean body with fronds sweeping up (max displacement 0.32), bare cream head tapering to a snout, tiny ears |
+| Bramble | tortoise | jasmine (flowering) | domed shell (flat_bottom 0.42), sage egg head, dome legs, teardrop tail |
+
+Controls: drag to turn (turntable, momentum eases out), drag up/down to tilt, wheel to zoom, tap for a hop; ‹ › or
+arrow keys switch pets. Captures ignore live input (`tools/capture_pets.gd`, `tools/capture_views.gd`);
+`tools/rotation_check.gd` drives a scripted drag.
 
 ## Silhouette ink
 

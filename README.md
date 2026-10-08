@@ -9,10 +9,17 @@ A tiny Godot 4.7 (GL Compatibility, portrait 1080 × 1920) garden-creature lab. 
 
 **Art direction, parameters and acceptance: [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md).** Developer view: F1.
 
+**Pets:** Gerald (beaver, ivy), Clover (sitting bunny, clover, a cotton tail of blossom), Juniper (hedgehog, fern),
+Bramble (tortoise, a flowering jasmine shell) - each a profile in `pets/*.tres` on the same renderer. Switch with ‹ ›
+or the arrow keys. **Drag** to turn the pet (turntable with momentum), drag up/down to tilt, **wheel** to zoom, **tap**
+for a hop and a heart.
+
+![pets](docs/acceptance/pets.png)
+
 ![acceptance sheet](docs/acceptance/sheet.png)
 
 
-Seen from above and to the side like `hedgepetsGoal.jpg`. Everything is built in `scripts/beaver_3d.gd`: leafy
+Seen from above and to the side like `hedgepetsGoal.jpg`. Everything is built in `scripts/hedge_pet_3d.gd`: leafy
 masses for the body and head (deep shade inside, no fur), about 2,000 ivy leaves as MultiMeshes placed on the
 surface (the same sprites and normal maps as the 2D version), vines hanging off his sides, a woven-twig tail, root
 feet, berry eyes, a seed nose and seed teeth, leaf ears, a warm sun with real shadows. The wind runs on the GPU

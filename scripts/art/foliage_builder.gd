@@ -18,14 +18,17 @@ const UP := Vector3.UP
 
 static func build(profile: CharacterArtProfile, region_name: String, head_center: Vector3, key_dir: Vector3) -> Dictionary:
 	var region: Dictionary = profile.regions[region_name]
-	# the head (and anything attached to it) is built in its own space, so its leaves turn with it
-	var c: Vector3 = Vector3.ZERO if (region_name == "HEAD" or region.get("parent", "") != "") else region["center"]
+	# built in the space of the region's parent node: the head node sits at the HEAD centre (so HEAD is at the
+	# origin there), regions attached to the head use their head-local centre, the rest creature space
+	var c: Vector3 = Vector3.ZERO if region_name == "HEAD" else region["center"]
+	var on_head: bool = region_name == "HEAD" or region.get("parent", "") == "HEAD"
+	var flowers_only: bool = region.get("flowers", false)
 	var r: Vector3 = region["radii"]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(str(profile.seed) + region_name)
 	var items: Array = []
 	var clusters: Array = []
-	var is_head := region_name == "HEAD"
+	var is_head := on_head
 	var leaf_len: float = profile.leaf_size * float(region["leaf_scale"])
 	var max_disp: float = float(region["max_displacement"]) * profile.silhouette_scale
 	# ---- level 2: cluster centres, evenly spread (Fibonacci sphere, jittered), kept apart, sized by area
@@ -42,7 +45,7 @@ static func build(profile: CharacterArtProfile, region_name: String, head_center
 		if d.y < -0.42:
 			continue                                             # nothing grows on the underside
 		var p := HedgeAnatomy.shape_point(region, c, d)
-		var head_local := (p - c) if is_head else (p - head_center)
+		var head_local := p if is_head else (p - head_center)
 		if HedgeAnatomy.protection(profile, head_local) > 0.72:
 			continue                                             # no cluster is centred on the face
 		var apart := true
@@ -74,10 +77,10 @@ static func build(profile: CharacterArtProfile, region_name: String, head_center
 			var t2 := cn.cross(t1).normalized()
 			var d := (cd + (t1 * offset.x + t2 * offset.y) * profile.cluster_spread).normalized()
 			var p := HedgeAnatomy.shape_point(region, c, d)
-			if not is_head and p.y < 0.2:
+			if not is_head and p.y < 0.2 and region_name == "BODY":
 				continue                                         # nothing touches the ground
 			var n := HedgeAnatomy.shape_normal(region, c, p)
-			var head_local := (p - c) if is_head else (p - head_center)
+			var head_local := p if is_head else (p - head_center)
 			var protect := HedgeAnatomy.protection(profile, head_local)
 			if not crown and rng.randf() > profile.coverage:
 				continue
@@ -85,9 +88,15 @@ static func build(profile: CharacterArtProfile, region_name: String, head_center
 				continue                                         # thinning smoothly toward the face
 			var dist := offset.length() / 1.6
 			var size := leaf_len * lerpf(1.18, 0.62, dist) * rng.randf_range(0.88, 1.1) * lerpf(1.0, 0.3, protect)
-			items.append(_leaf(p, n, size, max_disp, float(region["growth_up"]), cd, rng, family, profile, crown, dist))
+			var leaf: Array = _leaf(p, n, size, max_disp, float(region["growth_up"]), cd, rng, family, profile, crown, dist)
+			if flowers_only:                                     # a region made of blossom (a cotton tail)
+				var custom: Color = leaf[2]
+				custom.r = 13.0
+				leaf[2] = custom
+				leaf[1] = profile.palette.get("blossom", Color(1.0, 0.98, 0.94))
+			items.append(leaf)
 		# ---- level 4: a flower on some clusters, well away from the face
-		if region_name == "BODY" and rng.randf() < profile.flowering * 0.55 and cn.y > -0.1:
+		if region_name == "BODY" and not flowers_only and rng.randf() < profile.flowering * 0.55 and cn.y > -0.1:
 			var head_local := cp - head_center
 			if HedgeAnatomy.protection(profile, head_local) < 0.05 and cp.distance_to(head_center) > 1.1:
 				var fsize := leaf_len * 0.62

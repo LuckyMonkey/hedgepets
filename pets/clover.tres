@@ -1,0 +1,181 @@
+[gd_resource type="Resource" script_class="CharacterArtProfile" format=3]
+
+[ext_resource type="Script" path="res://scripts/art/character_art_profile.gd" id="1_fcjuc"]
+
+[resource]
+script = ExtResource("1_fcjuc")
+pet_name = "Clover"
+species = "bunny"
+adopted = "October 8, 2026"
+seed = 4113
+leaf_sheet = "hedgeclover"
+features = {
+"cheeks": true,
+"mouth": "bunny",
+"nose": Vector3(0.07, 0.055, 0.09),
+"teeth": true
+}
+frame_target = Vector3(0.1, 1.25, 0)
+frame_distance = 7.0
+regions = {
+"BODY": {
+"center": Vector3(0, 0.86, 0),
+"density": 1.5,
+"foliage": true,
+"growth_up": 0.35,
+"leaf_scale": 1.0,
+"material": "foliage",
+"max_displacement": 0.18,
+"parent": "",
+"radii": Vector3(0.88, 0.84, 0.82),
+"shape": {
+"exponent": 2.05,
+"flat_bottom": 0.86,
+"taper": -0.32,
+"taper_axis": "y"
+}
+},
+"EARS": {
+"center": Vector3(-0.14, 0.74, 0.22),
+"density": 4.0,
+"foliage": true,
+"growth_up": 0.9,
+"leaf_scale": 0.62,
+"material": "foliage",
+"max_displacement": 0.05,
+"mirror": true,
+"parent": "HEAD",
+"radii": Vector3(0.16, 0.46, 0.1),
+"rotation": Vector3(-12, 0, 6),
+"shape": {
+"exponent": 2.1,
+"taper": -0.25,
+"taper_axis": "y"
+}
+},
+"FEET": {
+"center": Vector3(0, 0, 0),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "terracotta",
+"max_displacement": 0.0,
+"outline": 0.014,
+"parent": "",
+"radii": Vector3(0.24, 0.13, 0.17),
+"shape": "dome"
+},
+"HEAD": {
+"center": Vector3(0.46, 1.92, 0),
+"density": 2.4,
+"foliage": true,
+"growth_up": 0.3,
+"leaf_scale": 0.6,
+"material": "foliage",
+"max_displacement": 0.08,
+"parent": "",
+"radii": Vector3(0.62, 0.56, 0.6),
+"shape": "egg"
+},
+"MUZZLE": {
+"center": Vector3(0.5, -0.15, 0),
+"density": 0.0,
+"foliage": false,
+"growth_up": 0.0,
+"leaf_scale": 0.0,
+"material": "moss",
+"max_displacement": 0.0,
+"outline": 0.012,
+"parent": "HEAD",
+"radii": Vector3(0.2, 0.16, 0.25),
+"shape": "cushion"
+},
+"TAIL": {
+"center": Vector3(-0.86, 0.48, 0),
+"density": 3.0,
+"flowers": true,
+"foliage": true,
+"growth_up": 0.0,
+"leaf_scale": 0.7,
+"material": "blossom",
+"max_displacement": 0.05,
+"parent": "",
+"radii": Vector3(0.26, 0.26, 0.26)
+}
+}
+anchors = {
+"CHEEK_LEFT": {
+"dir": Vector3(0.6, -0.2, 0.72),
+"on": "HEAD"
+},
+"CHEEK_RIGHT": {
+"dir": Vector3(0.6, -0.2, -0.72),
+"on": "HEAD"
+},
+"EYE_LEFT": {
+"dir": Vector3(0.78, 0.3, 0.46),
+"on": "HEAD"
+},
+"EYE_RIGHT": {
+"dir": Vector3(0.78, 0.3, -0.46),
+"on": "HEAD"
+},
+"MOUTH": {
+"dir": Vector3(0.85, -0.45, 0),
+"on": "MUZZLE"
+},
+"NOSE": {
+"dir": Vector3(1, 0.35, 0),
+"on": "MUZZLE"
+},
+"TEETH": {
+"dir": Vector3(0.9, -0.7, 0),
+"on": "MUZZLE"
+}
+}
+protected_zones = {
+"CHEEK_LEFT": {
+"radius": 0.3,
+"strength": 0.6
+},
+"CHEEK_RIGHT": {
+"radius": 0.3,
+"strength": 0.6
+},
+"EYE_LEFT": {
+"radius": 0.42,
+"strength": 1.0
+},
+"EYE_RIGHT": {
+"radius": 0.42,
+"strength": 1.0
+},
+"MOUTH": {
+"radius": 0.45,
+"strength": 1.0
+},
+"NOSE": {
+"radius": 0.5,
+"strength": 1.0
+},
+"TEETH": {
+"radius": 0.45,
+"strength": 1.0
+}
+}
+feet = Array[Vector3]([Vector3(0.52, 0, 0.34), Vector3(0.52, 0, -0.34), Vector3(0.05, 0, 0.6), Vector3(0.05, 0, -0.6)])
+leaf_size = 0.3
+flowering = 0.5
+tendrils = 0
+palette = {
+"blossom": Color(1, 0.97, 0.95, 1),
+"deep_forest": Color(0.20784314, 0.3529412, 0.17254902, 1),
+"matcha": Color(0.45490196, 0.627451, 0.27450982, 1),
+"muted_ivy": Color(0.30980393, 0.47843137, 0.21960784, 1),
+"pale_highlight": Color(0.72156864, 0.8117647, 0.5254902, 1),
+"soft_sage": Color(0.4862745, 0.6039216, 0.42352942, 1),
+"warm_yellow_green": Color(0.56078434, 0.68235296, 0.29803923, 1)
+}
+inner_mass = Color(0.23529412, 0.38431373, 0.1882353, 1)
+eye_size = 0.13

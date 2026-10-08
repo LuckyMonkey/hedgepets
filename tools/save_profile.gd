@@ -1,9 +1,11 @@
 extends SceneTree
 
-## Writes Gerald's CharacterArtProfile to res://pets/gerald.tres (edit that file, or the defaults in
-## scripts/art/character_art_profile.gd, then re-run).
+## Writes every pet's CharacterArtProfile to res://pets/<name>.tres from the defaults in
+## scripts/art/character_art_profile.gd (gerald, clover, juniper, bramble).
 ##   godot --headless --path . --script tools/save_profile.gd
 func _init() -> void:
-	var err := ResourceSaver.save(CharacterArtProfile.gerald(), "res://pets/gerald.tres")
-	print("saved pets/gerald.tres" if err == OK else "save failed: %s" % err)
+	for p: CharacterArtProfile in [CharacterArtProfile.gerald(), CharacterArtProfile.clover(), CharacterArtProfile.juniper(), CharacterArtProfile.bramble()]:
+		var path := "res://pets/%s.tres" % p.pet_name.to_lower()
+		var err := ResourceSaver.save(p, path)
+		print(("saved " if err == OK else "FAILED ") + path)
 	quit()

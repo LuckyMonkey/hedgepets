@@ -5,7 +5,7 @@ extends CanvasLayer
 ## face-protection zones, foliage clusters, leaves, silhouette bounds (max displacement), surface normals,
 ## lighting. Sliders tune the profile live and regrow the foliage from the same seed.
 
-var pet3d: Node3D           # the beaver_3d.gd node
+var pet3d: Node3D           # the hedge_pet_3d.gd node
 var overlay: Node3D
 var _toggles := {}
 const REGION_COLORS := {"BODY": Color(0.2, 0.6, 1.0, 0.25), "HEAD": Color(1.0, 0.6, 0.2, 0.3), "MUZZLE": Color(1.0, 1.0, 0.2, 0.35),
