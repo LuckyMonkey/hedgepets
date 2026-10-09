@@ -33,7 +33,7 @@ feet, berry eyes, a seed nose and seed teeth, leaf ears, a warm sun with real sh
 (`shaders/leaf.gdshader`): gusts roll across him, leaves bend, flutter and twist. He blinks, turns his head a little
 toward your pointer, and hops with a heart when you tap him. ~59 fps.
 
-![Gerald in 3D](docs-gerald-3d.png)
+![Gerald](docs/acceptance/view_three_quarter.png)
 
 The 2D version is still `main.tscn` (open it in the editor, or set it as the main scene).
 
