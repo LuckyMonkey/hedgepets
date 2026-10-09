@@ -100,15 +100,61 @@ var walk_stats := {"arrived": 0, "close_enough": 0, "gave_up": 0, "most_in_a_row
 var boot_ms := {}                                 # how long each part of building the garden took (tools/boot_time.gd)
 
 
+signal built                                      # the garden is up and playable (after a staged build)
+var is_built := false
+
+## The build, step by step. In an exported game (web, phone) it's staged: a frame between steps, so a loading card
+## can say what's happening and the browser never looks frozen. The editor and the headless checks build it all at
+## once (HEDGEPETS_STAGED=1 stages it there too). Weights: how long each step took here, for the bar.
+const BUILD_STEPS := [
+	["_build_world", "Opening the back door", 1], ["_build_ground", "Rolling out the lawn", 6],
+	["_build_backdrop", "Growing the woods", 14], ["_build_props", "Bringing the garden things out", 2],
+	["_build_grass", "Letting the grass grow", 6], ["_spawn_pets", "Calling the hedgepets", 1],
+	["_leaf_litter", "Dropping a few leaves", 2], ["_build_ambience", "Hanging the wind chimes", 1],
+	["_build_sun", "Finding the sun", 1], ["_build_sounds", "Listening for birds", 1],
+	["_build_tilt_shift", "Focusing", 1], ["_start_game", "Opening your garden", 6],
+]
+
+
 func _ready() -> void:
 	Assets.web_fonts()
 	_rng.seed = 20261008
-	for step: Callable in [_build_world, _build_ground, _build_backdrop, _build_props, _build_grass, _spawn_pets,
-			_leaf_litter, _build_ambience, _build_sun, _build_sounds, _build_tilt_shift, _start_game]:
+	var staged := not OS.has_feature("editor") or OS.get_environment("HEDGEPETS_STAGED") != ""
+	var card: Node = null
+	if staged:
+		set_process(false)
+		set_process_unhandled_input(false)
+		card = preload("res://scripts/garden/loading_card.gd").new()
+		add_child(card)
+	var total := 0.0
+	for st: Array in BUILD_STEPS:
+		total += float(st[2])
+	var done := 0.0
+	var start := Time.get_ticks_msec()
+	for st: Array in BUILD_STEPS:
 		var t0 := Time.get_ticks_msec()
-		step.call()
-		boot_ms[step.get_method()] = Time.get_ticks_msec() - t0
+		if staged:
+			card.stage(str(st[1]), done / total)
+			await get_tree().process_frame               # one frame to draw the card, then the work
+			await get_tree().process_frame
+			boot_ms["draw before " + str(st[0])] = Time.get_ticks_msec() - t0
+			t0 = Time.get_ticks_msec()
+		call(str(st[0]))
+		boot_ms[st[0]] = Time.get_ticks_msec() - t0
+		done += float(st[2])
 	_place_camera()
+	if staged:
+		card.stage("Almost there", 1.0)
+		var t1 := Time.get_ticks_msec()
+		for k in range(3):                               # the first frames draw everything once (shaders warm up) behind the card
+			await get_tree().process_frame
+		boot_ms["first frames"] = Time.get_ticks_msec() - t1
+		set_process(true)
+		set_process_unhandled_input(true)
+		card.finish()
+	print("HedgePets: garden ready in %d ms %s (cache %d hits, %d misses)" % [Time.get_ticks_msec() - start, boot_ms, BakeCache.hits, BakeCache.misses])
+	is_built = true
+	built.emit()
 
 
 # ------------------------------------------------------------------ the sun
@@ -210,6 +256,7 @@ func _build_sounds() -> void:
 
 
 var hideouts: Node
+var den: Node                                     # scripts/garden/den.gd: the room under the burrow (built on first visit)
 
 
 func _start_game() -> void:
@@ -217,6 +264,9 @@ func _start_game() -> void:
 	hideouts.name = "Hideouts"
 	add_child(hideouts)
 	hideouts.setup(self)
+	den = preload("res://scripts/garden/den.gd").new()
+	add_child(den)
+	den.setup(self)
 	game = preload("res://scripts/garden/garden_game.gd").new()
 	game.name = "Game"
 	add_child(game)
@@ -760,6 +810,23 @@ func _build_grass() -> void:
 	mm.use_colors = true
 	mm.use_custom_data = true
 	mm.mesh = tuft
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = mm
+	node.material_override = m
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.name = "Grass"
+	add_child(node)
+	# The tufts come from the seeded RNG and what's in the way, so they're the same every time: an exported game reads
+	# them from the startup cache (with the RNG's state after them) instead of placing ~31k one by one. The editor
+	# always places them live, so a change here shows at once; the bake (tools/bake_cache.gd) records them.
+	var cached := BakeCache.recording or BakeCache.live_salt() == ""
+	var key := BakeCache.key(["grass", 2, _rng.state, _grass_inputs()])
+	var hit = BakeCache.fetch(key) if cached else null
+	if hit is Array:
+		mm.instance_count = int(hit[0])
+		mm.buffer = hit[1]
+		_rng.state = int(hit[2])
+		return
 	var items: Array = []
 	for i in range(26000):
 		var x := _rng.randf_range(-19, 19)
@@ -784,17 +851,34 @@ func _build_grass() -> void:
 		var tint := Color("86a050").lerp(Color("a9ad62"), _rng.randf() * 0.6).darkened(_rng.randf() * 0.12)
 		items.append([t, tint, Color(float(cell), _rng.randf_range(0, TAU), 0, 0)])
 	_grass_edges(items)
-	mm.instance_count = items.size()
+	# one buffer in MultiMesh's own layout (a transform's three rows, then colour, then custom data: 20 floats each),
+	# made here rather than read back from the GPU, so the cache holds real data even when baked headless
+	var buf := PackedFloat32Array()
+	buf.resize(items.size() * 20)
 	for i in range(items.size()):
-		mm.set_instance_transform(i, items[i][0])
-		mm.set_instance_color(i, items[i][1])
-		mm.set_instance_custom_data(i, items[i][2])
-	var node := MultiMeshInstance3D.new()
-	node.multimesh = mm
-	node.material_override = m
-	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.name = "Grass"
-	add_child(node)
+		var t: Transform3D = items[i][0]
+		var b := t.basis
+		var c: Color = items[i][1]
+		var d: Color = items[i][2]
+		var o := i * 20
+		buf[o] = b.x.x; buf[o + 1] = b.y.x; buf[o + 2] = b.z.x; buf[o + 3] = t.origin.x
+		buf[o + 4] = b.x.y; buf[o + 5] = b.y.y; buf[o + 6] = b.z.y; buf[o + 7] = t.origin.y
+		buf[o + 8] = b.x.z; buf[o + 9] = b.y.z; buf[o + 10] = b.z.z; buf[o + 11] = t.origin.z
+		buf[o + 12] = c.r; buf[o + 13] = c.g; buf[o + 14] = c.b; buf[o + 15] = c.a
+		buf[o + 16] = d.r; buf[o + 17] = d.g; buf[o + 18] = d.b; buf[o + 19] = d.a
+	mm.instance_count = items.size()
+	mm.buffer = buf
+	if cached:
+		BakeCache.store(key, [items.size(), buf, _rng.state])
+
+
+## What the grass depends on besides the RNG: the trunks and things it grows around, and the puddle.
+func _grass_inputs() -> String:
+	var parts: Array = [obstacles]
+	for t in things:
+		var puddle: Node3D = t["node"].get_node_or_null("Puddle") if t["kind"] == "sprinkler" else null
+		parts.append([t["kind"], t["at"], t["radius"], puddle.global_transform if puddle != null else null])
+	return var_to_str(parts)
 
 
 ## The sprinkler's puddle (garden_props.gd: offset 0.9, 0.4 from the sprinkler, 2.6 x 1.8, turned 20°).
@@ -1283,14 +1367,16 @@ func _build_tilt_shift() -> void:
 
 
 # ------------------------------------------------------------------ input: pan, zoom, tap a pet
-## Controls. Left drag / one finger: turn around the garden (slowly, no glide) and tilt a little. Right drag / two
-## fingers: pan, the ground follows your hand. Wheel / pinch: zoom, from close-up to the whole garden.
+## Controls. Touch: one finger on the top half of the screen turns around the garden and tilts a little; on the bottom
+## half it pans, the ground following your hand (an invisible line; nobody needs to be told). Two fingers: pan and
+## pinch to zoom. Mouse: left drag turns, right drag pans. Wheel / pinch: zoom, from close-up to the whole garden.
 ## Keys: WASD or arrows pan, Q / E turn, R / F zoom.
 const TURN_PER_PX := 0.0025
 const ZOOM_MIN := 4.5
 const ZOOM_MAX := 24.0
 var _touches := {}                 # touch index -> position
-var _grabbing := false             # this press landed on junk (garden_grab.gd)
+var _holder := ""                  # what this press works: "arrange" (moving something you built), "grab" (junk), ""
+var _pan_drag := false             # this finger started on the bottom half: it pans
 var _pinch := 0.0
 
 
@@ -1342,22 +1428,34 @@ func _unhandled_input(event: InputEvent) -> void:
 	if pressed:
 		_press_at = event.position
 		_dragged = false
-		_grabbing = game != null and game.grab.begin(event.position)     # on a piece of junk: work it, don't turn
+		_pan_drag = event is InputEventScreenTouch and event.position.y > get_viewport().get_visible_rect().size.y * 0.5
+		_holder = ""
+		if game != null and game.arrange_begin(event.position):     # something you built, with 🧺: move or turn it
+			_holder = "arrange"
+		elif game != null and game.grab.begin(event.position):      # on a piece of junk: work it, don't turn
+			_holder = "grab"
 	elif released and _press_at != Vector2.INF:
-		if _grabbing:
+		if _holder == "arrange":
+			game.arrange_end(event.position, _dragged)
+		elif _holder == "grab":
 			if not game.grab.end(event.position):
 				_tap(event.position)
 		elif not _dragged:
 			_tap(event.position)
 		_press_at = Vector2.INF
-		_grabbing = false
+		_holder = ""
 	elif (event is InputEventMouseMotion or event is InputEventScreenDrag) and _press_at != Vector2.INF:
 		if event.position.distance_to(_press_at) > 10.0:
 			_dragged = true
-		if _grabbing:
+		if _holder == "arrange":
+			game.arrange_move(event.position)
+			return
+		if _holder == "grab":
 			game.grab.move(event.position)
 			return
-		if _dragged:
+		if _dragged and _pan_drag:
+			_pan_by(event.relative)
+		elif _dragged:
 			_goal_yaw -= event.relative.x * TURN_PER_PX
 			_goal_elev = clampf(_goal_elev + event.relative.y * 0.002, deg_to_rad(28), deg_to_rad(72))
 

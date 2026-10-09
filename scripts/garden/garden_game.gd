@@ -8,7 +8,7 @@ extends Node
 ##          MOVES IN (stays; brings a few coins now and then) when its wishes are met (CharacterArtProfile.wants).
 ##          Junk is not all bad: some visitors want sticks, a leaf pile, a puddle, the tipped chair.
 ##   Journal what you know about each pet: the hint for its next step, revealed as it gets closer.
-##   Saved to user://garden.json every few seconds.
+##   Saved to user://garden.json every few seconds and whenever you leave (on the web also to localStorage: WebSave).
 
 var save_path := "user://garden.json"
 const SEEDS := {
@@ -36,6 +36,7 @@ const SEEDS := {
 	"fig": {"icon": "🌀", "price": 4, "sheet": "hedgefig"},
 }
 ## Things to put in the garden (🧺): bought with coins, placed with a tap, cleared with the shovel for half back.
+## With 🧺 out, drag something you built to move it, tap it to turn it (arrange_*).
 const BUILDS := {
 	"feeder": {"icon": "🐦", "price": 8, "name": "bird feeder", "radius": 0.5},
 	"bath": {"icon": "⛲", "price": 10, "name": "bird bath", "radius": 0.6},
@@ -43,6 +44,13 @@ const BUILDS := {
 	"nest_box": {"icon": "🏠", "price": 7, "name": "nest box", "radius": 0.4},
 	"pumpkin": {"icon": "🎃", "price": 3, "name": "pumpkin", "radius": 0.5},
 	"apples": {"icon": "🍎", "price": 5, "name": "crate of apples", "radius": 0.7},
+	"bucket": {"icon": "🪣", "price": 4, "name": "steel bucket", "radius": 0.35},       # hideouts: a pet may hop in
+	"planter": {"icon": "🏺", "price": 4, "name": "clay pot", "radius": 0.48},
+	"chair": {"icon": "🪑", "price": 5, "name": "lawn chair", "radius": 0.5},
+	"hay": {"icon": "🌾", "price": 4, "name": "hay bale", "radius": 0.6},
+	"scarecrow": {"icon": "🧑‍🌾", "price": 9, "name": "scarecrow", "radius": 0.45},
+	"lantern": {"icon": "🏮", "price": 6, "name": "garden lantern", "radius": 0.3},
+	"stones": {"icon": "🪨", "price": 3, "name": "stepping stones", "radius": 0.3},
 }
 const STAGE_SECONDS := 18.0        # watered growth time per stage
 const WATER_SECONDS := 40.0        # how long one watering lasts
@@ -69,8 +77,8 @@ var _coin_label: Label
 var _toast: Label
 var _tool_buttons := {}
 var _seed_row: GridContainer
-var _build_row: HBoxContainer
-const BUILD_AT := Vector2(60, 1650)
+var _build_row: GridContainer
+const BUILD_AT := Vector2(36, 1560)
 var _builds_shown := false
 var _journal: PanelContainer
 var _journal_text: RichTextLabel
@@ -441,6 +449,8 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 				grab.barrel_tapped()
 			elif t != null and garden.hideouts.coax(t):
 				toast("Someone's coming out...")
+			elif t != null and t["kind"] == "burrow":       # nobody in the doorway: go down and look in on the sleepers
+				garden.den.enter()
 			elif t != null:
 				toast(_thing_line(t))
 			return true
@@ -534,12 +544,78 @@ func _place(kind: String, p2: Vector2, yaw: float, animate := true) -> void:
 		"nest_box": node = GardenProps.nest_box(garden, at, yaw)
 		"pumpkin": node = GardenProps.pumpkin(garden, at, rng.randf_range(0.55, 0.8), rng)
 		"apples": node = GardenProps.apple_crate(garden, at, yaw, rng)
+		"bucket": node = GardenProps.paint_bucket(garden, at, yaw)
+		"planter": node = GardenProps.pot_upright(garden, at)
+		"chair": node = GardenProps.chair_upright(garden, at, yaw)
+		"hay": node = GardenProps.hay_bale(garden, at, yaw, rng)
+		"scarecrow": node = GardenProps.scarecrow(garden, at, yaw)
+		"lantern": node = GardenProps.lantern(garden, at, yaw)
+		"stones": node = GardenProps.stepping_stones(garden, at, yaw, rng)
+	node.rotation_degrees.y = yaw                        # every kind the same way round (it's saved, and arranged)
 	garden._thing(kind, node, p2, float(BUILDS[kind]["radius"]), int(BUILDS[kind]["price"]) / 2)
 	garden.things[-1]["placed"] = true
 	garden.things[-1]["id"] = "placed_%d_%d" % [Time.get_ticks_usec(), randi()]
+	if garden.hideouts != null and garden.hideouts.SPOTS.has(kind):
+		garden.hideouts.add_spot(garden.things[-1])
 	placed.append({"kind": kind, "x": p2.x, "z": p2.y, "yaw": yaw, "node": node})
 	if animate:
 		Motion.appear(node, Vector3.ONE)
+
+
+# ------------------------------------------------------------------ arranging (🧺)
+var _arr: Dictionary = {}             # {t, from}: the thing being moved
+var _told_arrange := false
+
+
+## A press with 🧺 out. True if it landed on something you built: then a drag moves it and a tap turns it (and the
+## press doesn't also put a new thing down).
+func arrange_begin(screen: Vector2) -> bool:
+	_arr = {}
+	if tool != "build":
+		return false
+	var g: Vector3 = garden.ground_point(screen)
+	if g == Vector3.INF:
+		return false
+	var t = _thing_at(Vector2(g.x, g.z))
+	if t == null or not t.get("placed", false):
+		return false
+	if garden.hideouts.occupied(t):
+		toast("Someone's hiding in there. Let them be.")
+		return true
+	_arr = {"t": t, "from": (t["node"] as Node3D).position}
+	return true
+
+
+func arrange_move(screen: Vector2) -> void:
+	if _arr.is_empty():
+		return
+	var g: Vector3 = garden.ground_point(screen)
+	if g != Vector3.INF:
+		(_arr["t"]["node"] as Node3D).position = Vector3(g.x, 0.12, g.z)       # lifted a little while it's carried
+
+
+func arrange_end(_screen: Vector2, dragged: bool) -> void:
+	if _arr.is_empty():
+		return
+	var t: Dictionary = _arr["t"]
+	var n: Node3D = t["node"]
+	var from: Vector3 = _arr["from"]
+	_arr = {}
+	if not dragged:                                      # a tap: turn it an eighth
+		n.position = from
+		Motion.channel(n, "turn").tween_property(n, "rotation_degrees:y", n.rotation_degrees.y + 45.0, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		return
+	var p2 := Vector2(n.position.x, n.position.z)
+	var was: Vector2 = t["at"]
+	t["at"] = Vector2(1e6, 1e6)                          # not in its own way
+	var fits: bool = garden.BOUNDS.has_point(p2) and not garden._blocked(p2, float(t["radius"]) + 0.1) and _bed_at(p2) == null
+	if fits:
+		t["at"] = p2
+		Motion.drop(n, 0.0, Motion.FAST)
+	else:
+		t["at"] = was
+		toast("Not there - too close to something.")
+		Motion.channel(n, "move").tween_property(n, "position", from, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 func _thing_at(p: Vector2):
@@ -577,6 +653,10 @@ func _blocked_for_bed(p: Vector2) -> bool:
 
 
 func _clear(t: Dictionary) -> void:
+	if garden.hideouts.occupied(t):
+		toast("Someone's hiding in there.")
+		return
+	garden.hideouts.remove_spot(t)
 	garden.things.erase(t)
 	placed = placed.filter(func(b) -> bool: return b["node"] != t["node"])
 	cleared += 1
@@ -815,6 +895,10 @@ func _build_ui() -> void:
 			Motion.fade(_journal, 0.0, Motion.FAST)
 		_refresh())
 	_ui.add_child(jb)
+	var db := _button("🕳️", "The burrow: where the pets who live here nap", 52)
+	db.position = Vector2(800, 10)
+	db.pressed.connect(func() -> void: garden.den.enter())
+	_ui.add_child(db)
 	# a message line
 	_toast = Label.new()
 	_toast.add_theme_font_size_override("font_size", 30)
@@ -838,11 +922,14 @@ func _build_ui() -> void:
 	_ui.add_child(panel)
 	panel.add_child(bar)
 	for t: Array in [["hand", "✋", "Hand: tap to pet and look; press and drag junk to yank it loose and haul it"], ["shovel", "🪏", "Shovel: dig a seedbed, scoop up a leaf pile or something you built"],
-			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["build", "🧺", "Build: put a feeder, bath, logs, pumpkins... in the garden"], ["water", "💧", "Water: watered plants grow"]]:
+			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["build", "🧺", "Build: put a feeder, bath, scarecrow... in the garden; drag one you built to move it, tap it to turn it"], ["water", "💧", "Water: watered plants grow"]]:
 		var b := _button(t[1], t[2])
 		var key: String = t[0]
 		b.pressed.connect(func() -> void:
 			tool = key
+			if key == "build" and not _told_arrange:
+				_told_arrange = true
+				toast("Tap the lawn to put one down. Drag one you built to move it; tap it to turn it.")
 			_refresh())
 		bar.add_child(b)
 		_tool_buttons[key] = b
@@ -861,14 +948,16 @@ func _build_ui() -> void:
 		_seed_row.add_child(b)
 	_seed_row.visible = false
 	_ui.add_child(_seed_row)
-	_build_row = HBoxContainer.new()
+	_build_row = GridContainer.new()
+	_build_row.columns = 7
 	_build_row.position = BUILD_AT
-	_build_row.add_theme_constant_override("separation", 10)
+	_build_row.add_theme_constant_override("h_separation", 8)
+	_build_row.add_theme_constant_override("v_separation", 6)
 	for kind in BUILDS:
 		var item: Dictionary = BUILDS[kind]
 		var b := _button("%s%d" % [item["icon"], item["price"]], "%s (🪙 %d)" % [item["name"], item["price"]], 34)
 		b.name = kind
-		b.custom_minimum_size = Vector2(140, 90)
+		b.custom_minimum_size = Vector2(136, 90)
 		b.pressed.connect(func() -> void:
 			build_choice = kind
 			_refresh())
@@ -890,6 +979,10 @@ func _build_ui() -> void:
 	_ui.add_child(_journal)
 
 
+func set_ui_visible(on: bool) -> void:
+	_ui.visible = on
+
+
 # ------------------------------------------------------------------ save
 func save() -> void:
 	if OS.get_environment("HEDGEPETS_FRESH") != "":
@@ -902,7 +995,7 @@ func save() -> void:
 		"flowers": pet_flowers,
 		"last_visit": Time.get_unix_time_from_system(),
 		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
-		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["x"], "z": b["z"], "yaw": b["yaw"]})}
+		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["node"].position.x, "z": b["node"].position.z, "yaw": b["node"].rotation_degrees.y})}
 	var present := {}
 	for t in garden.things:
 		present[t["id"]] = true
@@ -912,12 +1005,23 @@ func save() -> void:
 	for b in seedbeds:
 		var pl = b["plant"]
 		data["beds"].append({"x": b["at"].x, "z": b["at"].y, "plant": null if pl == null else {"species": pl["species"], "stage": pl["stage"], "water": pl["water"], "progress": pl["progress"]}})
+	var text := JSON.stringify(data)
 	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f != null:
-		f.store_string(JSON.stringify(data))
+		f.store_string(text)
+		f.close()
+	WebSave.put(save_path, text)                          # the browser's copy, written at once (web only)
+
+
+## Leaving (tab hidden, app sent to the background, window closed): save right then, not up to 8 s later.
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_WM_WINDOW_FOCUS_OUT]:
+		if garden != null and is_instance_valid(garden) and _loaded:
+			save()
 
 
 var _all_ids: Array = []
+var _loaded := false               # saving before the old save was read would overwrite it
 
 
 ## Things you've worked on (moved, yanked loose, righted, scrubbed): saved by id.
@@ -932,9 +1036,11 @@ func _moved_state() -> Dictionary:
 func _load() -> void:
 	for t in garden.things:
 		_all_ids.append(t["id"])
-	if not FileAccess.file_exists(save_path) or OS.get_environment("HEDGEPETS_FRESH") != "":
+	_loaded = true
+	var text := WebSave.newest(save_path)
+	if text == "" or OS.get_environment("HEDGEPETS_FRESH") != "":
 		return
-	var data = JSON.parse_string(FileAccess.get_file_as_string(save_path))
+	var data = JSON.parse_string(text)
 	if typeof(data) != TYPE_DICTIONARY:
 		return
 	coins = int(data.get("coins", coins))
@@ -991,8 +1097,3 @@ func _load() -> void:
 		if pet_state.has(name):
 			pet_state[name] = saved[name]
 
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if garden != null and is_instance_valid(garden):
-			save()

@@ -436,6 +436,74 @@ static func apple_crate(parent: Node3D, at: Vector3, yaw: float, rng: RandomNumb
 	return r
 
 
+
+## A hay bale: a straw block with two twine bands and a few loose wisps.
+static func hay_bale(parent: Node3D, at: Vector3, yaw: float, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "HayBale", at, yaw)
+	var straw := mat("straw", Color("d6b862"))
+	part(r, blob(Vector3(0.52, 0.26, 0.32), {"exponent": 5.0}), straw, Vector3(0, 0.26, 0), Vector3.ZERO, 0.012)
+	var twine := mat("twine", Color("8a6a3a"))
+	for x: float in [-0.22, 0.22]:
+		part(r, blob(Vector3(0.025, 0.275, 0.335), {"exponent": 5.0}), twine, Vector3(x, 0.26, 0), Vector3.ZERO, 0.0)
+	var wisp := mat("strawwisp", Color("e2c876"))
+	for k in range(7):
+		part(r, cyl(0.006, 0.01, rng.randf_range(0.15, 0.3), 4), wisp, Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(0.05, 0.5), rng.randf_range(-0.3, 0.3)) * Vector3(1, 1, 1), Vector3(rng.randf_range(-70, 70), 0, rng.randf_range(-70, 70)), 0.0)
+	return r
+
+
+## A friendly scarecrow: a post and crossbar, a patched red shirt, a burlap head with button eyes and a stitched
+## smile, a floppy straw hat, straw poking out of the cuffs. Keeps nobody away.
+static func scarecrow(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "Scarecrow", at, yaw)
+	var wood := mat("feederwood", Color("8a6a48"))
+	part(r, cyl(0.045, 0.055, 1.9, 8), wood, Vector3(0, 0.95, 0), Vector3.ZERO, 0.008)
+	part(r, box(Vector3(1.2, 0.06, 0.06)), wood, Vector3(0, 1.42, 0), Vector3.ZERO, 0.008)
+	var shirt := mat("scareshirt", Color("b4483a"))
+	part(r, blob(Vector3(0.27, 0.32, 0.15), {"exponent": 3.0}), shirt, Vector3(0, 1.22, 0), Vector3.ZERO, 0.012)
+	part(r, blob(Vector3(0.5, 0.09, 0.1), {"exponent": 3.0}), shirt, Vector3(0, 1.4, 0), Vector3.ZERO, 0.01)
+	part(r, box(Vector3(0.14, 0.14, 0.02)), mat("patch", Color("d8b46a")), Vector3(0.1, 1.16, 0.15), Vector3(0, 0, 12), 0.0)
+	var straw := mat("strawwisp", Color("e2c876"))
+	for side: float in [-1.0, 1.0]:
+		part(r, cyl(0.02, 0.07, 0.14, 6), straw, Vector3(side * 0.58, 1.4, 0), Vector3(0, 0, side * 90), 0.0)
+	var head := part(r, blob(Vector3(0.19, 0.21, 0.18), {"exponent": 2.0}), mat("burlap", Color("cdb48a")), Vector3(0, 1.74, 0), Vector3.ZERO, 0.01)
+	var dark := mat("button", Color("2a2420"))
+	for side: float in [-1.0, 1.0]:
+		part(head, cyl(0.03, 0.03, 0.02, 10), dark, Vector3(side * 0.07, 0.03, 0.17), Vector3(90, 0, 0), 0.0)
+	for k in range(5):
+		var x := (k - 2) * 0.035
+		part(head, box(Vector3(0.022, 0.006, 0.01)), dark, Vector3(x, -0.07 + absf(x) * 0.6, 0.175), Vector3(0, 0, x * 260), 0.0)
+	var hat := mat("hat", Color("b89a52"))
+	part(r, cyl(0.34, 0.34, 0.025, 18), hat, Vector3(0, 1.9, 0), Vector3(6, 0, -4), 0.01)
+	part(r, cyl(0.14, 0.17, 0.17, 14), hat, Vector3(0, 1.99, 0), Vector3(6, 0, -4), 0.01)
+	return r
+
+
+## A lantern on a shepherd's hook, glowing warm (it shows best at dusk).
+static func lantern(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "Lantern", at, yaw)
+	var iron := mat("iron", Color("2e2c2a"), 0.6)
+	part(r, cyl(0.02, 0.025, 1.5, 6), iron, Vector3(0, 0.75, 0), Vector3.ZERO, 0.006)
+	part(r, box(Vector3(0.3, 0.025, 0.025)), iron, Vector3(0.14, 1.5, 0), Vector3.ZERO, 0.006)
+	part(r, cyl(0.006, 0.006, 0.1, 4), iron, Vector3(0.28, 1.45, 0), Vector3.ZERO, 0.0)
+	var glow := StandardMaterial3D.new()
+	glow.albedo_color = Color("ffd88a")
+	glow.emission_enabled = true
+	glow.emission = Color("ffc060")
+	glow.emission_energy_multiplier = 1.4
+	part(r, box(Vector3(0.14, 0.18, 0.14)), glow, Vector3(0.28, 1.31, 0), Vector3.ZERO, 0.0)
+	part(r, cyl(0.02, 0.11, 0.07, 4), iron, Vector3(0.28, 1.43, 0), Vector3(0, 45, 0), 0.006)
+	part(r, box(Vector3(0.16, 0.02, 0.16)), iron, Vector3(0.28, 1.21, 0), Vector3.ZERO, 0.006)
+	return r
+
+
+## Three flat stepping stones in a little curve, sunk into the lawn.
+static func stepping_stones(parent: Node3D, at: Vector3, yaw: float, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "Stones", at, yaw)
+	for k in range(3):
+		var g := Color("8a8a82").lerp(Color("a49a88"), rng.randf())
+		part(r, blob(Vector3(0.3, 0.035, 0.24) * rng.randf_range(0.85, 1.1), "pebble"), mat("stepstone%d" % k, g), Vector3((k - 1) * 0.62, 0.01, (k - 1) * (k - 1) * 0.18), Vector3(0, rng.randf_range(0, 180), 0), 0.006)
+	return r
+
 # ------------------------------------------------------------------ the old burying ground past the fence
 ## A slate headstone: a thin slab with a rounded top (and shoulders), leaning a little, lichen on some.
 static func headstone(parent: Node3D, at: Vector3, yaw: float, height: float, rng: RandomNumberGenerator) -> Node3D:

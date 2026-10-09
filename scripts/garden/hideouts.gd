@@ -29,6 +29,18 @@ func add_spot(t: Dictionary) -> void:
 	spots.append({"thing": t, "kind": t["kind"], "occupant": null, "fill": null})
 
 
+## A placed hideout cleared away (garden_game._clear): only ever when nobody's in it.
+func remove_spot(t: Dictionary) -> void:
+	spots = spots.filter(func(s) -> bool: return s["thing"] != t)
+
+
+func occupied(t: Dictionary) -> bool:
+	for s in spots:
+		if s["thing"] == t and s["occupant"] != null:
+			return true
+	return false
+
+
 func spot_of(kind: String) -> Dictionary:
 	for s in spots:
 		if s["kind"] == kind:

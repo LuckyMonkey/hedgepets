@@ -19,7 +19,7 @@ and run from that pack alone, outside the project folder. It started, built the 
 | Shaders | 9 `.gdshader` + 2 `.gdshaderinc` (below) |
 | Textures | 38 PNG sprite sheets imported **lossless** (`compress/mode=0`, no mipmaps); read at runtime as images |
 | Orientation | portrait (`display/window/handheld/orientation=1`), 1080 x 1920 base, `stretch/mode=canvas_items`, aspect `keep` |
-| Input | mouse, keyboard, touch (one finger: turn / tap / grab; two fingers: pan + pinch zoom) |
+| Input | mouse, keyboard, touch (one finger: top half turns, bottom half pans, tap / grab / arrange; two fingers: pan + pinch zoom) |
 | Saves | `user://garden.json` (Godot's per-platform app data folder) |
 | Runtime dependencies | none. Python (`tools/*.py`) only generates assets offline; nothing runs Python at runtime |
 

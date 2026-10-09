@@ -115,11 +115,34 @@ The wish keys come from `garden_game.gd:garden_counts()`: `puddle sticks branche
 and `<plant>_planted/_grown/_flowering`.
 
 **Camera:**
-- **Left drag / one finger:** turn slowly around the point you're looking at, with no glide afterward, and tilt a little.
-- **Right drag / two fingers:** pan. The ground follows your hand.
+- **One finger:** where it lands decides. The top half of the screen turns slowly around the point you're looking at
+  (no glide afterward) and tilts a little; the bottom half pans, the ground following your hand. The line between
+  them is invisible and never explained: you just find it works.
+- **Mouse:** left drag turns, right drag pans.
+- **Two fingers:** pan with their midpoint and pinch to zoom.
 - **Wheel / pinch:** zoom from 4.5 (a pet's-eye close-up) to 24 (the whole garden). Up close, the camera drops toward
   eye level, so you see faces.
 - **Keys:** WASD / arrows pan, Q / E turn, R / F zoom.
+
+**Building and arranging (🧺):** 13 things to put out - feeder, bird bath, log pile, nest box, pumpkin, apples,
+steel bucket, clay pot, lawn chair, hay bale, scarecrow, garden lantern, stepping stones. Tap the lawn to put the
+chosen one down. With 🧺 out, **drag** something you built to move it and **tap** it to turn it an eighth; a drop
+onto something else eases back. A placed bucket or clay pot is a hideout like the others, and nobody gets shovelled
+out of one. Where everything stands is saved from where it really is (moved with 🧺 or hauled with ✋).
+
+**The burrow** (`den.gd`): tap the burrow with ✋ when nobody's in the doorway, or the 🕳️ button. Down below is a round
+room with roots through the ceiling, a jar of fireflies for a lamp and daylight down the tunnel; up to five residents
+curl up asleep on moss beds, and a tap makes one stir. The garden waits while you're down there (paused, its sounds
+muffled overhead) and every pet is back exactly where it was when you come up. `tools/den_check.gd` checks the visit,
+arranging and the save rule.
+
+**Saving:** every 8 s and the moment you leave (tab hidden, app backgrounded, window closed). On the web the save also
+goes to the browser's localStorage, written at once; loading takes whichever copy is newer (`WebSave`).
+
+**Loading:** in an exported game the garden is built a step at a time behind a card ("Letting the grass grow...") that
+continues the browser's splash, so nothing ever looks frozen. The grass comes from the startup cache. Measured in a
+desktop browser: 24 s on a first visit, almost all of it WebGL compiling shaders the first time they're drawn; 9 s on
+a repeat visit, when the browser has kept them. Every launch prints `HedgePets: garden ready in ... ms {per step}`.
 
 **All around it,** soft in the tilt-shift, each with its own way in (`garden.gd: GATES`, `gate_for`):
 
