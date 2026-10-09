@@ -3,6 +3,8 @@
 
     wind_loop.wav     30 s, seamless: leaves rustling high above the fence: soft swishes in irregular gusts
     chickadee_1..3    "fee-bee": two clear whistled notes, the second lower, a little room around them
+    robin_1..3        carolling phrases; cardinal_1..3 "cheer cheer" / "birdy birdy"; song_sparrow_1..2 notes and a
+                      buzzy trill; mourning_dove the low coo; blue_jay_1..2 a scolding "jeer"
     crow_1..2         two or three caws from somewhere behind the trees (rough, distant)
     creak_1..2        a branch creaking as it sways
     chimes_1..3       wind chimes from a neighbour's porch (bright metal, and a deeper set); bamboo_1..2 wooden clacks
@@ -300,11 +302,96 @@ def church_bell():
     return room(lowpass(total, 1800), 0.55, 0.16)
 
 
+# ------------------------------------------------------------------ the bird chorus (New England backyard)
+def glide(f0, f1, seconds, curve=1.0, vibrato=0.0, harm=0.06):
+    """A whistled note sliding from f0 to f1 (curve shapes the slide), soft attack and release."""
+    t = t_of(seconds)
+    u = (t / max(t[-1], 1e-6)) ** curve
+    f = f0 + (f1 - f0) * u
+    if vibrato:
+        f = f * (1 + 0.012 * np.sin(2 * np.pi * vibrato * t))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    return (np.sin(ph) + harm * np.sin(2 * ph)) * env(len(t), min(0.02, seconds * 0.2), min(0.05, seconds * 0.35))
+
+
+def gap(seconds):
+    return np.zeros(int(SR * seconds))
+
+
+def robin():
+    """Carolling: short whistled phrases, each two or three slurred syllables, rising and falling ("cheerily, cheer-up")."""
+    parts = []
+    for k in range(rng.integers(4, 7)):
+        base = rng.uniform(2300, 3000)
+        for syl in range(rng.integers(2, 4)):
+            a, b = base * rng.uniform(0.9, 1.15), base * rng.uniform(0.85, 1.2)
+            parts += [glide(a, b, rng.uniform(0.07, 0.13), vibrato=40, harm=0.12), gap(0.03)]
+        parts.append(gap(rng.uniform(0.25, 0.5)))
+    return room(lowpass(np.concatenate(parts), 7500), 0.28, 0.05)
+
+
+def cardinal():
+    """Loud, clear slurred whistles: "cheer, cheer, cheer" (down) or "birdy-birdy-birdy" (up, quick)."""
+    parts = []
+    if rng.random() < 0.5:
+        for k in range(rng.integers(4, 7)):
+            parts += [glide(4200, 2000, 0.28, curve=0.6, harm=0.04), gap(0.12)]
+    else:
+        parts += [glide(4000, 1900, 0.35, curve=0.6), gap(0.15)]
+        for k in range(rng.integers(5, 9)):
+            parts += [glide(2200, 3600, 0.11, curve=1.5), gap(0.06)]
+    return room(lowpass(np.concatenate(parts), 7500), 0.3, 0.05)
+
+
+def song_sparrow():
+    """Three or four clear opening notes, then a buzzy trill and a little tumble at the end."""
+    parts = []
+    note = rng.uniform(2600, 3200)
+    for k in range(3):
+        parts += [glide(note, note, 0.12), gap(0.09)]
+    t = t_of(0.55)
+    trill = np.sin(2 * np.pi * np.cumsum(np.full(len(t), rng.uniform(3800, 4400))) / SR) * (0.55 + 0.45 * np.sin(2 * np.pi * 34 * t))
+    parts += [trill * env(len(t), 0.02, 0.06), gap(0.08)]
+    for k in range(3):
+        parts += [glide(rng.uniform(2500, 3500), rng.uniform(2000, 3000), 0.07), gap(0.04)]
+    return room(lowpass(np.concatenate(parts), 7500), 0.28, 0.05)
+
+
+def mourning_dove():
+    """Soft and low: hoo-OO-oo ... oo ... oo, breathy."""
+    def coo(f0, f1, secs, amp):
+        x = glide(f0, f1, secs, harm=0.15)
+        breath = lowpass(lowpass(rng.standard_normal(len(x)), 700), 700) * 0.035   # a whisper of breath, not hiss
+        return (x + breath) * amp
+    parts = [coo(470, 560, 0.28, 0.8), coo(560, 520, 0.42, 1.0), coo(520, 440, 0.38, 0.8), gap(0.5),
+             coo(470, 440, 0.55, 0.75), gap(0.35), coo(470, 440, 0.55, 0.7), gap(0.35), coo(470, 440, 0.55, 0.65)]
+    return room(lowpass(lowpass(np.concatenate(parts), 1400), 1400), 0.4, 0.08)
+
+
+def blue_jay():
+    """A harsh, scolding "jeer", two or three times."""
+    parts = []
+    for k in range(rng.integers(2, 4)):
+        t = t_of(0.32)
+        f = np.linspace(3000, 2300, len(t))
+        ph = np.cumsum(f) / SR
+        voice = (2 * (ph - np.floor(ph + 0.5))) * (0.7 + 0.3 * np.sin(2 * np.pi * 85 * t)) + 0.2 * rng.standard_normal(len(t))
+        parts += [bandpass(voice, 2600, 1.2) * env(len(t), 0.02, 0.1), gap(0.22)]
+    return room(lowpass(np.concatenate(parts), 6000), 0.35, 0.07)
+
+
 def main():
     os.makedirs(os.path.join(ROOT, 'assets/audio'), exist_ok=True)
     save('wind_loop', wind_loop(), 0.7)
     for v in range(3):
         save('chickadee_%d' % (v + 1), chickadee(v), 0.7)
+    for v in range(3):
+        save('robin_%d' % (v + 1), robin(), 0.7)
+        save('cardinal_%d' % (v + 1), cardinal(), 0.7)
+    for v in range(2):
+        save('song_sparrow_%d' % (v + 1), song_sparrow(), 0.7)
+        save('blue_jay_%d' % (v + 1), blue_jay(), 0.6)
+    save('mourning_dove', mourning_dove(), 0.6)
     for v, c in enumerate((2, 3)):
         save('crow_%d' % (v + 1), crow(c), 0.7)
     for v, secs in enumerate((1.4, 2.0)):

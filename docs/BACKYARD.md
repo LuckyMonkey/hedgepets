@@ -32,20 +32,28 @@ slightly messy patch of New England underneath.
 
 ## The soundscape (`scripts/garden/soundscape.gd`, sounds from `tools/make_soundscape.py`)
 
-Leaves rustling high above the fence: soft swishes (patches of leaves moving) clustered in irregular gusts, with
-calm stretches between and a faint breath of wind (not a low swell: surf; not an even hiss: static). Now and then:
-- a chickadee (25-80 s apart, near the trees)
-- a crow somewhere behind the trees (1-3 min)
-- a branch creaking (1-3 min)
-- the neighbours' wind chimes, often (bright metal, a deeper set, wooden bamboo; every 15-90 s)
-- the neighbourhood, far off:
-  - a leaf blower a few yards over, coming and going
-  - a dog a couple of houses down
-  - a car going by out front
-  - somebody's screen door
-  - a church bell from town (every 4-10 min)
+**Birds first.** A New England backyard chorus, someone singing every few seconds, never all at once:
+- chickadee ("fee-bee")
+- robin (carolling)
+- cardinal ("cheer cheer" / "birdy birdy")
+- song sparrow (notes and a buzzy trill)
+- mourning dove (the low coo)
+- blue jay (a scolding "jeer")
+- now and then a crow
 
-Then quiet again. Every sound comes from a place, so turning the camera turns the yard. **M** mutes.
+**Wind chimes** from the neighbours' porches, often: bright metal, a deeper set, wooden bamboo.
+
+**The neighbourhood**, far off:
+- a dog a couple of houses down
+- a car going by out front
+- somebody's screen door
+- a leaf blower now and then
+- a church bell from town
+
+Every sound comes from a place, so turning the camera turns the yard. **M** mutes.
+
+**On hold:** the wind in the leaves and the ambient bed (`WIND = false` in soundscape.gd). Synthesised, they sounded
+like surf, then like static. They're waiting for a real recording.
 
 The sounds are synthesised (no recordings, no network). Real CC0 recordings dropped into `assets/audio/` with the same
 names would replace them, with no code change.

@@ -8,19 +8,27 @@ extends Node3D
 
 const EVENTS := {
 	# name: [files, gap seconds (min, max), volume dB, where: "trees" | "houses" | "near" | "road" | "town"]
-	"chickadee": [["chickadee_1", "chickadee_2", "chickadee_3"], Vector2(25, 80), -14.0, "near"],
+	# the bird chorus: someone is always singing somewhere, never all at once
+	"chickadee": [["chickadee_1", "chickadee_2", "chickadee_3"], Vector2(14, 40), -13.0, "near"],
+	"robin": [["robin_1", "robin_2", "robin_3"], Vector2(12, 35), -14.0, "trees"],
+	"cardinal": [["cardinal_1", "cardinal_2", "cardinal_3"], Vector2(18, 50), -13.0, "near"],
+	"song_sparrow": [["song_sparrow_1", "song_sparrow_2"], Vector2(20, 60), -15.0, "near"],
+	"mourning_dove": [["mourning_dove"], Vector2(40, 110), -16.0, "houses"],
+	"blue_jay": [["blue_jay_1", "blue_jay_2"], Vector2(50, 150), -18.0, "trees"],
 	"crow": [["crow_1", "crow_2"], Vector2(70, 200), -20.0, "trees"],
-	"creak": [["creak_1", "creak_2"], Vector2(60, 180), -18.0, "trees"],
-	# the neighbours' porches: wind chimes (bright, deep, bamboo) come and go often
-	"chimes": [["chimes_1", "chimes_2", "chimes_3"], Vector2(15, 45), -20.0, "houses"],
-	"bamboo": [["bamboo_1", "bamboo_2"], Vector2(30, 90), -19.0, "houses"],
-	# the neighbourhood, all far off and ordinary
-	"leaf_blower": [["leaf_blower"], Vector2(150, 360), -27.0, "houses"],
-	"dog": [["dog_1", "dog_2"], Vector2(60, 180), -24.0, "houses"],
-	"car": [["car_1"], Vector2(40, 120), -26.0, "road"],
-	"screen_door": [["screen_door"], Vector2(90, 240), -23.0, "houses"],
-	"church_bell": [["church_bell"], Vector2(240, 600), -27.0, "town"],
+	# the neighbours' porches: wind chimes (bright, deep, bamboo), often
+	"chimes": [["chimes_1", "chimes_2", "chimes_3"], Vector2(12, 35), -16.0, "houses"],
+	"bamboo": [["bamboo_1", "bamboo_2"], Vector2(25, 70), -17.0, "houses"],
+	# the neighbourhood, far off and ordinary
+	"dog": [["dog_1", "dog_2"], Vector2(40, 130), -20.0, "houses"],
+	"leaf_blower": [["leaf_blower"], Vector2(180, 420), -28.0, "houses"],
+	"car": [["car_1"], Vector2(50, 140), -26.0, "road"],
+	"screen_door": [["screen_door"], Vector2(90, 240), -22.0, "houses"],
+	"church_bell": [["church_bell"], Vector2(240, 600), -26.0, "town"],
 }
+## Leaves and the ambient wind are on hold until there's a recording that sounds right (the synthesised ones sounded
+## like surf, then like static). Set true to bring the wind loop back.
+const WIND := false
 
 var garden: Node3D
 var muted := false
@@ -40,7 +48,8 @@ func setup(g: Node3D) -> void:
 	_wind.stream = loop
 	_wind.volume_db = -16.0
 	add_child(_wind)
-	_wind.play()
+	if WIND:
+		_wind.play()
 	for k in EVENTS:
 		var p := AudioStreamPlayer3D.new()
 		p.unit_size = 14.0
