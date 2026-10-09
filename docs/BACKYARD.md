@@ -32,8 +32,8 @@ slightly messy patch of New England underneath.
 
 ## The soundscape (`scripts/garden/soundscape.gd`, sounds from `tools/make_soundscape.py`)
 
-Leaves rustling high above the fence, always: dry leaf-on-leaf ticks and a faint hiss in slow, irregular gusts.
-It's not a low swell; that sounded like surf. Now and then:
+Leaves rustling high above the fence: soft swishes (patches of leaves moving) clustered in irregular gusts, with
+calm stretches between and a faint breath of wind (not a low swell: surf; not an even hiss: static). Now and then:
 - a chickadee (25-80 s apart, near the trees)
 - a crow somewhere behind the trees (1-3 min)
 - a branch creaking (1-3 min)

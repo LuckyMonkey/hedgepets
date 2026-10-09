@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The backyard's sounds, synthesised (no recordings, no network): assets/audio/*.wav, 22050 Hz mono 16-bit.
 
-    wind_loop.wav     30 s, seamless: leaves rustling high above the fence in irregular gusts (dry ticks + faint air)
+    wind_loop.wav     30 s, seamless: leaves rustling high above the fence: soft swishes in irregular gusts
     chickadee_1..3    "fee-bee": two clear whistled notes, the second lower, a little room around them
     crow_1..2         two or three caws from somewhere behind the trees (rough, distant)
     creak_1..2        a branch creaking as it sways
@@ -100,20 +100,30 @@ def slow_random(n, seconds_per_change, seed_scale=1.0):
 
 
 def wind_loop(seconds=30.0):
-    """Leaves in the wind high above the fence: thousands of tiny dry leaf-on-leaf ticks (granular, 1.5-7 kHz) and a
-    faint airy hiss, thickening and thinning with slow irregular gusts. No low rumble (that's what made it surf)."""
+    """Leaves in the wind high above the fence. Not a swell (surf), not an even hiss (static): soft "shhh" swishes,
+    each a patch of leaves moving for half a second to a second, clustered in irregular gusts with calm between,
+    a sprinkle of crisp leaf ticks inside them, a faint mid-range breath underneath, nothing above ~5 kHz."""
     n = int(SR * seconds)
-    gust = 0.25 + 0.75 * slow_random(n, 3.5) ** 1.6              # irregular gusts, mostly calm
-    # the rustle: sparse random ticks, denser in a gust, each a tiny decaying burst of noise
-    p_tick = 0.004 + 0.05 * gust
-    impulses = (rng.random(n) < p_tick) * rng.uniform(0.2, 1.0, n) * np.sign(rng.standard_normal(n))
-    k = np.arange(160)
-    kernel = rng.standard_normal(160) * np.exp(-k / rng.uniform(18, 40))
-    rustle = np.convolve(impulses, kernel, mode='same')
-    rustle = lowpass(highpass(rustle, 1500), 7000)
-    # the air: a faint, high hiss that swells with the gusts
-    hiss = lowpass(highpass(rng.standard_normal(n), 900), 4500) * 0.12 * gust ** 1.5
-    x = rustle * (0.35 + 0.65 * gust) + hiss
+    gust = slow_random(n, 4.0) ** 2.2                            # mostly calm; gusts now and then
+    x = np.zeros(n)
+    # swishes: placed where the gusts are
+    weights = gust / gust.sum()
+    starts = rng.choice(n, size=int(seconds * 3.2), p=weights)
+    for st in starts:
+        dur = int(SR * rng.uniform(0.35, 1.3))
+        seg = rng.standard_normal(dur)
+        seg = bandpass(seg, rng.uniform(800, 2400), rng.uniform(0.6, 1.1))
+        shape = np.sin(np.linspace(0, np.pi, dur)) ** 2 * (0.6 + 0.4 * np.sin(np.linspace(0, np.pi * rng.uniform(2, 5), dur)) ** 2)
+        end = min(n, st + dur)
+        x[st:end] += (seg * shape)[:end - st] * rng.uniform(0.3, 1.0)
+    # a few crisp ticks inside the gusts
+    impulses = (rng.random(n) < 0.0015 + 0.012 * gust) * rng.uniform(0.1, 0.5, n) * np.sign(rng.standard_normal(n))
+    k = np.arange(90)
+    ticks = np.convolve(impulses, rng.standard_normal(90) * np.exp(-k / 15.0), mode='same')
+    x += lowpass(highpass(ticks, 1500), 5000) * 0.6
+    # the breath of the wind itself: faint, mid, irregular
+    x += bandpass(rng.standard_normal(n), 650, 0.7) * 0.18 * (0.25 + gust)
+    x = lowpass(x, 5200)
     f = int(SR * 1.0)                                           # seam: crossfade the last second into the start
     fade = np.linspace(0, 1, f)
     x[:f] = x[:f] * fade + x[-f:] * (1 - fade)
