@@ -101,6 +101,7 @@ var boot_ms := {}                                 # how long each part of buildi
 
 
 func _ready() -> void:
+	Assets.web_fonts()
 	_rng.seed = 20261008
 	for step: Callable in [_build_world, _build_ground, _build_backdrop, _build_props, _build_grass, _spawn_pets,
 			_leaf_litter, _build_ambience, _build_sun, _build_sounds, _build_tilt_shift, _start_game]:

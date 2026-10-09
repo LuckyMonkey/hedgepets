@@ -16,3 +16,19 @@ static func image(path: String) -> Image:
 	if img.has_mipmaps():
 		img.clear_mipmaps()
 	return img
+
+
+
+## In a browser there are no system fonts to fall back on, so emoji (the toolbar, gifts, emotes) would be boxes.
+## The web build adds a colour emoji font (Twemoji, assets/fonts/emoji, see docs/CREDITS.md) behind the default
+## font. Desktop and phones keep their system emoji (unchanged).
+static func web_fonts() -> void:
+	if not OS.has_feature("web"):
+		return
+	var base := ThemeDB.fallback_font
+	var emoji := load("res://assets/fonts/emoji/Twemoji.Mozilla.ttf") as Font
+	if base == null or emoji == null or base.fallbacks.has(emoji):
+		return
+	var fb := base.fallbacks
+	fb.append(emoji)
+	base.fallbacks = fb

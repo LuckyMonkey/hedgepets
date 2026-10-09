@@ -1,0 +1,18 @@
+	# HedgePets (go.fridge.run/hedgepets): the game in the browser (WebAssembly), its own nginx container (hedgepets).
+	# Members; signed-out visitors get the glass page. Static files only: no identity headers needed.
+	@hedgepets path /hedgepets /hedgepets/*
+	handle @hedgepets {
+		route {
+			forward_auth 127.0.0.1:8099 {
+				uri /files-auth?realm=member
+				@glass status 302 401 403
+				handle_response @glass {
+					root * /var/www/go/public
+					rewrite * /glass/private.html
+					file_server
+				}
+			}
+			reverse_proxy hedgepets:8080
+		}
+	}
+

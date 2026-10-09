@@ -39,6 +39,7 @@ var leaves_mat: ShaderMaterial:
 
 
 func _ready() -> void:
+	Assets.web_fonts()
 	PETS = CharacterArtProfile.roster()
 	_build_world()
 	_build_ui()

@@ -1,0 +1,20 @@
+# HedgePets on fridge (go.fridge.run/hedgepets): the web build (Godot 4.7, WebAssembly, no threads), static files in
+# their own small nginx container. Caddy sends /hedgepets here after the fridge.run member check (Caddyfile snippet:
+# deploy/fridge/Caddyfile.snippet). Nothing to log in to, nothing stored server-side: saves live in the browser.
+# Deploy: tools/deploy_web.sh (export, rsync to /srv/apps/hedgepets, compose up).
+services:
+  hedgepets:
+    image: nginx:1.27-alpine
+    container_name: hedgepets
+    read_only: true
+    tmpfs: [/var/cache/nginx:size=16m, /var/run:size=1m, /tmp:size=8m]
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    mem_limit: 64m
+    networks: [web]
+networks:
+  web:
+    name: fridge-homepage_default
+    external: true
