@@ -23,6 +23,7 @@ const PHYS := {
 	"tire": {"lb": 25, "stuck": 0.75}, "pot": {"lb": 15, "stuck": 0.3}, "pumpkin": {"lb": 12, "stuck": 0.35},
 	"feeder": {"lb": 30, "stuck": 0.0}, "bath": {"lb": 120, "stuck": 0.0}, "log_pile": {"lb": 80, "stuck": 0.0},
 	"nest_box": {"lb": 25, "stuck": 0.0}, "apples": {"lb": 35, "stuck": 0.0},
+	"chair": {"lb": 12, "stuck": 0.0},
 }
 const AREA := Rect2(-13.0, -10.4, 26.0, 19.8)        # where things can be hauled to
 const BARREL_CAP := 100.0
@@ -145,6 +146,8 @@ func end(screen: Vector2) -> bool:
 	if t["junk"] and _at_barrel(t):
 		_bin(t)
 		return true
+	if t["kind"] in ["stick", "branch"] and _onto_brush_pile(t):
+		return true
 	_drop(t)
 	return true
 
@@ -237,7 +240,8 @@ func _haul(t: Dictionary, g: Vector3, delta: float) -> void:
 	var pos := node.position + _vel * delta
 	# solid: it stops against trunks, walls and other things (pets get shoved aside by garden._separate)
 	var pr := float(t["radius"]) * 0.8
-	for c in garden.colliders(t, false):
+	# a light thing is carried (lifted over low junk); a heavy one is dragged and bumps into everything
+	for c in garden.colliders(t, false, lb >= 20.0):
 		var off := Vector2(pos.x, pos.z) - (c[0] as Vector2)
 		var depth := float(c[1]) + pr - off.length()
 		if depth > 0.0 and off.length() > 0.001:
@@ -273,6 +277,30 @@ func _drop(t: Dictionary) -> void:
 		_burst(node.position, Color("8a7a5a"), 14, 1.2)          # a heavy thud
 	t["at"] = Vector2(node.position.x, node.position.z) + t["offset"]
 	t["moved"] = true
+
+
+## Sticks and branches dropped on the brush pile join it: the pile grows (and shy woodland visitors like it more).
+func _onto_brush_pile(t: Dictionary) -> bool:
+	var piles: Array = garden.things.filter(func(x) -> bool: return x["kind"] == "brush_pile")
+	if piles.is_empty():
+		return false
+	var pile: Dictionary = piles[0]
+	var node: Node3D = t["node"]
+	var pn: Node3D = pile["node"]
+	if Vector2(node.position.x - pn.position.x, node.position.z - pn.position.z).length() > float(pile["radius"]) + 0.8:
+		return false
+	var tw := Motion.channel(node, "lean")
+	tw.tween_property(node, "position", pn.position + Vector3(randf_range(-0.3, 0.3), 0.5, randf_range(-0.3, 0.3)), Motion._d(Motion.BASE)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(node, "scale", Vector3.ONE * 0.6, Motion._d(Motion.BASE))
+	tw.tween_callback(node.queue_free)
+	garden.things.erase(t)
+	game.cleared += 1
+	pile["size"] = int(pile.get("size", 0)) + 1
+	var grow := 1.0 + 0.06 * minf(float(pile["size"]), 8.0)
+	Motion.channel(pn, "scale").tween_property(pn, "scale", Vector3.ONE * grow, Motion._d(Motion.SLOW)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	game.toast("🍂 Onto the brush pile. Something small might like it in there.")
+	game._refresh()
+	return true
 
 
 func _at_barrel(t: Dictionary) -> bool:

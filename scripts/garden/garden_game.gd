@@ -103,6 +103,8 @@ func garden_counts() -> Dictionary:
 		"grill": garden.count("grill"), "tire": garden.count("tire"), "pot": garden.count("pot"),
 		"feeder": garden.count("feeder"), "bath": garden.count("bath"), "log_pile": garden.count("log_pile"),
 		"nest_box": garden.count("nest_box"), "pumpkin": garden.count("pumpkin"), "apples": garden.count("apples"),
+		"woodpile": garden.count("woodpile"), "brush_pile": garden.count("brush_pile"), "chair": garden.count("chair"),
+		"clearing": 1 if _clearing() else 0,
 		"cleared": cleared}
 	for p: CharacterArtProfile in garden.roster:
 		if pet_state.get(p.pet_name, "") == "resident":
@@ -299,9 +301,17 @@ func _grow(delta: float) -> void:
 						toast("Your %s is flowering." % pl["species"])
 
 
+## The sunlit clearing: the middle of the lawn free of junk (sun-lovers want open grass to sit in).
+func _clearing() -> bool:
+	for t in garden.things:
+		if t["junk"] and Vector2(t["at"]).distance_to(Vector2(0.0, -0.5)) < 4.0 and t["kind"] != "stick":
+			return false
+	return true
+
+
 # ------------------------------------------------------------------ favourites and gifts
 const WANT_THINGS := {"puddle": ["sprinkler", "💧"], "sticks": ["stick", "🪵"], "branches": ["branch", "🪵"], "rocks": ["rock", "☀️"],
-	"leaf_pile": ["leaf_pile", "🍂"], "lawn_chair": ["lawn_chair", "💤"], "grill": ["grill", "👃"], "tire": ["tire", "💤"], "pot": ["pot", "💤"]}
+	"leaf_pile": ["leaf_pile", "🍂"], "lawn_chair": ["lawn_chair", "💤"], "brush_pile": ["brush_pile", "🍂"], "woodpile": ["woodpile", "🪵"], "chair": ["chair", "💤"], "grill": ["grill", "👃"], "tire": ["tire", "💤"], "pot": ["pot", "💤"]}
 const GIFTS := [["🌰", 2], ["🪶", 3], ["🍄", 2], ["🐚", 4], ["💎", 6], ["🌼", 2], ["🫐", 3]]
 var gifts: Array = []               # {at: Vector3, node: Label3D, value, age}
 

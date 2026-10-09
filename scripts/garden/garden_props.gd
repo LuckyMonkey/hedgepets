@@ -541,7 +541,7 @@ static func cattails(parent: Node3D, at: Vector3, rng: RandomNumberGenerator) ->
 
 ## A New England house seen from the back: clapboard box, steep gable roof, chimney, windows with white trim, a back
 ## door. `porch` adds steps toward the garden.
-static func house(parent: Node3D, at: Vector3, yaw: float, siding: Color, size: Vector3, porch: bool, rng: RandomNumberGenerator) -> Node3D:
+static func house(parent: Node3D, at: Vector3, yaw: float, siding: Color, size: Vector3, porch: bool, rng: RandomNumberGenerator, door := Color("3a4a3a")) -> Node3D:
 	var r := root(parent, "House", at, yaw)
 	var wall := mat("siding%s" % siding.to_html(false), siding)
 	var trim := mat("trim", Color("efeae0"))
@@ -563,7 +563,7 @@ static func house(parent: Node3D, at: Vector3, yaw: float, siding: Color, size: 
 			part(r, box(Vector3(0.9, 1.1, 0.06)), trim, Vector3(x, y, face), Vector3.ZERO, 0.0)
 			var lit := rng.randf() < 0.3
 			part(r, box(Vector3(0.7, 0.9, 0.08)), mat("windowlit", Color("e8c878")) if lit else glass, Vector3(x, y, face - 0.01), Vector3.ZERO, 0.0)
-	part(r, box(Vector3(1.0, 2.0, 0.08)), mat("door", Color("3a4a3a")), Vector3(0, 1.0, face), Vector3.ZERO, 0.008)
+	part(r, box(Vector3(1.0, 2.0, 0.08)), mat("door%s" % door.to_html(false), door), Vector3(0, 1.0, face), Vector3.ZERO, 0.008)
 	if porch:
 		for k in range(3):
 			part(r, box(Vector3(1.8, 0.18, 0.4)), mat("steps", Color("9a8a74")), Vector3(0, 0.09 + k * 0.18, face - 1.1 + k * 0.38), Vector3.ZERO, 0.008)
@@ -617,4 +617,44 @@ static func trash_barrel(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
 	r.add_child(lid)
 	part(lid, cyl(0.46, 0.46, 0.06, 16), zinc, Vector3(0.42, 0.03, 0), Vector3.ZERO, 0.01)
 	part(lid, box(Vector3(0.22, 0.05, 0.06)), mat("handle", Color("2f2b28")), Vector3(0.42, 0.1, 0), Vector3.ZERO, 0.0)
+	return r
+
+
+
+## A white resin lawn chair, standing upright on its own in the grass: somebody sits here to watch.
+static func chair_upright(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := lawn_chair(parent, at, yaw)
+	r.name = "TheChair"
+	var chair: Node3D = r.get_child(0)
+	chair.rotation_degrees = Vector3.ZERO
+	chair.position = Vector3.ZERO
+	r.get_child(r.get_child_count() - 1).queue_free()          # no dirt stain: it hasn't fallen over
+	return r
+
+
+## A woodpile stacked against a tree: split logs in rows, a little untidy, bark out.
+static func woodpile(parent: Node3D, at: Vector3, yaw: float, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "Woodpile", at, yaw)
+	var bark := mat("logbark", Color("6a5038"))
+	var cut := mat("logcut", Color("c8a678"))
+	for row in range(4):
+		var n := 6 - row
+		for k in range(n):
+			var x := (k - (n - 1) * 0.5) * 0.36 + rng.randf_range(-0.04, 0.04)
+			var log := part(r, cyl(0.17, 0.17, 1.2, 8), bark, Vector3(x, 0.17 + row * 0.31, rng.randf_range(-0.06, 0.06)), Vector3(90, rng.randf_range(-6, 6), 0), 0.01)
+			part(log, cyl(0.15, 0.15, 0.02, 8), cut, Vector3(0, 0.6, 0), Vector3.ZERO, 0.0)
+	return r
+
+
+## A brush pile at the woodland edge: branches and sticks heaped and crossed, leaves caught in it. Shy woodland
+## visitors shelter here. It grows when you haul more sticks and branches onto it (garden_grab.gd).
+static func brush_pile(parent: Node3D, at: Vector3, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "BrushPile", at, rng.randf_range(0, 360))
+	var wood := mat("brush", Color("5e4a36"))
+	for k in range(16):
+		var a := rng.randf_range(0, TAU)
+		var len := rng.randf_range(1.0, 2.0)
+		var y := rng.randf_range(0.1, 0.7)
+		part(r, cyl(0.03, 0.05, len, 5), wood, Vector3(cos(a) * 0.2, y, sin(a) * 0.2), Vector3(rng.randf_range(-70, 70), rad_to_deg(a), rng.randf_range(60, 120)), 0.006)
+	part(r, blob(Vector3(0.9, 0.45, 0.8), "dome"), mat("brushleaves", Color("8a6a3a")), Vector3(0, 0.1, 0), Vector3.ZERO, 0.0)
 	return r

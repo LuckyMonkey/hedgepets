@@ -48,6 +48,7 @@
     "rocks": 2
    },
    "visit": {
+    "woodpile": 1,
     "oak_planted": 1
    },
    "resident": {
@@ -57,7 +58,7 @@
   },
   "hints": [
    "Chipmunks live under stone walls. Keep some rocks.",
-   "An oak sapling: future acorns.",
+   "The woodpile is a fine place to live. And an oak sapling.",
    "Acorns and a log pile to stash them in."
   ],
   "size": 0.55,
@@ -83,7 +84,7 @@
   "palette": "bark",
   "wants": {
    "notice": {
-    "fern_grown": 1
+    "brush_pile": 1
    },
    "visit": {
     "apples": 1,
@@ -95,7 +96,7 @@
    }
   },
   "hints": [
-   "A fawn hides in tall ferns.",
+   "A fawn slips out of the woods where there's cover: a brush pile.",
    "Apples. Fawns love windfalls.",
    "Ferns to hide in and clover to nibble."
   ],
@@ -277,6 +278,7 @@
     "pine_planted": 1
    },
    "visit": {
+    "brush_pile": 1,
     "pine_grown": 1
    },
    "resident": {
@@ -286,7 +288,7 @@
   },
   "hints": [
    "A porcupine likes the smell of new pine.",
-   "A grown pine to climb.",
+   "A brush pile to hide under, and a grown pine.",
    "A pine with cones and a branch to perch on."
   ],
   "size": 0.9,
@@ -345,7 +347,7 @@
     "lawn_chair": 1
    },
    "visit": {
-    "log_pile": 1,
+    "brush_pile": 1,
     "branches": 1
    },
    "resident": {
@@ -355,7 +357,7 @@
   },
   "hints": [
    "A bobcat would nap under that chair.",
-   "Logs and branches to stalk along.",
+   "A brush pile and a branch to stalk along.",
    "Two oaks and her chair. She'll pretend she doesn't care."
   ],
   "skin": "c08a58",
@@ -479,7 +481,7 @@
   "palette": "bark",
   "wants": {
    "notice": {
-    "cleared": 5
+    "clearing": 1
    },
    "visit": {
     "oak_grown": 1
@@ -490,7 +492,7 @@
    }
   },
   "hints": [
-   "Turkeys wander through open ground. Clear some.",
+   "Turkeys come out where the grass is open and sunny.",
    "A grown oak.",
    "Acorns and a wide clear lawn to strut on."
   ],
@@ -628,7 +630,7 @@
   "palette": "bark",
   "wants": {
    "notice": {
-    "cleared": 2
+    "clearing": 1
    },
    "visit": {
     "puddle": 1
@@ -640,7 +642,7 @@
    }
   },
   "hints": [
-   "Robins hunt worms on open lawn.",
+   "Robins hunt worms on open lawn: clear the middle of the yard.",
    "A puddle to bathe in.",
    "A bird bath, open lawn and a fern for the nest."
   ],
@@ -982,7 +984,7 @@
     "pine_grown": 1
    },
    "visit": {
-    "branches": 2
+    "brush_pile": 1
    },
    "resident": {
     "pine_flowering": 1,
@@ -992,7 +994,7 @@
   },
   "hints": [
    "A dark shape in the pines.",
-   "Branches to run along.",
+   "Shy. A brush pile at the woodland edge.",
    "A pine with cones, a branch and a leaf pile den."
   ],
   "size": 0.85,

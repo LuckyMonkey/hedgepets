@@ -73,11 +73,19 @@ var boot_ms := {}                                 # how long each part of buildi
 func _ready() -> void:
 	_rng.seed = 20261008
 	for step: Callable in [_build_world, _build_ground, _build_backdrop, _build_props, _build_grass, _spawn_pets,
-			_leaf_litter, _build_ambience, _build_tilt_shift, _start_game]:
+			_leaf_litter, _build_ambience, _build_sounds, _build_tilt_shift, _start_game]:
 		var t0 := Time.get_ticks_msec()
 		step.call()
 		boot_ms[step.get_method()] = Time.get_ticks_msec() - t0
 	_place_camera()
+
+
+## The backyard, heard (scripts/garden/soundscape.gd).
+func _build_sounds() -> void:
+	var sounds := preload("res://scripts/garden/soundscape.gd").new()
+	sounds.name = "Soundscape"
+	add_child(sounds)
+	sounds.setup(self)
 
 
 func _start_game() -> void:
@@ -95,7 +103,7 @@ func _build_world() -> void:
 	env.background_color = Color("a7b37a")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = p.ambient_color
-	env.ambient_light_energy = 0.36
+	env.ambient_light_energy = 0.32
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	env.fog_enabled = true                               # a little air between the near and far garden
@@ -105,13 +113,13 @@ func _build_world() -> void:
 	we.environment = env
 	add_child(we)
 	sun = DirectionalLight3D.new()
-	sun.light_color = p.key_color
-	sun.light_energy = 0.62
+	sun.light_color = Color(1.0, 0.87, 0.68)                 # afternoon: low, warm, long shadows
+	sun.light_energy = 0.72
 	sun.shadow_enabled = true
 	sun.shadow_blur = 2.5
 	sun.shadow_opacity = 0.72                          # tree shade, not a hole in the lawn
 	sun.directional_shadow_max_distance = 60.0
-	sun.rotation_degrees = p.key_angle
+	sun.rotation_degrees = Vector3(-33.0, -38.0, 0.0)
 	add_child(sun)
 	var fill := DirectionalLight3D.new()
 	fill.light_color = Color(0.92, 0.95, 1.0)
@@ -167,6 +175,7 @@ func _build_ground() -> void:
 	m.shader = load("res://shaders/lawn.gdshader")
 	m.set_shader_parameter("macro", ImageTexture.create_from_image(img))
 	m.set_shader_parameter("detail", ImageTexture.create_from_image(detail))
+	m.set_shader_parameter("dapple", load("res://assets/sprites/dapple.png"))
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(160, 160)
 	var ground := MeshInstance3D.new()
@@ -258,6 +267,7 @@ func _build_backdrop() -> void:
 	# a ragged hedge along the back, behind the fence, with a gap where it has thinned
 	_burying_ground()
 	_surroundings()
+	_tree_wall()
 	_bush(Vector3(12.5, 1.2, -12.8), Vector3(4.6, 1.4, 1.3), "hedgeivy", hedge_palette, Color("2a4223"), 0.7, 0.55, "cushion")
 	# tall trees: their crowns go off the top of the screen, their shadows fall across the lawn
 	_tree(Vector3(-12.6, 0, 6.5), 12.0, hedge_palette)          # by the creek: its shade reaches the lawn
@@ -313,7 +323,7 @@ func _surroundings() -> void:
 	var gx: float = GATES["houses"]["peek"].x
 	GardenProps.broken_fence(south, -16.0, 16.0, 10.0, r, Vector2(gx - 1.1, gx + 1.1))
 	GardenProps.house(south, Vector3(-12.5, 0, 20.0), 0.0, Color("e8e2d2"), Vector3(8.0, 5.0, 6.5), false, r)
-	GardenProps.house(south, Vector3(0.0, 0, 18.5), 0.0, Color("c8a050"), Vector3(9.0, 5.5, 7.0), true, r)
+	GardenProps.house(south, Vector3(0.0, 0, 18.5), 0.0, Color("eeeae0"), Vector3(9.0, 5.5, 7.0), true, r, Color("3a5a8a"))   # white siding, blue door, small steps
 	GardenProps.house(south, Vector3(12.5, 0, 20.5), 0.0, Color("8a3a2a"), Vector3(8.0, 5.0, 6.5), false, r)
 	GardenProps.bake_static(south)
 	GardenProps.open_gate(self, Vector3(gx + 1.1, 0, 10.0), 2.1, 115.0)
@@ -326,6 +336,36 @@ func _surroundings() -> void:
 			_tree(at, r.randf_range(10.0, 13.0), SpeciesBuilder.palette_of(["autumn", "green", "crimson"][k % 3]), ["hedgeoak", "hedgemaple"][k % 2])
 		else:
 			_pine(at, r.randf_range(10.0, 15.0))
+
+
+## The woods all around: a wall of tall trees behind the back fence and down the sides, so the yard feels small and
+## sheltered at the edge of something much bigger. Far trees are cheap (fewer, bigger leaf masses) and soft in the
+## tilt-shift. Paths stay open where the gates are.
+func _tree_wall() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 1636
+	var spots: Array = []
+	for k in range(15):                                           # behind the back fence (right of the burying ground)
+		spots.append(Vector3(1.0 + k * 1.6 + r.randf_range(-0.6, 0.6), 0, r.randf_range(-15.5, -23.0)))
+	for k in range(8):                                            # behind the burying ground
+		spots.append(Vector3(-20.0 + k * 2.6 + r.randf_range(-0.8, 0.8), 0, r.randf_range(-27.0, -32.0)))
+	for k in range(11):                                           # past the creek
+		spots.append(Vector3(r.randf_range(-23.0, -30.0), 0, -24.0 + k * 4.0 + r.randf_range(-1.0, 1.0)))
+	for k in range(9):                                            # deeper in the east woods
+		spots.append(Vector3(r.randf_range(20.0, 30.0), 0, -24.0 + k * 4.6 + r.randf_range(-1.0, 1.0)))
+	for k in range(5):                                            # behind the houses
+		spots.append(Vector3(-18.0 + k * 9.0 + r.randf_range(-2.0, 2.0), 0, r.randf_range(26.0, 30.0)))
+	var palettes := [SpeciesBuilder.palette_of("autumn"), SpeciesBuilder.palette_of("green"), SpeciesBuilder.palette_of("crimson"), SpeciesBuilder.palette_of("golden")]
+	for at: Vector3 in spots:
+		var gate_path: bool = (absf(at.z - GATES["woods"]["peek"].z) < 3.0 and at.x < 26.0 and at.x > 9.0) \
+			or (absf(at.z - GATES["creek"]["peek"].z) < 3.0 and at.x < -18.0) or (at.x > -0.5 and at.x < 5.5 and at.z > -20.0)
+		if gate_path:
+			continue
+		var h := r.randf_range(15.0, 22.0)
+		if r.randf() < 0.45:
+			_pine(at, h, true)
+		else:
+			_tree(at, h, palettes[r.randi() % palettes.size()], ["hedgeoak", "hedgemaple"][r.randi() % 2], true)
 
 
 ## Past the back fence on the left: an old New England burying ground. Slate stones in uneven rows inside a low
@@ -416,14 +456,17 @@ func _limb(a: Vector3, b: Vector3, r0: float, r1: float, m: Material) -> MeshIns
 
 
 ## A big broadleaf tree: a leaning trunk, a few branches forking up and out, a leaf clump at each branch end.
-func _tree(at: Vector3, height: float, palette: Dictionary, sheet := "hedgeoak") -> void:
+func _tree(at: Vector3, height: float, palette: Dictionary, sheet := "hedgeoak", far := false) -> void:
 	var bark := GardenProps.mat("bark", Color("5c4634"))
 	var lean := Vector3(_rng.randf_range(-0.6, 0.6), 0, _rng.randf_range(-0.6, 0.6))
 	var top := at + Vector3(0, height * 0.62, 0) + lean
 	_limb(at, top, 0.55, 0.3, bark).name = "Trunk"
 	_limb(at + Vector3(0, 0.2, 0), at + Vector3(0.9, 0.0, 0.3), 0.3, 0.12, bark)       # a root
 	_limb(at + Vector3(0, 0.2, 0), at + Vector3(-0.6, 0.0, -0.7), 0.28, 0.1, bark)
-	var n := 5
+	var n := 3 if far else 5                                 # far trees (out of focus): fewer, bigger leaf masses
+	var leaf := 1.3 if far else 0.8
+	var dens := 0.32 if far else 0.5
+	var grow := height / 12.0 if far else 1.0
 	for i in range(n):
 		var a := TAU * float(i) / float(n) + _rng.randf_range(-0.4, 0.4)
 		var from := at.lerp(top, _rng.randf_range(0.55, 0.95))
@@ -432,15 +475,16 @@ func _tree(at: Vector3, height: float, palette: Dictionary, sheet := "hedgeoak")
 		_limb(from, to, 0.24, 0.08, bark)
 		var twig := to + Vector3(cos(a + 0.8) * 0.9, 0.7, sin(a + 0.8) * 0.9)
 		_limb(to, twig, 0.08, 0.03, bark)
-		var r := _rng.randf_range(1.6, 2.3)
-		_bush(to + Vector3(0, 0.6, 0), Vector3(r, r * 0.72, r), sheet, palette, Color(palette["deep_forest"]).darkened(0.2), 0.8, 0.5, "egg")
-	_bush(top + Vector3(0, 2.6, 0), Vector3(2.6, 2.0, 2.6), sheet, palette, Color(palette["deep_forest"]).darkened(0.2), 0.85, 0.5, "egg")
-	_crowns.append(top + Vector3(0, 1.5, 0))
+		var r := _rng.randf_range(1.6, 2.3) * grow
+		_bush(to + Vector3(0, 0.6, 0), Vector3(r, r * 0.72, r), sheet, palette, Color(palette["deep_forest"]).darkened(0.2), leaf, dens, "egg")
+	_bush(top + Vector3(0, 2.6, 0) * grow, Vector3(2.6, 2.0, 2.6) * grow, sheet, palette, Color(palette["deep_forest"]).darkened(0.2), leaf * 1.06, dens, "egg")
+	if not far:
+		_crowns.append(top + Vector3(0, 1.5, 0))
 	obstacles.append([Vector2(at.x, at.z), 1.0])
 
 
 ## A pine: a straight thin trunk and tiers of needles, wide at the bottom, narrowing to a point.
-func _pine(at: Vector3, height: float) -> void:
+func _pine(at: Vector3, height: float, far := false) -> void:
 	var pine := {"deep_forest": Color("1c3529"), "muted_ivy": Color("28493a"), "matcha": Color("3b6046"),
 		"warm_yellow_green": Color("557349"), "soft_sage": Color("4f6b5e"), "pale_highlight": Color("7f9a7c")}
 	_limb(at, at + Vector3(0, height, 0), 0.4, 0.08, GardenProps.mat("pinebark", Color("4e3a2c"))).name = "Trunk"
@@ -450,7 +494,7 @@ func _pine(at: Vector3, height: float) -> void:
 		var y := lerpf(height * 0.28, height * 0.9, t)
 		var r := lerpf(3.0, 0.9, t) * height / 12.0 * _rng.randf_range(0.82, 1.12)
 		var off := Vector3(_rng.randf_range(-0.35, 0.35), _rng.randf_range(-0.3, 0.3), _rng.randf_range(-0.35, 0.35))
-		_bush(at + Vector3(0, y, 0) + off, Vector3(r, r * _rng.randf_range(0.48, 0.62), r * _rng.randf_range(0.85, 1.0)), "hedgepine", pine, Color("1d3326"), 0.8, 0.55,
+		_bush(at + Vector3(0, y, 0) + off, Vector3(r, r * _rng.randf_range(0.48, 0.62), r * _rng.randf_range(0.85, 1.0)), "hedgepine", pine, Color("1d3326"), 1.25 if far else 0.8, 0.35 if far else 0.55,
 			{"exponent": 2.0, "taper": -0.75, "taper_axis": "y", "flat_bottom": 0.5})
 	obstacles.append([Vector2(at.x, at.z), 0.7])
 
@@ -539,6 +583,10 @@ func _build_props() -> void:
 	for i in range(12):
 		var at := Vector3(r.randf_range(-11, 11), 0, r.randf_range(-8, 8))
 		_thing("stick", GardenProps.stick(self, at, r.randf_range(0, 360), r), Vector2(at.x, at.z), 0.4, 1)
+	# the ordinary stuff: a woodpile against the pine, the one chair standing alone in the grass, a brush pile
+	_thing("woodpile", GardenProps.woodpile(self, Vector3(-8.3, 0, -5.6), 20.0, r), Vector2(-8.3, -5.6), 1.1, 0, false)
+	_thing("chair", GardenProps.chair_upright(self, Vector3(1.8, 0, 2.8), -150.0), Vector2(1.8, 2.8), 0.9, 2, false)
+	_thing("brush_pile", GardenProps.brush_pile(self, Vector3(5.6, 0, -8.6), r), Vector2(5.6, -8.6), 1.2, 0, false)
 	for at: Array in [[Vector3(-9.0, 0, -5.8), 0.55], [Vector3(-8.2, 0, -5.2), 0.35], [Vector3(10.2, 0, 3.4), 0.7], [Vector3(9.3, 0, 4.2), 0.4], [Vector3(0.5, 0, 7.6), 0.45]]:
 		_thing("rock", GardenProps.rock(self, at[0], at[1], r), Vector2(at[0].x, at[0].z), float(at[1]) + 0.4, 1)
 
@@ -558,6 +606,7 @@ func _build_grass() -> void:
 	var m := ShaderMaterial.new()
 	m.shader = load("res://shaders/grass.gdshader")
 	m.set_shader_parameter("grass_sheet", ImageTexture.create_from_image(image))
+	m.set_shader_parameter("dapple", load("res://assets/sprites/dapple.png"))
 	# a tuft = two crossed quads
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -871,11 +920,11 @@ func pet_radius(node: HedgePetNode) -> float:
 
 ## Everything solid on the lawn as circles [centre, radius]: trunks and walls, junk and things you built (not sticks
 ## or leaf piles - pets walk over those), and the other pets.
-func colliders(skip: Variant = null, with_pets := true) -> Array:
+func colliders(skip: Variant = null, with_pets := true, with_things := true) -> Array:
 	var out: Array = []
 	for o in obstacles:
 		out.append([o[0], float(o[1])])
-	for t in things:
+	for t in (things if with_things else []):
 		if t["kind"] in ["stick", "leaf_pile"] or (skip is Dictionary and t == skip):
 			continue
 		out.append([t["at"], float(t["radius"]) * 0.8])
