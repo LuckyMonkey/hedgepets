@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """The backyard's sounds, synthesised (no recordings, no network): assets/audio/*.wav, 22050 Hz mono 16-bit.
 
-    wind_loop.wav     12 s, seamless: wind in the leaves high above the fence (soft gusts, a dry rustle on top)
+    wind_loop.wav     30 s, seamless: leaves rustling high above the fence in irregular gusts (dry ticks + faint air)
     chickadee_1..3    "fee-bee": two clear whistled notes, the second lower, a little room around them
     crow_1..2         two or three caws from somewhere behind the trees (rough, distant)
     creak_1..2        a branch creaking as it sways
-    chimes_1..2       a few notes of wind chimes, faint, from a neighbour's porch
+    chimes_1..3       wind chimes from a neighbour's porch (bright metal, and a deeper set); bamboo_1..2 wooden clacks
+    leaf_blower       two or three yards over, coming and going; dog_1..2 a couple of houses down
+    car_1             a car going by out front; screen_door somebody's spring door; church_bell from town
 
 Scripts/garden/soundscape.gd plays them: the wind always, the rest now and then, with long quiet in between.
 
@@ -87,21 +89,32 @@ def t_of(seconds):
 
 
 # ------------------------------------------------------------------ wind in the leaves (seamless loop)
-def wind_loop(seconds=12.0):
+def slow_random(n, seconds_per_change, seed_scale=1.0):
+    """A slow, irregular drift in 0..1 (no rhythm: a smoothed random walk, not sine waves, which sound like surf)."""
+    steps = max(4, int(n / SR / seconds_per_change))
+    pts = rng.random(steps + 1)
+    pts[-1] = pts[0]                                             # loops
+    xs = np.linspace(0, n, steps + 1)
+    curve = np.interp(np.arange(n), xs, pts)
+    return lowpass(curve, 0.15)
+
+
+def wind_loop(seconds=30.0):
+    """Leaves in the wind high above the fence: thousands of tiny dry leaf-on-leaf ticks (granular, 1.5-7 kHz) and a
+    faint airy hiss, thickening and thinning with slow irregular gusts. No low rumble (that's what made it surf)."""
     n = int(SR * seconds)
-    t = np.arange(n) / SR
-    white = rng.standard_normal(n)
-    body = lowpass(lowpass(white, 500), 900)                       # the deep air movement
-    # gusts: slow swells whose periods divide the loop, so it joins seamlessly
-    gust = 0.55 + 0.25 * np.sin(2 * np.pi * t / seconds + 0.4) + 0.15 * np.sin(2 * np.pi * 3 * t / seconds + 1.1) \
-        + 0.08 * np.sin(2 * np.pi * 7 * t / seconds)
-    # the rustle: leaves high up, little dry bursts riding on the gusts
-    crackle = highpass(rng.standard_normal(n), 2500) * (rng.random(n) < 0.06)
-    crackle = lowpass(crackle, 6000)
-    rustle_env = np.clip(gust - 0.45, 0, None) ** 1.5
-    x = body * gust + crackle * rustle_env * 0.9
-    # seam: crossfade the last half second into the start
-    f = int(SR * 0.5)
+    gust = 0.25 + 0.75 * slow_random(n, 3.5) ** 1.6              # irregular gusts, mostly calm
+    # the rustle: sparse random ticks, denser in a gust, each a tiny decaying burst of noise
+    p_tick = 0.004 + 0.05 * gust
+    impulses = (rng.random(n) < p_tick) * rng.uniform(0.2, 1.0, n) * np.sign(rng.standard_normal(n))
+    k = np.arange(160)
+    kernel = rng.standard_normal(160) * np.exp(-k / rng.uniform(18, 40))
+    rustle = np.convolve(impulses, kernel, mode='same')
+    rustle = lowpass(highpass(rustle, 1500), 7000)
+    # the air: a faint, high hiss that swells with the gusts
+    hiss = lowpass(highpass(rng.standard_normal(n), 900), 4500) * 0.12 * gust ** 1.5
+    x = rustle * (0.35 + 0.65 * gust) + hiss
+    f = int(SR * 1.0)                                           # seam: crossfade the last second into the start
     fade = np.linspace(0, 1, f)
     x[:f] = x[:f] * fade + x[-f:] * (1 - fade)
     return x[:n - f]
@@ -180,6 +193,103 @@ def chimes(variant):
     return room(lowpass(total, 4500), 0.35, 0.09)
 
 
+# ------------------------------------------------------------------ more chimes: deep tubes, wooden bamboo
+def chimes_deep():
+    notes = [523, 587, 659, 784, 880]                           # lower, mellower metal tubes
+    total = np.zeros(int(SR * 7.0))
+    at = 0.0
+    for k in range(5):
+        f = notes[rng.integers(len(notes))]
+        start = int(SR * at)
+        n = chime_note(f, 4.5) * (0.5 + 0.5 * rng.random())
+        total[start:start + len(n)] += n[:len(total) - start]
+        at += 0.3 + 0.7 * rng.random()
+    return room(lowpass(total, 3500), 0.4, 0.1)
+
+
+def bamboo():
+    """Hollow wooden clacks: short, resonant, knocking together a few times."""
+    total = np.zeros(int(SR * 4.0))
+    at = 0.0
+    for k in range(rng.integers(5, 9)):
+        f = rng.choice([310, 370, 415, 494, 554])
+        t = t_of(0.25)
+        tok = (np.sin(2 * np.pi * f * t) + 0.5 * np.sin(2 * np.pi * f * 2.1 * t)) * np.exp(-t * 28)
+        tok += highpass(rng.standard_normal(len(t)), 1500) * np.exp(-t * 160) * 0.5   # the knock
+        start = int(SR * at)
+        total[start:start + len(tok)] += tok[:len(total) - start] * (0.5 + 0.5 * rng.random())
+        at += 0.08 + 0.35 * rng.random()
+        if at > 3.3:
+            break
+    return room(lowpass(total, 5000), 0.3, 0.06)
+
+
+# ------------------------------------------------------------------ the neighbourhood, all far off
+def leaf_blower(seconds=16.0):
+    """Two or three yards over: an engine whine with a roar of air, coming and going as they walk the lawn."""
+    t = t_of(seconds)
+    f = 118 * (1 + 0.04 * np.sin(2 * np.pi * 0.21 * t) + 0.02 * slow_random(len(t), 0.8))
+    phase = np.cumsum(f) / SR
+    engine = sum(np.sin(2 * np.pi * phase * h) / h for h in range(1, 7))
+    air = lowpass(highpass(rng.standard_normal(len(t)), 500), 2400)
+    near = 0.4 + 0.6 * (0.5 + 0.5 * np.sin(2 * np.pi * t / 9.0 - 1.0)) ** 2     # walking back and forth
+    x = (engine * 0.5 + air * 0.9) * near * env(len(t), 2.5, 3.5)
+    return room(lowpass(x, 1500), 0.5, 0.14)
+
+
+def dog():
+    """A dog a couple of houses down: a few short barks."""
+    parts = []
+    for k in range(rng.integers(2, 5)):
+        t = t_of(0.18 + 0.05 * rng.random())
+        f = 420 * (1.25 - 0.4 * t / t[-1])
+        phase = np.cumsum(f) / SR
+        voice = 2 * (phase - np.floor(phase + 0.5)) + 0.25 * rng.standard_normal(len(t))
+        bark = (bandpass(voice, 900, 1.4) + 0.5 * bandpass(voice, 1900, 2.0)) * env(len(t), 0.01, 0.07)
+        parts += [bark, np.zeros(int(SR * (0.18 + 0.3 * rng.random())))]
+    return room(lowpass(np.concatenate(parts), 2200), 0.5, 0.12)
+
+
+def car():
+    """A car going by on the street out front: a swell of tyre hiss and engine, brighter as it passes."""
+    secs = 6.0
+    t = t_of(secs)
+    pass_env = np.exp(-((t - secs * 0.5) / 1.3) ** 2)
+    tyres = highpass(rng.standard_normal(len(t)), 300)
+    bright = np.zeros_like(tyres)
+    acc = 0.0
+    for i, v in enumerate(tyres):                                # a cutoff that opens up as it comes close
+        a = math.exp(-2 * math.pi * (400 + 2200 * pass_env[i]) / SR)
+        acc = (1 - a) * v + a * acc
+        bright[i] = acc
+    hum = np.sin(2 * np.pi * np.cumsum(70 + 8 * pass_env) / SR) * 0.4
+    return room((bright + hum) * (0.05 + pass_env), 0.3, 0.12)
+
+
+def screen_door():
+    """Somebody's screen door: the spring creaks open, then it slaps shut."""
+    open_creak = creak(0.8) * 0.6
+    slap_t = t_of(0.35)
+    slap = (lowpass(rng.standard_normal(len(slap_t)), 1800) * np.exp(-slap_t * 30) + 0.6 * np.sin(2 * np.pi * 140 * slap_t) * np.exp(-slap_t * 22))
+    rattle = highpass(rng.standard_normal(len(slap_t)), 2500) * np.exp(-slap_t * 12) * 0.25
+    x = np.concatenate([open_creak, np.zeros(int(SR * 1.2)), slap + rattle, np.zeros(int(SR * 0.1)), (slap + rattle) * 0.3])
+    return room(lowpass(x, 3000), 0.4, 0.1)
+
+
+def church_bell():
+    """A church bell from town: three slow strokes, mostly the hum and strike note, a long way off."""
+    f = 196.0
+    partials = [(0.5, 0.6, 0.35), (1.0, 1.0, 0.6), (1.2, 0.5, 0.8), (1.5, 0.35, 1.0), (2.0, 0.45, 1.3), (2.5, 0.2, 1.8)]
+    one = t_of(6.0)
+    stroke = sum(a * np.sin(2 * np.pi * f * m * one) * np.exp(-one * d) for m, a, d in partials)
+    stroke *= env(len(one), 0.004, 0.5)
+    total = np.zeros(int(SR * 13.0))
+    for k in range(3):
+        start = int(SR * k * 3.2)
+        total[start:start + len(stroke)] += stroke[:len(total) - start]
+    return room(lowpass(total, 1800), 0.55, 0.16)
+
+
 def main():
     os.makedirs(os.path.join(ROOT, 'assets/audio'), exist_ok=True)
     save('wind_loop', wind_loop(), 0.7)
@@ -191,6 +301,15 @@ def main():
         save('creak_%d' % (v + 1), creak(secs), 0.6)
     for v in range(2):
         save('chimes_%d' % (v + 1), chimes(v), 0.6)
+    save('chimes_3', chimes_deep(), 0.6)
+    save('bamboo_1', bamboo(), 0.6)
+    save('bamboo_2', bamboo(), 0.6)
+    save('leaf_blower', leaf_blower(), 0.55)
+    for v in range(2):
+        save('dog_%d' % (v + 1), dog(), 0.6)
+    save('car_1', car(), 0.6)
+    save('screen_door', screen_door(), 0.6)
+    save('church_bell', church_bell(), 0.6)
 
 
 if __name__ == '__main__':

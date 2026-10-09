@@ -32,11 +32,18 @@ slightly messy patch of New England underneath.
 
 ## The soundscape (`scripts/garden/soundscape.gd`, sounds from `tools/make_soundscape.py`)
 
-Wind in the leaves high above the fence, always. Now and then:
+Leaves rustling high above the fence, always: dry leaf-on-leaf ticks and a faint hiss in slow, irregular gusts.
+It's not a low swell; that sounded like surf. Now and then:
 - a chickadee (25-80 s apart, near the trees)
 - a crow somewhere behind the trees (1-3 min)
 - a branch creaking (1-3 min)
-- a neighbour's wind chimes, faint (45-140 s)
+- the neighbours' wind chimes, often (bright metal, a deeper set, wooden bamboo; every 15-90 s)
+- the neighbourhood, far off:
+  - a leaf blower a few yards over, coming and going
+  - a dog a couple of houses down
+  - a car going by out front
+  - somebody's screen door
+  - a church bell from town (every 4-10 min)
 
 Then quiet again. Every sound comes from a place, so turning the camera turns the yard. **M** mutes.
 
