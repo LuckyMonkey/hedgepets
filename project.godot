@@ -8,6 +8,7 @@ config_version=5
 config/name="HedgePets"
 run/main_scene="res://garden.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://assets/ui/icon.png"
 boot_splash/bg_color=Color(0.9372549, 0.9019608, 0.8235294, 1)
 boot_splash/image="res://assets/ui/splash.png"
 boot_splash/stretch_mode=1

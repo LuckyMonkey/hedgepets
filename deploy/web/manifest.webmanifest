@@ -1,0 +1,16 @@
+{
+  "name": "HedgePets",
+  "short_name": "HedgePets",
+  "description": "Magical creatures in an ordinary backyard.",
+  "start_url": "/hedgepets/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#161b14",
+  "theme_color": "#161b14",
+  "icons": [
+    {"src": "/hedgepets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/hedgepets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

@@ -9,6 +9,7 @@ godot --headless --path . --script tools/bake_cache.gd | grep -E "round trip|cac
 echo "== export the Web preset"
 rm -rf build/web && mkdir -p build/web
 godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | grep -E "ERROR|savepack|DONE" | tail -3
+cp deploy/web/manifest.webmanifest deploy/web/icon-180.png deploy/web/icon-192.png deploy/web/icon-512.png build/web/   # the app bits (shell.html is the page)
 ls -la build/web
 echo "== upload to fridge:/srv/apps/hedgepets"
 ssh fridge@fridge 'SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A mkdir -p /srv/apps/hedgepets/web && SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A chown -R fridge:fridge /srv/apps/hedgepets'

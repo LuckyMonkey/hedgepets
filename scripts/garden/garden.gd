@@ -152,7 +152,7 @@ func _ready() -> void:
 		set_process(true)
 		set_process_unhandled_input(true)
 		card.finish()
-	print("HedgePets: garden ready in %d ms %s (cache %d hits, %d misses)" % [Time.get_ticks_msec() - start, boot_ms, BakeCache.hits, BakeCache.misses])
+	print("HedgePets: garden ready in %d ms at %s %s (cache %d hits, %d misses)" % [Time.get_ticks_msec() - start, DisplayServer.window_get_size(), boot_ms, BakeCache.hits, BakeCache.misses])
 	is_built = true
 	built.emit()
 
