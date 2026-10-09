@@ -14,7 +14,8 @@ ls -la build/web
 echo "== upload to fridge:/srv/apps/hedgepets"
 ssh fridge@fridge 'SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A mkdir -p /srv/apps/hedgepets/web && SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A chown -R fridge:fridge /srv/apps/hedgepets'
 rsync -a --delete build/web/ fridge@fridge:/srv/apps/hedgepets/web/
-rsync -a deploy/fridge/compose.yml deploy/fridge/nginx.conf fridge@fridge:/srv/apps/hedgepets/
+# --inplace: nginx.conf is a single-file bind mount; a replaced file (new inode) would never reach the container
+rsync -a --inplace deploy/fridge/compose.yml deploy/fridge/nginx.conf fridge@fridge:/srv/apps/hedgepets/
 echo "== (re)start the container"
 ssh fridge@fridge 'cd /srv/apps/hedgepets && SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A docker compose up -d && SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A docker exec hedgepets nginx -s reload'
 echo "== check from inside the web network"
