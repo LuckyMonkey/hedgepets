@@ -20,6 +20,7 @@ static var recording := false
 static var _data: BakedData
 static var _usable := -1          # -1 unknown, 0 no, 1 yes
 static var hits := 0
+static var _memory := {}           # this run's own results (never saved): a tuned pet reuses its unchanged parts
 static var misses := 0
 
 
@@ -64,6 +65,9 @@ static func key(parts: Array) -> String:
 
 
 static func fetch(k: String) -> Variant:
+	if not recording and _memory.has(k):
+		hits += 1
+		return _memory[k]
 	if recording or not _ready_data():
 		misses += 1
 		return null
@@ -78,6 +82,10 @@ static func fetch(k: String) -> Variant:
 static func store(k: String, value: Variant) -> void:
 	if recording and _ready_data():
 		_data.items[k] = value
+	elif not recording:
+		if _memory.size() > 600:
+			_memory.clear()
+		_memory[k] = value
 
 
 static func save() -> Error:

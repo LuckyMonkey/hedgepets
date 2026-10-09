@@ -29,6 +29,11 @@ const SEEDS := {
 	"bostonivy": {"icon": "🧱", "price": 5, "sheet": "hedgebostonivy"},
 	"creeper": {"icon": "🍇", "price": 5, "sheet": "hedgecreeper"},
 	"variegated": {"icon": "🤍", "price": 6, "sheet": "hedgevariegated"},
+	"needlepoint": {"icon": "✳️", "price": 5, "sheet": "hedgeneedlepoint"},
+	"heartivy": {"icon": "💚", "price": 4, "sheet": "hedgeheartivy"},
+	"persianivy": {"icon": "🟢", "price": 6, "sheet": "hedgepersianivy"},
+	"goldchild": {"icon": "💛", "price": 6, "sheet": "hedgegoldchild"},
+	"fig": {"icon": "🌀", "price": 4, "sheet": "hedgefig"},
 }
 ## Things to put in the garden (🧺): bought with coins, placed with a tap, cleared with the shovel for half back.
 const BUILDS := {
@@ -434,6 +439,8 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 			var t = _thing_at(p2)
 			if t != null and t["kind"] == "barrel":
 				grab.barrel_tapped()
+			elif t != null and garden.hideouts.coax(t):
+				toast("Someone's coming out...")
 			elif t != null:
 				toast(_thing_line(t))
 			return true
@@ -643,7 +650,8 @@ func _splash(at: Vector3) -> void:
 # ------------------------------------------------------------------ words
 func _thing_name(kind: String) -> String:
 	return {"lawn_chair": "lawn chair", "grill": "rusty grill", "sprinkler": "broken sprinkler", "tire": "old tire",
-		"pot": "flowerpot", "wheelbarrow": "wheelbarrow", "barrel": "trash barrel", "branch": "branch", "stick": "stick", "rock": "rock", "leaf_pile": "leaf pile"}.get(kind, kind)
+		"pot": "flowerpot", "wheelbarrow": "wheelbarrow", "bucket": "paint bucket", "planter": "big pot", "well": "old well",
+		"burrow": "burrow", "woodpile": "woodpile", "brush_pile": "brush pile", "chair": "lawn chair", "barrel": "trash barrel", "branch": "branch", "stick": "stick", "rock": "rock", "leaf_pile": "leaf pile"}.get(kind, kind)
 
 
 func _thing_line(t: Dictionary) -> String:
@@ -670,7 +678,7 @@ func _pet_line(pet: HedgePetNode) -> String:
 
 # ------------------------------------------------------------------ ui
 const TOAST_AT := Vector2(90, 140)
-const SEEDS_AT := Vector2(68, 1460)
+const SEEDS_AT := Vector2(44, 1460)
 const JOURNAL_AT := Vector2(90, 260)
 var _shown_coins := -1
 var _seeds_shown := false
@@ -839,14 +847,14 @@ func _build_ui() -> void:
 		bar.add_child(b)
 		_tool_buttons[key] = b
 	_seed_row = GridContainer.new()
-	_seed_row.columns = 7
+	_seed_row.columns = 8
 	_seed_row.position = SEEDS_AT
 	_seed_row.add_theme_constant_override("h_separation", 8)
 	_seed_row.add_theme_constant_override("v_separation", 6)
 	for sp in SEEDS:
 		var b := _button("%s%d" % [SEEDS[sp]["icon"], SEEDS[sp]["price"]], "%s seeds" % sp, 32)
 		b.name = sp
-		b.custom_minimum_size = Vector2(128, 90)
+		b.custom_minimum_size = Vector2(116, 90)
 		b.pressed.connect(func() -> void:
 			seed_choice = sp
 			_refresh())
@@ -888,6 +896,8 @@ func save() -> void:
 		return                                           # captures and checks never touch the player's garden
 	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state, "plants": pet_plant,
 		"moved": _moved_state(),
+		"mended": {"fence": range(garden.fence_sections.size()).filter(func(i) -> bool: return garden.fence_sections[i]["mended"]),
+			"sprinkler": garden.things.any(func(t) -> bool: return t["kind"] == "sprinkler" and t.get("fixed", false))},
 		"gifts": gifts.map(func(g) -> Dictionary: return {"x": g["at"].x, "z": g["at"].z, "icon": g["node"].text, "value": g["value"]}),
 		"flowers": pet_flowers,
 		"last_visit": Time.get_unix_time_from_system(),
@@ -943,6 +953,13 @@ func _load() -> void:
 	for g in data.get("gifts", []):
 		_restore_gift(str(g["icon"]), Vector3(float(g["x"]), 0, float(g["z"])), int(g["value"]))
 	_away_for = Time.get_unix_time_from_system() - float(data.get("last_visit", Time.get_unix_time_from_system()))
+	var mended: Dictionary = data.get("mended", {})
+	for i in mended.get("fence", []):
+		garden.mend_fence(int(i), true)
+	if mended.get("sprinkler", false):
+		for t in garden.things:
+			if t["kind"] == "sprinkler":
+				grab.fix_sprinkler(t, true)
 	var bin: Dictionary = data.get("barrel", {})
 	grab.contents = bin.get("contents", [])
 	grab.next_pickup = float(bin.get("next_pickup", 0.0))

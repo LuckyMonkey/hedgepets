@@ -380,6 +380,29 @@ def blue_jay():
     return room(lowpass(np.concatenate(parts), 6000), 0.35, 0.07)
 
 
+def garbage_truck():
+    """The rubbish truck out front: a diesel idling, the hydraulic lift whining up, the bin banging, the reversing beep."""
+    secs = 9.0
+    t = t_of(secs)
+    ph = np.cumsum(46 + 3 * np.sin(2 * np.pi * 0.7 * t)) / SR
+    diesel = (2 * (ph - np.floor(ph + 0.5))) * 0.6 + lowpass(rng.standard_normal(len(t)), 300) * 0.5
+    diesel = lowpass(diesel, 500) * env(len(t), 0.8, 1.5)
+    lift = np.zeros(len(t))
+    a, b = int(SR * 2.0), int(SR * 4.6)
+    f = np.linspace(260, 520, b - a)
+    lift[a:b] = np.sin(2 * np.pi * np.cumsum(f) / SR) * 0.35 * env(b - a, 0.3, 0.4)
+    bang = np.zeros(len(t))
+    c = int(SR * 4.8)
+    k = t_of(0.5)
+    bang[c:c + len(k)] = (lowpass(rng.standard_normal(len(k)), 900) + 0.6 * np.sin(2 * np.pi * 90 * k)) * np.exp(-k * 9)
+    beep = np.zeros(len(t))
+    for n in range(4):
+        st = int(SR * (6.0 + n * 0.7))
+        bt = t_of(0.35)
+        beep[st:st + len(bt)] = np.sin(2 * np.pi * 1050 * bt) * 0.3 * env(len(bt), 0.01, 0.02)
+    return room(lowpass(diesel + lift + bang * 0.9 + beep, 2500), 0.45, 0.13)
+
+
 def main():
     os.makedirs(os.path.join(ROOT, 'assets/audio'), exist_ok=True)
     save('wind_loop', wind_loop(), 0.7)
@@ -407,6 +430,7 @@ def main():
     save('car_1', car(), 0.6)
     save('screen_door', screen_door(), 0.6)
     save('church_bell', church_bell(), 0.6)
+    save('garbage_truck', garbage_truck(), 0.6)
 
 
 if __name__ == '__main__':

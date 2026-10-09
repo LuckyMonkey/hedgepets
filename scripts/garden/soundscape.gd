@@ -26,9 +26,10 @@ const EVENTS := {
 	"screen_door": [["screen_door"], Vector2(90, 240), -22.0, "houses"],
 	"church_bell": [["church_bell"], Vector2(240, 600), -26.0, "town"],
 }
-## Leaves and the ambient wind are on hold until there's a recording that sounds right (the synthesised ones sounded
-## like surf, then like static). Set true to bring the wind loop back.
-const WIND := false
+## The wind in the leaves is a real recording (assets/audio/wind_leaves.ogg: Robert EA Harvey, "Wind sounds
+## 2020-05-10", Wikimedia Commons, CC BY-SA 4.0; see docs/CREDITS.md), cut to a quiet minute and looped. The
+## synthesised attempts sounded like surf, then static.
+const WIND := true
 
 var garden: Node3D
 var muted := false
@@ -42,11 +43,10 @@ func setup(g: Node3D) -> void:
 	garden = g
 	_rng.randomize()
 	_wind = AudioStreamPlayer.new()
-	var loop := load("res://assets/audio/wind_loop.wav") as AudioStreamWAV
-	loop.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	loop.loop_end = loop.get_length() * loop.mix_rate
+	var loop := load("res://assets/audio/wind_leaves.ogg") as AudioStreamOggVorbis
+	loop.loop = true
 	_wind.stream = loop
-	_wind.volume_db = -16.0
+	_wind.volume_db = -22.0
 	add_child(_wind)
 	if WIND:
 		_wind.play()
@@ -64,7 +64,7 @@ func _process(delta: float) -> void:
 	if _wind == null:
 		return
 	# the wind swells and settles slowly, never quite the same
-	_wind.volume_db = (-16.0 + 2.5 * sin(Time.get_ticks_msec() * 0.00011)) if not muted else -80.0
+	_wind.volume_db = (-22.0 + 2.0 * sin(Time.get_ticks_msec() * 0.00011)) if not muted else -80.0
 	for k in EVENTS:
 		_wait[k] = float(_wait[k]) - delta
 		if _wait[k] <= 0.0:
@@ -101,6 +101,20 @@ func _where(kind: String) -> Vector3:
 				return (crowns.pick_random() as Vector3) + Vector3(0, 1.5, 0)
 	var a := _rng.randf_range(-PI, PI)
 	return Vector3(cos(a) * 22.0, 9.0, sin(a) * 22.0 - 4.0)
+
+
+## A one-off sound from somewhere (the garbage truck out front when it empties the barrel).
+func play_once(file: String, at: Vector3, db: float) -> void:
+	if muted:
+		return
+	var p := AudioStreamPlayer3D.new()
+	p.stream = load("res://assets/audio/%s.wav" % file)
+	p.unit_size = 16.0
+	p.volume_db = db
+	add_child(p)
+	p.global_position = at
+	p.play()
+	p.finished.connect(p.queue_free)
 
 
 func _unhandled_input(event: InputEvent) -> void:

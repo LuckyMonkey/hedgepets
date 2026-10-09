@@ -11,6 +11,9 @@ extends Node
 ##   BIN    drop junk in the trash barrel by the garden gate. It only holds 100 lb (a big rock won't go in at all).
 ##          The rubbish truck comes by on its own every so often (and while you're away) and empties it, paying a
 ##          little scrap. No fee, no countdown, nothing to call: the yard just gets cleared gradually.
+##   MEND   hold on a broken thing (the sprinkler, a run of the back fence) and it gets fixed over a few seconds:
+##          a ring fills, no pulling, no hurry. The sprinkler stands up and works (sprays in slow sweeps now and
+##          then, watering plants within reach); the fence stands straight again (the gap becomes a gate).
 ##   FIX    the tipped lawn chair rights itself when you yank it free. The rusty grill scrubs clean if you work it in
 ##          circles while you hold it; a clean grill sells for more.
 ##
@@ -49,6 +52,11 @@ var _t := 0.0
 var _scrub_angle := INF
 var _dust: CPUParticles3D
 var ring: Control
+var _mending = null                 # {kind, ...} being mended under your hand
+var _mend := 0.0
+const MEND_SECONDS := 3.0
+var _spray: CPUParticles3D
+var _spray_t := 0.0
 
 
 func setup(g: Node3D, gm: Node, ui: CanvasLayer) -> void:
@@ -97,6 +105,12 @@ func begin(screen: Vector2) -> bool:
 	var g: Vector3 = garden.ground_point(screen)
 	if g == Vector3.INF:
 		return false
+	var f = _mendable_at(Vector2(g.x, g.z))
+	if f != null:
+		_mending = f
+		_mend = 0.0
+		_pointer = screen
+		return true
 	var t = _thing_near(Vector2(g.x, g.z))
 	if t == null:
 		return false
@@ -127,6 +141,11 @@ func move(screen: Vector2) -> void:
 
 ## Let go. False if this was really a tap (never dragged): the garden treats it as one.
 func end(screen: Vector2) -> bool:
+	if _mending != null:
+		var used := _mend > 0.08
+		_mending = null
+		ring.hide_ring()
+		return used                                       # a quick tap still means "look at it"
 	if held == null:
 		return false
 	var was_active := active
@@ -169,6 +188,15 @@ func _thing_near(p: Vector2):
 func _process(delta: float) -> void:
 	_t += delta
 	_tend_tag(delta)
+	_tend_sprinkler(delta)
+	if _mending != null:
+		_mend += delta / MEND_SECONDS
+		ring.show_ring(_pointer, clampf(_mend, 0.0, 1.0), "🔧 " + str(_mending["label"]), false)
+		if _mend >= 1.0:
+			_finish_mend(_mending)
+			_mending = null
+			ring.hide_ring()
+		return
 	if held == null or not active:
 		return
 	var t: Dictionary = held
@@ -372,6 +400,9 @@ func _pickup(quiet := false) -> void:
 	Motion.swap(b, Vector3.ONE, func() -> void: pass)
 	if not quiet:
 		game.toast("🚛 The rubbish truck came by and emptied the barrel. Scrap 🪙 +%d" % scrap)
+		var sounds := garden.get_node_or_null("Soundscape")
+		if sounds != null:
+			sounds.play_once("garbage_truck", Vector3(4.0, 1.0, 30.0), -12.0)   # out front: rumble, hiss, beep
 	game._refresh()
 
 
@@ -401,6 +432,86 @@ func _tend_tag(delta: float) -> void:
 
 func _value(t: Dictionary) -> int:
 	return int(t["value"]) + (12 if t["kind"] == "grill" and not t["rusty"] else 0)
+
+
+# ------------------------------------------------------------------ mending
+## A broken thing under this point that can be mended: the sprinkler, or a run of the back fence.
+func _mendable_at(p: Vector2):
+	for t in garden.things:
+		if t["kind"] == "sprinkler" and not t.get("fixed", false) and p.distance_to(t["at"]) < 0.9:
+			return {"kind": "sprinkler", "thing": t, "label": "fixing the sprinkler"}
+	for i in range(garden.fence_sections.size()):
+		var sec: Dictionary = garden.fence_sections[i]
+		if not sec["mended"] and absf(p.y - (-11.0)) < 0.8 and p.x >= float(sec["from"]) and p.x < float(sec["to"]):
+			return {"kind": "fence", "index": i, "label": "mending the fence"}
+	return null
+
+
+func _finish_mend(f: Dictionary) -> void:
+	if f["kind"] == "fence":
+		garden.mend_fence(f["index"])
+		game.toast("🔨 That bit of fence is standing straight again.")
+	else:
+		fix_sprinkler(f["thing"])
+		game.toast("💦 The sprinkler works again. It'll water whatever's near it, now and then.")
+	game._refresh()
+
+
+## The sprinkler stands up and starts working (at_once: loading a save).
+func fix_sprinkler(t: Dictionary, at_once := false) -> void:
+	t["fixed"] = true
+	var node: Node3D = t["node"]
+	var body: Node3D = node.get_child(0)
+	if at_once:
+		body.rotation_degrees = Vector3.ZERO
+		body.position = Vector3(0, 0.08, 0)
+	else:
+		var tw := Motion.channel(body, "fix")
+		tw.tween_property(body, "rotation_degrees", Vector3.ZERO, Motion._d(Motion.SLOW)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(body, "position", Vector3(0, 0.08, 0), Motion._d(Motion.SLOW))
+	_spray = CPUParticles3D.new()
+	_spray.amount = 70
+	_spray.lifetime = 1.1
+	_spray.direction = Vector3(1, 1.4, 0)
+	_spray.spread = 6.0
+	_spray.initial_velocity_min = 3.2
+	_spray.initial_velocity_max = 3.8
+	_spray.gravity = Vector3(0, -7.5, 0)
+	_spray.scale_amount_min = 0.025
+	_spray.scale_amount_max = 0.045
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.78, 0.88, 0.98, 0.8)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.roughness = 0.1
+	var drop := SphereMesh.new()
+	drop.radius = 1.0
+	drop.height = 2.0
+	drop.radial_segments = 6
+	drop.rings = 3
+	drop.material = m
+	_spray.mesh = drop
+	_spray.position = Vector3(0, 0.3, 0)
+	_spray.emitting = false
+	node.add_child(_spray)
+	_spray_t = 4.0
+
+
+## The sprinkler's routine: on for twenty seconds every minute, sweeping back and forth, watering what it reaches.
+func _tend_sprinkler(delta: float) -> void:
+	if _spray == null or not is_instance_valid(_spray):
+		return
+	_spray_t -= delta
+	var cycle := fposmod(_spray_t, 60.0)
+	var on := cycle < 20.0
+	_spray.emitting = on
+	if on:
+		var a := sin(_t * 0.7) * 1.2
+		_spray.direction = Vector3(cos(a), 1.4, sin(a))
+		if fposmod(_t, 1.0) < delta:
+			var at: Vector3 = _spray.global_position
+			for pl in game.plants:
+				if Vector2(at.x, at.z).distance_to(pl["at"]) < 3.6:
+					pl["water"] = 1.0
 
 
 # ------------------------------------------------------------------ fixing

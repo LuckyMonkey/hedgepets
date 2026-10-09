@@ -48,8 +48,38 @@ const GATES := {
 	"woods": {"out": Vector3(17.0, 0, -2.0), "peek": Vector3(10.2, 0, -2.0), "inside": Vector3(6.5, 0, -2.0)},
 	"creek": {"out": Vector3(-23.0, 0, 1.5), "peek": Vector3(-14.2, 0, 1.5), "inside": Vector3(-10.0, 0, 1.5)},
 	"houses": {"out": Vector3(-1.0, 0, 17.0), "peek": Vector3(-1.0, 0, 10.6), "inside": Vector3(-1.0, 0, 7.0)},
+	# the burrow behind the bottom-corner tree: burrowing pets peek out of it and climb out (hideouts.gd)
+	"burrow": {"out": Vector3(-12.3, -1.0, 4.9), "peek": Vector3(-11.6, 0, 4.9), "inside": Vector3(-9.0, 0, 3.8)},
 }
+const BURROW_AT := Vector3(-12.3, 0, 4.9)
+## The back fence, in runs you can mend one at a time; the collapsed bit (FENCE_GAP) becomes a gate when mended.
+const FENCE_SECTIONS := [Vector2(-16.0, -7.2), Vector2(-7.2, 1.6), Vector2(1.6, 6.0), Vector2(6.0, 10.4), Vector2(10.4, 16.0)]   # on the 2.2 m post grid
+const FENCE_GAP := Vector2(0.5, 4.5)
+var fence_sections: Array = []
+
+
+## Rebuild one section of the back fence, mended (animated unless at_once: loading a save).
+func mend_fence(i: int, at_once := false) -> void:
+	var sec: Dictionary = fence_sections[i]
+	if sec["mended"]:
+		return
+	sec["mended"] = true
+	var old: Node3D = sec["node"]
+	var r := RandomNumberGenerator.new()
+	var fresh := GardenProps.bake_static(GardenProps.broken_fence(self, sec["from"], sec["to"], -11.0, r, FENCE_GAP, true))
+	sec["node"] = fresh
+	if at_once:
+		old.queue_free()
+		return
+	fresh.scale = Vector3(1, 0.02, 1)
+	var t := Motion.channel(old, "mend")
+	t.tween_property(old, "scale", Vector3(1, 0.02, 1), Motion._d(Motion.BASE)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.tween_callback(old.queue_free)
+	var t2 := Motion.channel(fresh, "mend")
+	t2.tween_interval(Motion._d(Motion.BASE * 0.6))
+	t2.tween_property(fresh, "scale", Vector3.ONE, Motion._d(Motion.SLOW)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 const GATE_WORDS := {
+	"burrow": ["mole", "chipmunk", "woodchuck", "mouse"],
 	"creek": ["otter", "mink", "peeper", "bullfrog", "turtle", "mallard", "duck", "loon", "seal", "puffin", "eft", "beaver", "mole"],
 	"woods": ["fox", "coyote", "fisher", "bobcat", "fawn", "moose", "bear", "porcupine", "turkey", "owl", "woodpecker", "chipmunk", "hedgehog"],
 	"houses": ["raccoon", "opossum", "skunk", "mouse", "bunny", "robin", "cardinal", "jay", "chickadee", "dove", "bluebird", "squirrel"],
@@ -73,11 +103,101 @@ var boot_ms := {}                                 # how long each part of buildi
 func _ready() -> void:
 	_rng.seed = 20261008
 	for step: Callable in [_build_world, _build_ground, _build_backdrop, _build_props, _build_grass, _spawn_pets,
-			_leaf_litter, _build_ambience, _build_sounds, _build_tilt_shift, _start_game]:
+			_leaf_litter, _build_ambience, _build_sun, _build_sounds, _build_tilt_shift, _start_game]:
 		var t0 := Time.get_ticks_msec()
 		step.call()
 		boot_ms[step.get_method()] = Time.get_ticks_msec() - t0
 	_place_camera()
+
+
+# ------------------------------------------------------------------ the sun
+## The sun follows the real time of day: up in the east over the woods in the morning, round the south over the
+## houses at midday, down in the west past the creek in the evening, golden when it's low. At night it holds a soft
+## dusk (nothing goes dark: no punishing a late visit). Shafts of light slant down through the trees along it,
+## strongest when the sun is low. HEDGEPETS_HOUR=16.5 pins the hour (captures, checks).
+var _shafts: Array = []
+var _sun_goal := Basis.IDENTITY
+var _sun_check := 0.0
+
+
+func _hour() -> float:
+	if OS.get_environment("HEDGEPETS_HOUR") != "":
+		return float(OS.get_environment("HEDGEPETS_HOUR"))
+	var t := Time.get_datetime_dict_from_system()
+	return float(t["hour"]) + float(t["minute"]) / 60.0
+
+
+## Where the sun is (a unit vector toward it), how low it is (0 = horizon .. 1 = noon), for an hour of the day.
+func sun_at(hour: float) -> Array:
+	var day := clampf((hour - 6.0) / 14.0, 0.04, 0.96)         # 06:00 .. 20:00; outside that, a held dusk / dawn
+	var theta := day * PI                                       # east (+x) .. south (+z) .. west (-x)
+	var el := deg_to_rad(lerpf(9.0, 58.0, sin(day * PI)))
+	var to_sun := Vector3(cos(theta) * cos(el), sin(el), sin(theta) * cos(el)).normalized()
+	return [to_sun, sin(day * PI)]
+
+
+func _build_sun() -> void:
+	var s: Array = sun_at(_hour())
+	_aim_sun(s, true)
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/light_shaft.gdshader")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2210
+	for i in range(5):
+		# where light gets through the canopy: near the edges of the yard, under the trees
+		var a := rng.randf() * TAU
+		var hit := Vector3(cos(a) * rng.randf_range(7.0, 11.0), 0, sin(a) * rng.randf_range(5.5, 8.5) - 1.0)
+		var shaft := Node3D.new()
+		shaft.name = "LightShaft"
+		add_child(shaft)
+		var mat_i := m.duplicate() as ShaderMaterial
+		mat_i.set_shader_parameter("seed", rng.randf())
+		for k in range(2):                                      # two crossed cards: a shaft from any side
+			var card := MeshInstance3D.new()
+			var q := QuadMesh.new()
+			q.size = Vector2(rng.randf_range(0.6, 1.3), 18.0)
+			card.mesh = q
+			card.material_override = mat_i
+			card.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			card.rotation.y = k * PI * 0.5
+			card.position = Vector3(0, 9.0, 0)
+			shaft.add_child(card)
+		_shafts.append({"node": shaft, "hit": hit, "mat": mat_i})
+	_place_shafts(s)
+
+
+func _aim_sun(s: Array, at_once: bool) -> void:
+	var to_sun: Vector3 = s[0]
+	var low: float = 1.0 - float(s[1])
+	_sun_goal = Basis.looking_at(-to_sun, Vector3.UP)
+	if at_once:
+		sun.basis = _sun_goal
+	sun.light_color = Color(1.0, 0.93, 0.82).lerp(Color(1.0, 0.72, 0.45), low * low)
+	sun.light_energy = lerpf(0.55, 0.78, float(s[1]))
+
+
+func _place_shafts(s: Array) -> void:
+	var to_sun: Vector3 = s[0]
+	var low: float = 1.0 - float(s[1])
+	for sh in _shafts:
+		var node: Node3D = sh["node"]
+		node.position = sh["hit"]
+		# the shaft's long axis points back up toward the sun
+		var up := to_sun
+		var side := up.cross(Vector3.FORWARD if absf(up.z) < 0.9 else Vector3.RIGHT).normalized()
+		node.basis = Basis(side, up, side.cross(up).normalized())
+		(sh["mat"] as ShaderMaterial).set_shader_parameter("strength", lerpf(0.008, 0.028, low))   # a hint, not a searchlight
+		(sh["mat"] as ShaderMaterial).set_shader_parameter("colour", sun.light_color)
+
+
+func _tend_sun(delta: float) -> void:
+	_sun_check -= delta
+	if _sun_check <= 0.0:
+		_sun_check = 30.0
+		var s: Array = sun_at(_hour())
+		_aim_sun(s, false)
+		_place_shafts(s)
+	sun.basis = sun.basis.slerp(_sun_goal, clampf(delta * 0.05, 0.0, 1.0))   # glides, never jumps
 
 
 ## The backyard, heard (scripts/garden/soundscape.gd).
@@ -88,7 +208,14 @@ func _build_sounds() -> void:
 	sounds.setup(self)
 
 
+var hideouts: Node
+
+
 func _start_game() -> void:
+	hideouts = preload("res://scripts/garden/hideouts.gd").new()
+	hideouts.name = "Hideouts"
+	add_child(hideouts)
+	hideouts.setup(self)
 	game = preload("res://scripts/garden/garden_game.gd").new()
 	game.name = "Game"
 	add_child(game)
@@ -567,7 +694,10 @@ func _thing(kind: String, node: Node3D, at: Vector2, radius: float, value: int, 
 
 func _build_props() -> void:
 	var r := _rng
-	GardenProps.bake_static(GardenProps.broken_fence(self, -16.0, 16.0, -11.0, r, Vector2(0.5, 4.5)))
+	# the back fence in sections, each one mendable (garden_grab.gd: hold on it with ✋)
+	for sec: Vector2 in FENCE_SECTIONS:
+		var node := GardenProps.bake_static(GardenProps.broken_fence(self, sec.x, sec.y, -11.0, r, FENCE_GAP))
+		fence_sections.append({"from": sec.x, "to": sec.y, "node": node, "mended": false})
 	# the old field wall down the east side, with a gap where the woods path comes in
 	GardenProps.bake_static(GardenProps.stone_wall(self, Vector3(7.2, 0, -10.2), Vector3(8.3, 0, -3.2), r))
 	GardenProps.bake_static(GardenProps.stone_wall(self, Vector3(8.6, 0, -0.8), Vector3(9.6, 0, 5.0), r))
@@ -587,6 +717,11 @@ func _build_props() -> void:
 	_thing("woodpile", GardenProps.woodpile(self, Vector3(-8.3, 0, -5.6), 20.0, r), Vector2(-8.3, -5.6), 1.1, 0, false)
 	_thing("chair", GardenProps.chair_upright(self, Vector3(1.8, 0, 2.8), -150.0), Vector2(1.8, 2.8), 0.9, 2, false)
 	_thing("brush_pile", GardenProps.brush_pile(self, Vector3(5.6, 0, -8.6), r), Vector2(5.6, -8.6), 1.2, 0, false)
+	# places to hide: a paint bucket by the gate, a big pot, the old well, the burrow behind the corner tree
+	_thing("bucket", GardenProps.paint_bucket(self, Vector3(5.2, 0, 7.0), 30.0), Vector2(5.2, 7.0), 0.4, 0, false)
+	_thing("planter", GardenProps.pot_upright(self, Vector3(-3.6, 0, -7.6)), Vector2(-3.6, -7.6), 0.55, 0, false)
+	_thing("well", GardenProps.stone_well(self, Vector3(-7.4, 0, -8.8), r), Vector2(-7.4, -8.8), 1.15, 0, false)
+	_thing("burrow", GardenProps.burrow(self, BURROW_AT, 20.0, r), Vector2(BURROW_AT.x, BURROW_AT.z), 0.9, 0, false)
 	for at: Array in [[Vector3(-9.0, 0, -5.8), 0.55], [Vector3(-8.2, 0, -5.2), 0.35], [Vector3(10.2, 0, 3.4), 0.7], [Vector3(9.3, 0, 4.2), 0.4], [Vector3(0.5, 0, 7.6), 0.45]]:
 		_thing("rock", GardenProps.rock(self, at[0], at[1], r), Vector2(at[0].x, at[0].z), float(at[1]) + 0.4, 1)
 
@@ -625,7 +760,7 @@ func _build_grass() -> void:
 	mm.use_custom_data = true
 	mm.mesh = tuft
 	var items: Array = []
-	for i in range(22000):
+	for i in range(26000):
 		var x := _rng.randf_range(-19, 19)
 		var z := _rng.randf_range(-11, 11)
 		if _blocked(Vector2(x, z), 0.12) or _in_puddle(Vector2(x, z)) or _in_creek(Vector2(x, z)):
@@ -647,6 +782,7 @@ func _build_grass() -> void:
 		var t := Transform3D(Basis.from_euler(Vector3(0, _rng.randf_range(0, TAU), 0)).scaled(Vector3(s, s, s)), Vector3(x, 0, z))
 		var tint := Color("86a050").lerp(Color("a9ad62"), _rng.randf() * 0.6).darkened(_rng.randf() * 0.12)
 		items.append([t, tint, Color(float(cell), _rng.randf_range(0, TAU), 0, 0)])
+	_grass_edges(items)
 	mm.instance_count = items.size()
 	for i in range(items.size()):
 		mm.set_instance_transform(i, items[i][0])
@@ -671,6 +807,36 @@ func _in_puddle(p: Vector2) -> bool:
 				if Vector2(local.x / 1.15, local.z / 0.8).length() < 1.0:
 					return true
 	return false
+
+
+## Where the mower never reaches: a band of taller, thicker grass along every fence and wall foot and around the
+## tree trunks (one more pass of the same tufts: cheap).
+func _grass_edges(items: Array) -> void:
+	var lines: Array = [
+		[Vector2(-16, -11.0), Vector2(16, -11.0)],               # the back fence
+		[Vector2(-16, 10.0), Vector2(16, 10.0)],                 # the fence along the houses
+		[Vector2(7.2, -10.2), Vector2(8.3, -3.2)], [Vector2(8.6, -0.8), Vector2(9.6, 5.0)],   # the east wall
+	]
+	var seeds: Array = []
+	for l: Array in lines:
+		var a: Vector2 = l[0]
+		var b: Vector2 = l[1]
+		var n := int(a.distance_to(b) * 160)
+		for k in range(n):
+			var p := a.lerp(b, _rng.randf()) + (b - a).normalized().orthogonal() * _rng.randf_range(-0.7, 0.7) * absf(_rng.randfn(0.0, 0.6))
+			seeds.append(p)
+	for o in obstacles:                                          # around the trunks
+		for k in range(60):
+			var ang := _rng.randf() * TAU
+			seeds.append((o[0] as Vector2) + Vector2(cos(ang), sin(ang)) * (float(o[1]) + _rng.randf_range(0.05, 0.9)))
+	for p: Vector2 in seeds:
+		if absf(p.x) > 19.0 or p.y < -11.6 or p.y > 11.0 or _blocked(p, 0.05) or _in_puddle(p) or _in_creek(p):
+			continue
+		var cell := _rng.randi_range(0, 7) if _rng.randf() > 0.12 else 11
+		var s := _rng.randf_range(0.5, 0.85)                     # long grass
+		var t := Transform3D(Basis.from_euler(Vector3(_rng.randf_range(-0.12, 0.12), _rng.randf_range(0, TAU), _rng.randf_range(-0.12, 0.12))).scaled(Vector3(s, s * _rng.randf_range(1.0, 1.4), s)), Vector3(p.x, 0, p.y))
+		var tint := Color("7e9a4a").lerp(Color("b0a860"), _rng.randf() * 0.7).darkened(_rng.randf() * 0.1)
+		items.append([t, tint, Color(float(cell), _rng.randf_range(0, TAU), 0, 0)])
 
 
 func _blocked(p: Vector2, margin: float) -> bool:
@@ -755,11 +921,21 @@ func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 				node.visible = false
 				node.position = g["out"]
 		"peek":
+			var bs: Dictionary = hideouts.spot_of("burrow") if hideouts != null else {}
+			if w.get("gate", "") == "burrow" and was == "away" and not bs.is_empty() and bs["occupant"] == null:
+				hideouts.place_hidden(node, bs, 9999.0)          # a face in the burrow doorway, looking out
+				w["mode"] = "hidden"
+				w["peeking"] = true
+				return
 			if was == "away":
 				node.position = g["out"].lerp(g["peek"], 0.55) + side * _rng.randf_range(-1.0, 1.0)
 				Motion.appear(node, Vector3.ONE * PET_SCALE, Motion.SLOW)
 			w["target"] = _fit(g["peek"] + side * _rng.randf_range(-1.2, 1.2), node, w)
 		"roam":
+			if w.get("peeking", false) and w.get("hideout") != null:
+				w["peeking"] = false
+				hideouts.exit(node)                          # climbs out of the burrow into the garden
+				return
 			if was == "away":
 				Motion.appear(node, Vector3.ONE * PET_SCALE, Motion.SLOW)
 				node.position = _fit(g["peek"].lerp(g["inside"], 0.5), node, w)
@@ -790,6 +966,8 @@ func _process(delta: float) -> void:
 		if node.visible:
 			_separate(node, delta)
 	_notice_pointer()
+	if not _shafts.is_empty():
+		_tend_sun(delta)
 	_next_bloom -= delta
 	if _next_bloom <= 0.0:
 		_next_bloom = _rng.randf_range(120.0, 300.0)
@@ -813,6 +991,9 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 	var w: Dictionary = _wander[node]
 	if w["mode"] == "away":
 		return
+	if w["mode"] in ["hiding", "hidden", "emerging"]:
+		hideouts.tend(node, w, delta)                    # climbing in / tucked away / climbing out
+		return
 	var to: Vector3 = w["target"] - node.position
 	to.y = 0.0
 	if to.length() < 0.15:
@@ -825,7 +1006,14 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 			node.rotation.y = lerp_angle(node.rotation.y, _heading(node.position, CENTER), clampf(delta * 3.0, 0.0, 1.0))   # looking in
 			return
 		if w["mode"] == "leave":
+			var b: Dictionary = hideouts.spot_of("burrow")
+			if w.get("gate", "") == "burrow" and not b.is_empty() and b["occupant"] == null:
+				hideouts.enter(node, b, true)            # home: back down the burrow
+				return
 			set_pet_mode(node, "away")
+			return
+		if w["mode"] == "to_hide":
+			hideouts.enter(node, w["hideout"])
 			return
 		w["wait"] = float(w["wait"]) - delta
 		if node.sleeping:
@@ -858,6 +1046,8 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 			w["face"] = _rng.randf_range(-1.2, 1.2)
 			return
 		if float(w["wait"]) <= 0.0 and w["mode"] == "roam" and _rng.randf() < 0.15 and _curl_up(node, w):
+			return
+		if float(w["wait"]) <= 0.0 and w["mode"] == "roam" and _rng.randf() < 0.12 and hideouts.go_hide(node, w):
 			return
 		if float(w["wait"]) <= 0.0:
 			var fav: Dictionary = game.favourite(node) if game != null and _rng.randf() < 0.55 else {}

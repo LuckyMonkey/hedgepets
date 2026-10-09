@@ -550,4 +550,10 @@ static func roster() -> Array:
 	for p: CharacterArtProfile in SpeciesBuilder.load_all():
 		if not made.has(p.pet_name):
 			out.append(p)
+	# the swatch tool's picks (res://pets/tuning.json)
+	var tuning := SpeciesBuilder.load_tuning()
+	for i in range(out.size()):
+		var t: Dictionary = tuning.get(out[i].pet_name, {})
+		if not t.is_empty():
+			out[i] = SpeciesBuilder.tune(out[i], t)
 	return out

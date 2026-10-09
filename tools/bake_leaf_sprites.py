@@ -29,48 +29,51 @@ def to_px(point, scale):
 
 
 def main():
-    masks = [Image.open(p).convert('L').resize((CELL, CELL)) for p in sorted(glob.glob(os.path.join(ROOT, 'assets/watercolor/mask_*.png')))]
-    os.makedirs(os.path.join(ROOT, 'assets/sprites'), exist_ok=True)
+    import random
+    from make_ivy_sprites import HandInk, watercolor_cell
     only = set(sys.argv[1:])
+    os.makedirs(os.path.join(ROOT, 'assets/sprites'), exist_ok=True)
     for path in sorted(glob.glob(os.path.join(ROOT, 'assets/fonts/*_geometry.json'))):
-        if only and os.path.basename(path).replace('_geometry.json', '') not in only:
+        name = os.path.basename(path).replace('_geometry.json', '')
+        if only and name not in only:
             continue
+        rng = random.Random(sum(map(ord, name)))
         glyphs = json.load(open(path))['glyphs']
         sheet = Image.new('RGBA', (CELL * len(glyphs), CELL * 2), (0, 0, 0, 0))
         for index, glyph in enumerate(glyphs):
             big = CELL * SS
-            # fill: the shape, its watercolour grain, and a darker rim
             shape = Image.new('L', (big, big), 0)
             draw = ImageDraw.Draw(shape)
             for polygon in glyph['fill']:
                 if len(polygon) >= 3:
                     draw.polygon([to_px(p, SS) for p in polygon], fill=255)
-            shape = shape.resize((CELL, CELL), Image.LANCZOS)
-            inner = shape.filter(ImageFilter.GaussianBlur(5))
-            grain = masks[index % len(masks)] if masks else Image.new('L', (CELL, CELL), 255)
-            fill = Image.new('RGBA', (CELL, CELL))
-            fp, sp, ip, gp = fill.load(), shape.load(), inner.load(), grain.load()
-            for y in range(CELL):
-                for x in range(CELL):
-                    a = sp[x, y]
-                    if a == 0:
-                        continue
-                    depth = ip[x, y] / 255.0                    # 1 deep inside, lower at the edge
-                    tone = int(255 * (0.74 + 0.26 * depth) * (0.86 + 0.14 * gp[x, y] / 255.0))
-                    fp[x, y] = (tone, tone, tone, int(a * (0.80 + 0.20 * gp[x, y] / 255.0)))
-            sheet.paste(fill, (index * CELL, 0))
-            # ink: every outline and vein the glyph carries
             ink = Image.new('L', (big, big), 0)
-            draw = ImageDraw.Draw(ink)
-            width = max(1, int(INK_WIDTH / SPAN * CELL * SS))
+            pen = HandInk(ink, rng)                                  # a fine, wandering pen line
+            width = max(1, int(0.016 / SPAN * CELL * SS))
             for line in glyph['ink']:
                 if len(line) >= 2:
-                    draw.line([to_px(p, SS) for p in line], fill=255, width=width, joint='curve')
+                    pen.line([to_px(p, SS) for p in line], fill=255, width=width)
+            shape = shape.resize((CELL, CELL), Image.LANCZOS)
             ink = ink.resize((CELL, CELL), Image.LANCZOS)
+            wc = watercolor_cell(shape, Image.new('L', (CELL, CELL), 0), rng)   # paint off the line, wet edge, blooms, grain
+            gold = name == 'hedgegoldchild' and index < 8
+            inner = shape.filter(ImageFilter.GaussianBlur(6)) if gold else None
+            fill = Image.new('RGBA', (CELL, CELL))
+            fp, wp = fill.load(), wc.load()
+            for y in range(CELL):
+                for x in range(CELL):
+                    tone, a = wp[x, y]
+                    if a == 0:
+                        continue
+                    if gold:                                         # a golden margin, a darker heart
+                        depth = inner.getpixel((x, y)) / 255.0
+                        edge = 1.0 - min(1.0, max(0.0, (depth - 0.78) / 0.1))
+                        tone = int(min(255, tone * 0.7 + 120 * edge))
+                    fp[x, y] = (tone, tone, tone, a)
+            sheet.paste(fill, (index * CELL, 0))
             ink_rgba = Image.new('RGBA', (CELL, CELL), (255, 255, 255, 0))
             ink_rgba.putalpha(ink)
             sheet.paste(ink_rgba, (index * CELL, CELL))
-        name = os.path.basename(path).replace('_geometry.json', '')
         sheet.save(os.path.join(ROOT, 'assets/sprites', name + '.png'), optimize=True)
         print(name, sheet.size)
 

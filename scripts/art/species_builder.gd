@@ -38,6 +38,8 @@ const PALETTES := {
 	"bostonivy": ["5a2a20", "8a3a28", "a8502e", "6e7a3a", "7a5a3a", "d08a50", "4a2418"],
 	"creeper": ["5a1820", "8a2430", "b03838", "c85a3a", "7a3a3a", "e0806a", "4a1418"],
 	"frost": ["2e4a2a", "4a6a3a", "6a8a4a", "8aa05a", "7a907a", "dcd8b0", "34502a"],
+	"gold": ["4a5a22", "6e7e2a", "94a434", "c2c044", "8a9a52", "e8dc78", "3e4a1c"],
+	"glossy": ["17331d", "1f4426", "2e5e32", "467a3a", "3e6448", "88ac74", "152a18"],
 }
 ## Every plant a pet can be made of (a leaf sheet baked from a font or drawn by tools/make_leaf_styles.py), with the
 ## look it brings: its palette, the colour of its bloom (cell 13) and how much it blooms.
@@ -48,12 +50,14 @@ const PLANTS := {
 	"willow": ["spring", "e6e0b0", 0.3], "rose": ["green", "e86a7a", 0.6], "lavender": ["lavender", "9a7ad0", 0.7],
 	"moss": ["moss", "c86a3a", 0.5], "holly": ["holly", "d42a2a", 0.6],
 	"bostonivy": ["bostonivy", "2a3050", 0.3], "creeper": ["creeper", "2a2a48", 0.35], "variegated": ["frost", "f4f0d8", 0.3],
+	"needlepoint": ["green", "c8d070", 0.3], "heartivy": ["spring", "c8d070", 0.3], "persianivy": ["glossy", "c8d070", 0.25],
+	"goldchild": ["gold", "d8d070", 0.3], "fig": ["spring", "b8c860", 0.2],
 }
 
 ## How many leaves a plant needs to cover a body: broad ivy covers with few, willow and lavender need twice as many.
 const LEAF_FULLNESS := {"ivy": 1.0, "bostonivy": 1.0, "creeper": 1.2, "variegated": 1.0, "oak": 1.2, "maple": 1.4,
 	"pine": 1.8, "holly": 1.0, "boxwood": 1.3, "moss": 1.4, "jasmine": 1.2, "rose": 1.1, "lavender": 2.0, "clover": 1.2,
-	"fern": 1.4, "willow": 2.0, "sage": 1.3}
+	"fern": 1.4, "willow": 2.0, "sage": 1.3, "needlepoint": 1.5, "heartivy": 1.0, "persianivy": 0.8, "goldchild": 1.0, "fig": 1.4}
 
 
 static func fullness(plant: String) -> int:
@@ -65,6 +69,8 @@ static func fullness(plant: String) -> int:
 ## depends on what you grow (garden_game.gd).
 const GROUPS := [
 	["ivy", "bostonivy", "creeper", "variegated"],
+	["ivy", "needlepoint", "heartivy", "goldchild"],
+	["persianivy", "heartivy", "fig", "needlepoint"],
 	["oak", "maple", "creeper", "bostonivy"],
 	["pine", "holly", "boxwood", "moss"],
 	["jasmine", "rose", "lavender", "clover"],
@@ -73,7 +79,8 @@ const GROUPS := [
 ]
 const PREFIX := {"ivy": "Ivy", "bostonivy": "Boston", "creeper": "Creeper", "variegated": "Frostleaf", "oak": "Oakleaf",
 	"maple": "Maple", "pine": "Pine", "holly": "Holly", "boxwood": "Box", "moss": "Mossback", "jasmine": "Jasmine",
-	"rose": "Briar", "lavender": "Lavender", "clover": "Clover", "fern": "Fern", "willow": "Willow", "sage": "Sage"}
+	"rose": "Briar", "lavender": "Lavender", "clover": "Clover", "fern": "Fern", "willow": "Willow", "sage": "Sage",
+	"needlepoint": "Needlepoint", "heartivy": "Heartleaf", "persianivy": "Persian", "goldchild": "Goldchild", "fig": "Fig"}
 const PLANT_NAMES := {"ivy": "English ivy", "bostonivy": "Boston ivy", "creeper": "Virginia creeper",
 	"variegated": "variegated ivy", "boxwood": "boxwood", "moss": "moss", "holly": "holly"}
 
@@ -487,6 +494,77 @@ static func plantify(p: CharacterArtProfile) -> CharacterArtProfile:
 	# vines only on pets big enough to carry them (on a chickadee they'd be spider legs)
 	var body_r: Vector3 = R["BODY"]["radii"]
 	p.tendrils = 3 if body_r.x >= 0.9 else (1 if body_r.x >= 0.6 else 0)
+	return p
+
+
+## Tuning: per-pet adjustments picked with the swatch tool (res://dev/swatches.tscn), saved in res://pets/tuning.json
+## as {pet name: {feature: value}}. Numeric features are multipliers on the pet as built; "plant" is a plant name;
+## "hue" shifts the palette's hue.
+const TUNING_PATH := "res://pets/tuning.json"
+const FEATURES := ["head", "eyes", "ears", "snout length", "snout width", "body length", "body height", "legs",
+	"leaf size", "fullness", "hue", "plant"]
+
+
+static func load_tuning() -> Dictionary:
+	if not FileAccess.file_exists(TUNING_PATH):
+		return {}
+	var d = JSON.parse_string(FileAccess.get_file_as_string(TUNING_PATH))
+	return d if d is Dictionary else {}
+
+
+static func tune(base: CharacterArtProfile, t: Dictionary) -> CharacterArtProfile:
+	if t.is_empty():
+		return base
+	var p: CharacterArtProfile = base.duplicate(true)
+	p.set_meta("native_plant", native_plant(base))
+	var R: Dictionary = p.regions
+	for f in t:
+		var v = t[f]
+		match f:
+			"head":
+				R["HEAD"]["radii"] = (R["HEAD"]["radii"] as Vector3) * float(v)
+				for n in R:
+					if R[n].get("parent", "") == "HEAD":
+						R[n]["center"] = (R[n]["center"] as Vector3) * float(v)
+						R[n]["radii"] = (R[n]["radii"] as Vector3) * float(v)
+			"eyes":
+				p.eye_size *= float(v)
+			"ears":
+				if R.has("EARS"):
+					R["EARS"]["radii"] = (R["EARS"]["radii"] as Vector3) * float(v)
+			"snout length":
+				if R.has("MUZZLE"):
+					var r: Vector3 = R["MUZZLE"]["radii"]
+					R["MUZZLE"]["center"] = (R["MUZZLE"]["center"] as Vector3) + Vector3(r.x * (float(v) - 1.0), 0, 0)
+					R["MUZZLE"]["radii"] = Vector3(r.x * float(v), r.y, r.z)
+			"snout width":
+				if R.has("MUZZLE"):
+					var r: Vector3 = R["MUZZLE"]["radii"]
+					R["MUZZLE"]["radii"] = Vector3(r.x, r.y * float(v), r.z * float(v))
+			"body length":
+				R["BODY"]["radii"] = (R["BODY"]["radii"] as Vector3) * Vector3(float(v), 1, 1)
+			"body height":
+				var r: Vector3 = R["BODY"]["radii"]
+				R["BODY"]["center"] = (R["BODY"]["center"] as Vector3) + Vector3(0, r.y * (float(v) - 1.0), 0)
+				R["BODY"]["radii"] = Vector3(r.x, r.y * float(v), r.z)
+			"legs":
+				if R.has("FEET"):
+					var r: Vector3 = R["FEET"]["radii"]
+					R["FEET"]["radii"] = Vector3(r.x, r.y * float(v), r.z)
+			"leaf size":
+				p.leaf_size *= float(v)
+			"fullness":
+				p.leaves_per_cluster = maxi(4, int(round(p.leaves_per_cluster * float(v))))
+			"hue":
+				var pal := {}
+				for k in p.palette:
+					var c: Color = p.palette[k]
+					pal[k] = Color.from_hsv(fposmod(c.h + float(v), 1.0), c.s, c.v)
+				p.palette = pal
+			"plant":
+				var q := restyle(p, str(v))
+				q.regions = p.regions
+				p = q
 	return p
 
 

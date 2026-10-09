@@ -95,12 +95,12 @@ static func cyl(r_top: float, r_bottom: float, h: float, seg := 10) -> CylinderM
 	return c
 
 
-static func blob(radii: Vector3, shape: Variant = {}) -> ArrayMesh:
-	var k := BakeCache.key(["blob", radii, shape, 14, 24])
+static func blob(radii: Vector3, shape: Variant = {}, rings := 14, segments := 24) -> ArrayMesh:
+	var k := BakeCache.key(["blob", radii, shape, rings, segments])
 	var cached = BakeCache.fetch(k)
 	if cached != null:
 		return cached
-	var m := HedgeAnatomy.build_mesh({"radii": radii, "shape": shape}, 14, 24)
+	var m := HedgeAnatomy.build_mesh({"radii": radii, "shape": shape}, rings, segments)
 	BakeCache.store(k, m)
 	return m
 
@@ -161,8 +161,10 @@ static func rusty_grill(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
 
 ## A run of picket fence: weathered paint, pickets missing, leaning, snapped; optionally a collapsed section lying
 ## in the grass (where visitors come through).
-static func broken_fence(parent: Node3D, from_x: float, to_x: float, z: float, rng: RandomNumberGenerator, gap := Vector2(INF, INF)) -> Node3D:
+static func broken_fence(parent: Node3D, from_x: float, to_x: float, z: float, rng: RandomNumberGenerator, gap := Vector2(INF, INF), mended := false) -> Node3D:
 	var r := root(parent, "Fence", Vector3(0, 0, z), 0.0)
+	if mended:
+		return _mended_fence(r, from_x, to_x, gap)
 	var paint := mat("fence", Color("e3ddcb"))
 	var old := mat("fence_old", Color("b9b2a0"))
 	var x := from_x
@@ -188,6 +190,32 @@ static func broken_fence(parent: Node3D, from_x: float, to_x: float, z: float, r
 				part(r, box(Vector3(0.22, 1.4, 0.05)), old, Vector3(x + 0.3 + k * 0.4, 0.04, 1.2 + rng.randf_range(-0.2, 0.2)), Vector3(90, rng.randf_range(-15, 15), 0), 0.008)
 			part(r, box(Vector3(2.0, 0.1, 0.06)), paint, Vector3(x + 1.1, 0.06, 0.9), Vector3(90, 8, 0), 0.008)
 		x += 2.2
+	return r
+
+
+## The same run of fence after you've fixed it: every picket upright and painted; the gap is a little gate standing
+## open (visitors still come through it).
+static func _mended_fence(r: Node3D, from_x: float, to_x: float, gap: Vector2) -> Node3D:
+	var paint := mat("fence", Color("e3ddcb"))
+	var post_m := mat("fencepost", Color("d8d2c0"))
+	var x := from_x
+	while x < to_x:
+		if x > gap.x and x < gap.y:
+			x += 2.2
+			continue
+		part(r, box(Vector3(0.16, 1.7, 0.16)), post_m, Vector3(x, 0.85, 0), Vector3.ZERO, 0.01)
+		part(r, box(Vector3(2.2, 0.1, 0.06)), paint, Vector3(x + 1.1, 1.25, -0.1), Vector3.ZERO, 0.008)
+		part(r, box(Vector3(2.2, 0.1, 0.06)), paint, Vector3(x + 1.1, 0.45, -0.1), Vector3.ZERO, 0.008)
+		for k in range(6):
+			var picket := part(r, box(Vector3(0.22, 1.45, 0.05)), paint, Vector3(x + 0.25 + k * 0.36, 0.725, -0.06), Vector3.ZERO, 0.008)
+			part(picket, box(Vector3(0.16, 0.16, 0.05)), paint, Vector3(0, 0.725, 0), Vector3(0, 0, 45), 0.006)
+		x += 2.2
+	var mid := (gap.x + gap.y) * 0.5
+	if gap.x != INF and mid >= from_x and mid < to_x:              # the gap: a pair of gates standing open
+		part(r, box(Vector3(0.16, 1.7, 0.16)), post_m, Vector3(from_x, 0.85, 0), Vector3.ZERO, 0.01)
+		part(r, box(Vector3(0.16, 1.7, 0.16)), post_m, Vector3(to_x, 0.85, 0), Vector3.ZERO, 0.01)
+		open_gate(r, Vector3(from_x + 0.1, 0, 0), 1.9, -75.0)
+		open_gate(r, Vector3(to_x - 0.1, 0, 0), 1.9, 255.0)
 	return r
 
 
@@ -258,29 +286,50 @@ static func rock(parent: Node3D, at: Vector3, size: float, rng: RandomNumberGene
 
 
 ## A New England dry-stone wall: two or three courses of field stones, no mortar, slumped and mossy in places.
+## A New England dry-stone wall: flat field stones laid in tight courses with no mortar, joints staggered from
+## course to course like brickwork, two faces leaning in a little (wider at the base), big flat cap stones across the
+## top. The stones are rounded slabs, not bricks, and nearly every one touches its neighbours.
 static func stone_wall(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNumberGenerator) -> Node3D:
 	var r := root(parent, "StoneWall", Vector3.ZERO, 0.0)
 	var length := from.distance_to(to)
 	var dir := (to - from).normalized()
 	var side := dir.cross(Vector3.UP)
+	var yaw := rad_to_deg(atan2(-dir.z, dir.x))
 	var moss := Color("6e7a4a")
-	for course in range(3):
-		var x := rng.randf_range(0.0, 0.3)
-		while x < length:
-			var size := rng.randf_range(0.28, 0.42) * (1.0 - course * 0.12)
-			var slump := 0.5 + 0.5 * sin(x * 0.7 + 1.3)          # a lower, tumbled stretch here and there
-			if course == 2 and slump < 0.35:
-				x += size * 1.6
-				continue
-			var at := from + dir * x + side * rng.randf_range(-0.08, 0.08) + Vector3(0, course * 0.36 * (0.75 + 0.25 * slump), 0)
-			var grey := Color("8d8a80").lerp(Color("a7a294"), rng.randf())
-			if course == 2 and rng.randf() < 0.3:
-				grey = grey.lerp(moss, 0.6)                          # moss on the cap stones
-			var stone := part(r, blob(Vector3(size, size * 0.55, size * 0.75), {"exponent": 2.4, "flat_bottom": 0.5}), mat("wall%d" % int(grey.r * 100 + grey.g * 10), grey),
-				at + Vector3(0, size * 0.3, 0), Vector3(rng.randf_range(-6, 6), rad_to_deg(atan2(-dir.z, dir.x)) + rng.randf_range(-12, 12), rng.randf_range(-6, 6)), 0.01)
-			stone.name = "Stone"
-			x += size * 1.75
+	var courses := 5
+	var y := 0.0
+	for course in range(courses):
+		var ch := rng.randf_range(0.13, 0.17)                     # this course's height
+		var lean := lerpf(0.2, 0.13, float(course) / courses)    # the faces step in as they rise
+		for face: float in [-1.0, 1.0]:
+			var x := (0.0 if course % 2 == 0 else 0.25) + rng.randf_range(-0.05, 0.05)   # stagger the joints
+			while x < length - 0.1:
+				var half := rng.randf_range(0.18, 0.32)            # half the stone's length along the wall
+				var stone_h := ch * rng.randf_range(0.85, 1.0)
+				var at := from + dir * (x + half) + side * (face * lean + rng.randf_range(-0.02, 0.02)) + Vector3(0, y + stone_h * 0.5, 0)
+				_wall_stone(r, at, Vector3(half, stone_h * 0.5, rng.randf_range(0.11, 0.15)), yaw + rng.randf_range(-5, 5), rng, moss, false)
+				x += half * 2.0 * 0.97
+		y += ch * 0.97
+	# cap stones: wide and flat across both faces
+	var x := rng.randf_range(0.0, 0.2)
+	while x < length - 0.15:
+		var half := rng.randf_range(0.22, 0.38)
+		var at := from + dir * (x + half) + Vector3(0, y + 0.06, 0)
+		_wall_stone(r, at, Vector3(half, 0.07, rng.randf_range(0.2, 0.25)), yaw + rng.randf_range(-6, 6), rng, moss, true)
+		x += half * 2.0 * 0.96
 	return r
+
+
+static func _wall_stone(r: Node3D, at: Vector3, radii: Vector3, yaw: float, rng: RandomNumberGenerator, moss: Color, cap: bool) -> void:
+	var q := (radii / 0.02).round() * 0.02                        # sizes snap to a grid: shared, cached meshes
+	var grey := Color("8a877e").lerp(Color("a8a396"), rng.randf())
+	if rng.randf() < 0.18:
+		grey = grey.lerp(Color("b8b29e"), 0.5)                   # lichen
+	if cap and rng.randf() < 0.4:
+		grey = grey.lerp(moss, 0.55)                             # moss on the cap
+	var stone := part(r, blob(q, {"exponent": 2.7, "flat_bottom": 0.75}, 8, 12), mat("wall%d" % int(grey.r * 100 + grey.g * 10), grey),
+		at, Vector3(rng.randf_range(-3, 3), yaw, rng.randf_range(-3, 3)), 0.008)
+	stone.name = "Stone"
 
 
 static func old_tire(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
@@ -563,10 +612,10 @@ static func house(parent: Node3D, at: Vector3, yaw: float, siding: Color, size: 
 			part(r, box(Vector3(0.9, 1.1, 0.06)), trim, Vector3(x, y, face), Vector3.ZERO, 0.0)
 			var lit := rng.randf() < 0.3
 			part(r, box(Vector3(0.7, 0.9, 0.08)), mat("windowlit", Color("e8c878")) if lit else glass, Vector3(x, y, face - 0.01), Vector3.ZERO, 0.0)
-	part(r, box(Vector3(1.0, 2.0, 0.08)), mat("door%s" % door.to_html(false), door), Vector3(0, 1.0, face), Vector3.ZERO, 0.008)
 	if porch:
-		for k in range(3):
-			part(r, box(Vector3(1.8, 0.18, 0.4)), mat("steps", Color("9a8a74")), Vector3(0, 0.09 + k * 0.18, face - 1.1 + k * 0.38), Vector3.ZERO, 0.008)
+		_back_porch(r, face, size, door)
+	else:
+		part(r, box(Vector3(1.0, 2.0, 0.08)), mat("door%s" % door.to_html(false), door), Vector3(0, 1.0, face), Vector3.ZERO, 0.008)
 	return r
 
 
@@ -657,4 +706,176 @@ static func brush_pile(parent: Node3D, at: Vector3, rng: RandomNumberGenerator) 
 		var y := rng.randf_range(0.1, 0.7)
 		part(r, cyl(0.03, 0.05, len, 5), wood, Vector3(cos(a) * 0.2, y, sin(a) * 0.2), Vector3(rng.randf_range(-70, 70), rad_to_deg(a), rng.randf_range(60, 120)), 0.006)
 	part(r, blob(Vector3(0.9, 0.45, 0.8), "dome"), mat("brushleaves", Color("8a6a3a")), Vector3(0, 0.1, 0), Vector3.ZERO, 0.0)
+	return r
+
+
+
+## The raised back porch of the house that overlooks the garden: a plank deck on posts at first-floor height, a
+## railing with balusters, stairs down the side to the yard, a lattice skirt underneath, the back door opening onto
+## it. (This house will keep getting more detailed.)
+static func _back_porch(r: Node3D, face: float, size: Vector3, door: Color) -> void:
+	var deck_h := 1.35
+	var depth := 2.6
+	var width := 5.2
+	var wood := mat("deckwood", Color("9a7a58"))
+	var post_m := mat("deckpost", Color("8a6a4a"))
+	var rail_m := mat("rail", Color("efeae0"))
+	var front := face - depth                                   # the deck's outer edge (toward the garden)
+	# the back door, up at deck level
+	part(r, box(Vector3(1.0, 2.05, 0.08)), mat("door%s" % door.to_html(false), door), Vector3(0, deck_h + 1.03, face), Vector3.ZERO, 0.008)
+	part(r, box(Vector3(1.2, 0.08, 0.1)), rail_m, Vector3(0, deck_h + 2.1, face), Vector3.ZERO, 0.0)
+	# deck boards
+	var boards := 13
+	for k in range(boards):
+		var x := -width * 0.5 + (k + 0.5) * width / boards
+		part(r, box(Vector3(width / boards * 0.94, 0.07, depth)), wood, Vector3(x, deck_h, face - depth * 0.5), Vector3.ZERO, 0.004)
+	part(r, box(Vector3(width, 0.22, 0.1)), post_m, Vector3(0, deck_h - 0.12, front), Vector3.ZERO, 0.006)   # rim joist
+	# posts down to the ground
+	for x: float in [-width * 0.5 + 0.1, 0.0, width * 0.5 - 0.1]:
+		part(r, box(Vector3(0.16, deck_h, 0.16)), post_m, Vector3(x, deck_h * 0.5, front + 0.1), Vector3.ZERO, 0.006)
+	# lattice skirt between the posts
+	var lattice := mat("lattice", Color("d8d0bc"))
+	for k in range(18):
+		var x := -width * 0.5 + 0.2 + k * (width - 0.4) / 17.0
+		part(r, box(Vector3(0.03, deck_h * 1.1, 0.02)), lattice, Vector3(x, deck_h * 0.45, front + 0.16), Vector3(0, 0, 32), 0.0)
+		part(r, box(Vector3(0.03, deck_h * 1.1, 0.02)), lattice, Vector3(x, deck_h * 0.45, front + 0.17), Vector3(0, 0, -32), 0.0)
+	# railing: front and sides (an opening at the front-right corner for the stairs)
+	var rail_y := deck_h + 0.95
+	var runs := [[Vector3(-width * 0.5, 0, front), Vector3(width * 0.5 - 1.1, 0, front)],
+		[Vector3(-width * 0.5, 0, front), Vector3(-width * 0.5, 0, face)],
+		[Vector3(width * 0.5, 0, front + 0.0), Vector3(width * 0.5, 0, face)]]
+	for run: Array in runs:
+		var a: Vector3 = run[0]
+		var b: Vector3 = run[1]
+		var len := a.distance_to(b)
+		var mid := (a + b) * 0.5
+		var along_x: bool = absf(b.x - a.x) > absf(b.z - a.z)
+		part(r, box(Vector3(len if along_x else 0.09, 0.07, 0.09 if along_x else len)), rail_m, mid + Vector3(0, rail_y, 0), Vector3.ZERO, 0.004)
+		var n := int(len / 0.17)
+		for k in range(n + 1):
+			var p: Vector3 = a.lerp(b, float(k) / maxf(1.0, float(n)))
+			part(r, box(Vector3(0.04, 0.9, 0.04)), rail_m, p + Vector3(0, deck_h + 0.48, 0), Vector3.ZERO, 0.0)
+	# stairs down to the yard from the front-right corner, toward the garden
+	var steps := 8
+	var rise := deck_h / steps
+	for k in range(steps):
+		var z := front - 0.14 - k * 0.28
+		part(r, box(Vector3(1.0, 0.06, 0.3)), wood, Vector3(width * 0.5 - 0.55, deck_h - (k + 1) * rise + 0.03, z), Vector3.ZERO, 0.004)
+	for x: float in [width * 0.5 - 1.05, width * 0.5 - 0.05]:
+		var top := Vector3(x, deck_h + 0.9, front)
+		var bottom := Vector3(x, 0.9, front - steps * 0.28)
+		var rail := MeshInstance3D.new()
+		rail.mesh = box(Vector3(0.06, 0.06, top.distance_to(bottom)))
+		rail.material_override = rail_m
+		rail.transform = Transform3D(Basis.looking_at((bottom - top).normalized(), Vector3.UP), (top + bottom) * 0.5)
+		r.add_child(rail)
+		part(r, box(Vector3(0.1, 1.0, 0.1)), post_m, Vector3(x, 0.5, front - steps * 0.28), Vector3.ZERO, 0.006)
+
+
+# ------------------------------------------------------------------ hideouts (pets climb in: hideouts.gd)
+## A steel paint bucket: a slightly tapered pail, a rolled rim, a wire bail handle, an old drip of paint down one side.
+static func paint_bucket(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "Bucket", at, yaw)
+	var steel := mat("pail", Color("a9aeb0"), 0.45)
+	var pail := MeshInstance3D.new()
+	var c := CylinderMesh.new()
+	c.top_radius = 0.3
+	c.bottom_radius = 0.26
+	c.height = 0.52
+	c.cap_top = false                                   # open: you can see in (and climb in)
+	c.radial_segments = 20
+	pail.mesh = c
+	pail.material_override = steel
+	pail.position = Vector3(0, 0.26, 0)
+	r.add_child(pail)
+	var inside := steel.duplicate() as StandardMaterial3D
+	inside.cull_mode = BaseMaterial3D.CULL_FRONT
+	inside.albedo_color = Color("6e7274")
+	var inner := MeshInstance3D.new()
+	inner.mesh = c
+	inner.material_override = inside
+	inner.position = pail.position
+	r.add_child(inner)
+	part(r, cyl(0.26, 0.26, 0.02, 20), mat("pailfloor", Color("5a5e60")), Vector3(0, 0.02, 0), Vector3.ZERO, 0.0)
+	var rim := TorusMesh.new()
+	rim.inner_radius = 0.29
+	rim.outer_radius = 0.32
+	rim.ring_segments = 20
+	part(r, rim, steel, Vector3(0, 0.52, 0), Vector3.ZERO, 0.0)
+	var bail := TorusMesh.new()
+	bail.inner_radius = 0.3
+	bail.outer_radius = 0.315
+	part(r, bail, mat("wire", Color("4a4e50")), Vector3(0, 0.52, 0), Vector3(90, 0, 0), 0.0).scale = Vector3(1, 1, 1.2)
+	part(r, box(Vector3(0.06, 0.22, 0.01)), mat("paintdrip", Color("3a6a8a")), Vector3(0.2, 0.42, 0.2), Vector3(0, 45, 0), 0.0)
+	return r
+
+
+## A big terracotta pot, standing upright, empty except for a little old soil.
+static func pot_upright(parent: Node3D, at: Vector3) -> Node3D:
+	var r := root(parent, "Planter", at, 0.0)
+	var clay := mat("terracotta2", Color("b0623e"))
+	var c := CylinderMesh.new()
+	c.top_radius = 0.42
+	c.bottom_radius = 0.3
+	c.height = 0.6
+	c.cap_top = false
+	c.radial_segments = 20
+	var pot := MeshInstance3D.new()
+	pot.mesh = c
+	pot.material_override = clay
+	pot.position = Vector3(0, 0.3, 0)
+	r.add_child(pot)
+	var inside := clay.duplicate() as StandardMaterial3D
+	inside.cull_mode = BaseMaterial3D.CULL_FRONT
+	inside.albedo_color = Color("7a3e26")
+	var inner := MeshInstance3D.new()
+	inner.mesh = c
+	inner.material_override = inside
+	inner.position = pot.position
+	r.add_child(inner)
+	var lip := TorusMesh.new()
+	lip.inner_radius = 0.4
+	lip.outer_radius = 0.48
+	lip.ring_segments = 20
+	part(r, lip, clay, Vector3(0, 0.6, 0), Vector3.ZERO, 0.01)
+	part(r, cyl(0.31, 0.31, 0.04, 16), mat("soil", Color("4a3626")), Vector3(0, 0.1, 0), Vector3.ZERO, 0.0)
+	return r
+
+
+## An old stone well: a ring of flat field stones, a little wooden roof on two posts, a pail on a rope.
+static func stone_well(parent: Node3D, at: Vector3, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "Well", at, rng.randf_range(0, 360))
+	var moss := Color("6e7a4a")
+	for course in range(5):
+		var n := 14
+		for k in range(n):
+			var a := TAU * (k + (0.5 if course % 2 else 0.0)) / n
+			var p := Vector3(cos(a) * 0.82, 0.08 + course * 0.15, sin(a) * 0.82)
+			_wall_stone(r, p, Vector3(0.2, 0.075, 0.12), -rad_to_deg(a) + 90.0, rng, moss, course == 4)
+	part(r, cyl(0.7, 0.7, 0.02, 20), mat("wellwater", Color("1e2a2c"), 0.1), Vector3(0, 0.25, 0), Vector3.ZERO, 0.0)
+	var wood := mat("wellwood", Color("6a5038"))
+	for side: float in [-1.0, 1.0]:
+		part(r, box(Vector3(0.12, 1.9, 0.12)), wood, Vector3(side * 0.95, 0.95, 0), Vector3.ZERO, 0.008)
+	var roof := PrismMesh.new()
+	roof.size = Vector3(2.5, 0.6, 1.5)
+	part(r, roof, mat("wellroof", Color("5a4636")), Vector3(0, 2.15, 0), Vector3.ZERO, 0.012)
+	part(r, cyl(0.06, 0.06, 1.9, 8), wood, Vector3(0, 1.55, 0), Vector3(0, 0, 90), 0.006)   # the winch
+	part(r, cyl(0.01, 0.01, 0.6, 4), mat("rope", Color("c8b088")), Vector3(0, 1.22, 0), Vector3.ZERO, 0.0)
+	return r
+
+
+## A burrow under the roots: a soft mound of earth, a round dark doorway with a few pebbles and a twig arch around
+## it, a tiny mushroom by the door. Cute, not a hole.
+static func burrow(parent: Node3D, at: Vector3, yaw: float, rng: RandomNumberGenerator) -> Node3D:
+	var r := root(parent, "Burrow", at, yaw)
+	var earth := mat("burrowearth", Color("6e5236"))
+	part(r, blob(Vector3(0.95, 0.38, 0.8), {"exponent": 2.2, "flat_bottom": 0.2}), earth, Vector3(-0.15, 0.05, 0), Vector3.ZERO, 0.012)
+	part(r, cyl(0.34, 0.34, 0.06, 18), mat("burrowdark", Color("1e140c")), Vector3(0.55, 0.2, 0), Vector3(0, 0, 70), 0.0)
+	for k in range(7):
+		var a := lerpf(-1.3, 1.3, k / 6.0)
+		part(r, blob(Vector3(0.08, 0.06, 0.07), "pebble"), mat("pebble%d" % (k % 3), Color("8a857a").lerp(Color("b0a898"), (k % 3) / 2.0)),
+			Vector3(0.6, 0.22 + sin(a + 1.57) * 0.3, cos(a + 1.57) * 0.38), Vector3.ZERO, 0.006)
+	part(r, cyl(0.02, 0.025, 0.9, 5), mat("twig", Color("5e4a36")), Vector3(0.64, 0.5, 0), Vector3(90, 0, 0), 0.006)
+	part(r, cyl(0.025, 0.035, 0.12, 6), mat("stalk", Color("efe6d0")), Vector3(0.75, 0.06, 0.48), Vector3.ZERO, 0.0)
+	part(r, blob(Vector3(0.09, 0.05, 0.09), "dome"), mat("cap", Color("c8603a")), Vector3(0.75, 0.13, 0.48), Vector3.ZERO, 0.006)
 	return r

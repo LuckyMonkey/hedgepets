@@ -372,8 +372,99 @@ def build_moss_holly_glyphs(species: str) -> list[dict]:
     return glyphs
 
 
+def polar_leaf(lobes, notch=0.38, base=0.62, wobble=0.0, rng_phase=0.0, size=1.0):
+    """A leaf as a polar outline (0 = straight up, +-pi = the stalk): lobes are (angle deg, height, sharpness); a
+    heart notch at the stalk. Returns (closed contour, veins), sitting on the stalk at y = 0."""
+    pts = []
+    for i in range(160):
+        th = -math.pi + math.tau * i / 160.0
+        bump = 0.0
+        for at, h, sharp in lobes:
+            d = abs((th - math.radians(at) + math.pi) % math.tau - math.pi)
+            bump = max(bump, h * math.exp(-d / sharp))
+        r = 0.5 * size * (base + bump) * (1.0 + wobble * math.sin(th * 9 + rng_phase))
+        r *= 1.0 - notch * math.exp(-((abs(th) - math.pi) / 0.32) ** 2)
+        pts.append((math.sin(th) * r, math.cos(th) * r))
+    low = min(y for _, y in pts)
+    pts = [(x, y - low + 0.02) for x, y in pts]
+    c = (0.0, -low + 0.02)
+    veins = [[(0.0, 0.0), c]]
+    for at, h, _ in lobes:
+        a = math.radians(at)
+        L = 0.5 * size * (base + h) * 0.75
+        veins.append([c, (c[0] + math.sin(a) * L, c[1] + math.cos(a) * L)])
+    return pts, veins
+
+
+IVY_TYPES = {
+    # each: three leaf shapes (lobes, notch, base, wobble)
+    "HedgeNeedlepoint": [([(0, 0.62, 0.14), (48, 0.5, 0.13), (-48, 0.5, 0.13), (100, 0.32, 0.12), (-100, 0.32, 0.12)], 0.42, 0.28, 0.0),
+                         ([(0, 0.7, 0.13), (52, 0.46, 0.12), (-52, 0.46, 0.12)], 0.4, 0.26, 0.0),
+                         ([(0, 0.58, 0.15), (45, 0.52, 0.13), (-45, 0.52, 0.13), (95, 0.28, 0.12), (-95, 0.28, 0.12)], 0.45, 0.3, 0.0)],
+    "HedgeHeartIvy": [([(0, 0.2, 0.6)], 0.55, 0.62, 0.0), ([(0, 0.26, 0.5)], 0.5, 0.58, 0.0), ([(0, 0.16, 0.7)], 0.6, 0.66, 0.0)],
+    "HedgePersianIvy": [([(0, 0.24, 0.75)], 0.5, 0.78, 0.01), ([(0, 0.3, 0.6)], 0.46, 0.74, 0.01), ([(0, 0.2, 0.8)], 0.55, 0.82, 0.01)],
+    "HedgeGoldchild": [([(0, 0.36, 0.3), (62, 0.24, 0.3), (-62, 0.24, 0.3)], 0.38, 0.6, 0.0),
+                       ([(0, 0.4, 0.28), (60, 0.27, 0.28), (-60, 0.27, 0.28), (118, 0.12, 0.28), (-118, 0.12, 0.28)], 0.38, 0.6, 0.0),
+                       ([(0, 0.34, 0.32), (66, 0.2, 0.3), (-66, 0.2, 0.3)], 0.4, 0.62, 0.0)],
+    "HedgeFig": [([(0, 0.1, 0.8)], 0.45, 0.5, 0.0), ([(0, 0.14, 0.7)], 0.42, 0.46, 0.0), ([(0, 0.08, 0.9)], 0.48, 0.52, 0.0)],
+}
+
+
+def add_polar(parts, spec, offset=(0.0, 0.0), scale=1.0, angle=0.0, phase=0.0):
+    lobes, notch, base, wobble = spec
+    contour, veins = polar_leaf(lobes, notch, base, wobble, phase)
+    parts["fill"].append(translate(contour, offset, scale, angle))
+    parts["ink"].append(translate(contour, offset, scale, angle))
+    parts["ink"].extend(translate(v, offset, scale, angle) for v in veins)
+
+
+def build_ivy_type_glyphs(species: str) -> list[dict]:
+    """Another kind of ivy (or creeping fig): the same 16 slots as every plant font, its own leaves. The bloom is the
+    ivy's umbel of little greenish balls; the berries are ivy's dark berries."""
+    shapes = IVY_TYPES[species]
+    small = species == "HedgeFig"
+    glyphs: list[dict] = []
+
+    def slot(name, category, draw):
+        item = glyph(name, category)
+        draw(item)
+        glyphs.append(item)
+
+    for k, nm in enumerate(["leaf_simple", "leaf_narrow", "leaf_round", "leaf_pointed", "leaf_bent"]):
+        slot(nm, "leaf", lambda i, k=k: add_polar(i, shapes[k % 3], (0.0, 0.0), 0.8 if small else 1.0, (k - 2) * 0.08, k * 1.3))
+    slot("leaf_pair", "cluster", lambda i: (add_stem(i, stem_curve("curved")), add_polar(i, shapes[0], (0.0, 0.32), 0.6, 0.75), add_polar(i, shapes[1], (0.03, 0.5), 0.6, -0.7)))
+    slot("leaf_pair_alternating", "cluster", lambda i: (add_stem(i, stem_curve("curved")), add_polar(i, shapes[2], (-0.04, 0.25), 0.55, -0.8), add_polar(i, shapes[0], (0.05, 0.55), 0.6, 0.6)))
+    slot("three_leaf_cluster", "cluster", lambda i: (add_stem(i, stem_curve("curved")), [add_polar(i, shapes[k], (0.0, 0.2 + 0.2 * k), 0.5, (-0.7, 0.7, 0.0)[k]) for k in range(3)]))
+    slot("stem_segment", "stem", lambda i: add_stem(i, stem_curve("straight")))
+    slot("curved_stem", "stem", lambda i: add_stem(i, stem_curve("curved")))
+    slot("branch_fork", "branch", lambda i: (add_stem(i, [(0.0, 0.0), (0.0, 0.96)]), add_stem(i, [(0.0, 0.45), (-0.28, 0.82)])))
+    slot("tendril", "stem", lambda i: add_stem(i, stem_curve("tendril")))
+    slot("bud", "bud", lambda i: (add_stem(i, [(0.0, 0.0), (0.0, 0.5)]), i["fill"].append(circle((0.0, 0.62), 0.1, 16)), i["ink"].append(i["fill"][-1])))
+
+    def umbel(i):
+        add_stem(i, [(0.0, 0.0), (0.0, 0.45)])
+        for k in range(9):
+            a = math.tau * k / 9
+            c = (math.cos(a) * 0.17, 0.62 + math.sin(a) * 0.17)
+            add_stem(i, [(0.0, 0.45), c])
+            i["fill"].append(circle(c, 0.055, 12))
+            i["ink"].append(i["fill"][-1])
+    slot("simple_flower", "flower", umbel)
+
+    def berries(i):
+        add_stem(i, [(0.0, 0.0), (0.0, 0.5)])
+        for c in ((-0.12, 0.62), (0.06, 0.72), (0.15, 0.55), (-0.02, 0.5)):
+            i["fill"].append(circle(c, 0.08, 14))
+            i["ink"].append(i["fill"][-1])
+    slot("berry_cluster", "berry", berries)
+    slot("seed_pod", "seed", berries)
+    return glyphs
+
+
 def build_species_glyphs(species: str) -> list[dict]:
     """Build the shared semantic slots with species-specific geometry."""
+    if species in IVY_TYPES:
+        return build_ivy_type_glyphs(species)
     if species == "HedgeInk":
         return build_glyphs()
     if species in ("HedgeMoss", "HedgeHolly"):
@@ -757,7 +848,7 @@ def build_font(glyphs: list[dict], family: str) -> bytes:
 
 def main() -> None:
     import sys
-    families = sys.argv[1:] or ["HedgeInk", "HedgeIvy", "HedgeJasmine", "HedgeClover", "HedgeFern", "HedgeMoss", "HedgeHolly"]
+    families = sys.argv[1:] or ["HedgeInk", "HedgeIvy", "HedgeJasmine", "HedgeClover", "HedgeFern", "HedgeMoss", "HedgeHolly"] + list(IVY_TYPES)
     for family in families:
         glyphs = build_species_glyphs(family)
         geometry_path = FONT_DIR / f"{family.lower()}_geometry.json"

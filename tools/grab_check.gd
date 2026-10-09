@@ -144,5 +144,36 @@ func _run() -> void:
 	if grill["rusty"]:
 		return _fail("grill still rusty (scrub %.2f)" % grill["scrub"])
 	print("grill scrubbed clean")
+	# mending: hold on a run of fence, and on the sprinkler (no pulling, just holding)
+	var sec_x: float = (garden.fence_sections[0]["from"] + garden.fence_sections[0]["to"]) * 0.5
+	var fence_screen := screen_of(Vector3(sec_x, 0.0, -11.0))
+	garden._goal_target = Vector3(sec_x, 0, -9.0)
+	garden._target = garden._goal_target
+	await frames(2)
+	fence_screen = screen_of(Vector3(sec_x, 0.0, -11.0))
+	if not grab.begin(fence_screen):
+		return _fail("couldn't get hold of the fence")
+	await frames(int(60 * (grab.MEND_SECONDS + 0.3)))
+	grab.end(fence_screen)
+	if not garden.fence_sections[0]["mended"]:
+		return _fail("holding on the fence didn't mend it")
+	print("fence mended by holding")
+	var spr: Dictionary = of.call("sprinkler")[0]
+	garden._goal_target = spr["node"].position
+	garden._target = garden._goal_target
+	await frames(2)
+	var sp_screen := screen_of(spr["node"].position)
+	grab.begin(sp_screen)
+	await frames(int(60 * (grab.MEND_SECONDS + 0.3)))
+	grab.end(sp_screen)
+	if not spr.get("fixed", false):
+		return _fail("the sprinkler didn't get fixed")
+	var bed: Dictionary = game._dig(Vector2(spr["at"].x + 1.5, spr["at"].y))
+	var pl: Dictionary = game._plant("ivy", bed, 1, 0.0)
+	grab._spray_t = 10.0                                   # its spray cycle on
+	await frames(90)
+	if pl["water"] < 0.9:
+		return _fail("the working sprinkler didn't water the plant beside it (water %.2f)" % pl["water"])
+	print("sprinkler fixed and watering")
 	print("PASS")
 	quit(0)

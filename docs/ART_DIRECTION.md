@@ -199,3 +199,16 @@ Before and after: `docs/acceptance/roster_before_cute.png`, `docs/acceptance/ros
   twice the leaves per cluster, also when a pet is regrafted.
 - **Eyes:** no whites (tried, scrapped). A soft dark oval, only gently glossy, with one crisp almost-white dot and a
   tiny second one on its curved front, both on the same side.
+
+## Tools for honing pets
+
+- **Swatches** (`res://dev/swatches.tscn`): the same pet nine times with one feature varied, current value in the
+  middle. Click the best one; it re-centres there with finer steps.
+  - Features: head, eyes, ears, snout length and width, body length and height, legs, leaf size, fullness, hue, plant.
+  - Picks are saved to `res://pets/tuning.json` and apply everywhere (`SpeciesBuilder.tune`).
+  - Keys: ← → pet, ↑ ↓ feature, R reset, 1-9 pick.
+- **More leaf fonts:** HedgeNeedlepoint, HedgeHeartIvy, HedgePersianIvy, HedgeGoldchild (golden margin), HedgeFig
+  (`tools/generate_hedgeink.py`: `IVY_TYPES`).
+  - Every font sheet now bakes with the hand-drawn pen and watercolour fill (`tools/bake_leaf_sprites.py`).
+  - They're plants (palettes, variant names "Needlepoint Fox", "Goldchild Beaver"...) and seeds, so ✂️ can reskin any
+    pet with them.
