@@ -244,7 +244,7 @@ func _tend_sun(delta: float) -> void:
 		var s: Array = sun_at(_hour())
 		_aim_sun(s, false)
 		_place_shafts(s)
-	sun.basis = sun.basis.slerp(_sun_goal, clampf(delta * 0.05, 0.0, 1.0))   # glides, never jumps
+	sun.basis = sun.basis.orthonormalized().slerp(_sun_goal.orthonormalized(), clampf(delta * 0.05, 0.0, 1.0))   # glides, never jumps (re-squared: slerping drifts)
 
 
 ## The backyard, heard (scripts/garden/soundscape.gd).
@@ -257,6 +257,7 @@ func _build_sounds() -> void:
 
 var hideouts: Node
 var den: Node                                     # scripts/garden/den.gd: the room under the burrow (built on first visit)
+var woods: Node                                   # scripts/garden/woods.gd: the trails over the footbridge
 
 
 func _start_game() -> void:
@@ -267,6 +268,9 @@ func _start_game() -> void:
 	den = preload("res://scripts/garden/den.gd").new()
 	add_child(den)
 	den.setup(self)
+	woods = preload("res://scripts/garden/woods.gd").new()
+	add_child(woods)
+	woods.setup(self)
 	game = preload("res://scripts/garden/garden_game.gd").new()
 	game.name = "Game"
 	add_child(game)
@@ -463,6 +467,12 @@ func _build_backdrop() -> void:
 ## The creek's course (x for a given z), down the west side.
 func _creek_x(z: float) -> float:
 	return -17.0 + 1.5 * sin(z * 0.15)
+
+
+## On the footbridge over the creek (the way to the woods).
+func on_bridge(p: Vector2) -> bool:
+	var bz: float = GATES["creek"]["peek"].z
+	return absf(p.y - bz) < 1.4 and absf(p.x - _creek_x(bz)) < 2.6
 
 
 func _in_creek(p: Vector2) -> bool:
@@ -994,6 +1004,8 @@ func node_for(p: CharacterArtProfile) -> HedgePetNode:
 ## "leave" (walking back out through the gap).
 func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 	var w: Dictionary = _wander[node]
+	if w["mode"] == "carried":
+		return                                           # in the bucket: only uncarry() lets it out
 	var was: String = w["mode"]
 	w["mode"] = mode
 	var g: Dictionary = GATES[w.get("gate", "fence")]
@@ -1037,6 +1049,29 @@ func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 			w["best_d"] = INF
 
 
+## Into the bucket (🪣): out of the garden's hands until uncarry().
+func carry(node: HedgePetNode) -> void:
+	var w: Dictionary = _wander[node]
+	w["mode"] = "carried"
+	w["following"] = false
+	node.set_sleeping(false)
+	node.visible = false
+
+
+## Out of the bucket at a spot on the lawn: it hops out and carries on as a visitor or resident would.
+func uncarry(node: HedgePetNode, at: Vector3, animate := true) -> void:
+	var w: Dictionary = _wander[node]
+	w["mode"] = "roam"
+	node.position = Vector3(at.x, 0, at.z)
+	node.scale = Vector3.ONE * PET_SCALE
+	w["target"] = node.position
+	w["wait"] = 1.5
+	node.visible = true
+	if animate:
+		Motion.appear(node, Vector3.ONE * PET_SCALE)
+		node.tap()
+
+
 func pet_mode(node: HedgePetNode) -> String:
 	return _wander[node]["mode"]
 
@@ -1074,7 +1109,7 @@ func _clamp_target(t: Vector3) -> Vector3:
 ## Wander: stand a while, look around, pick a free spot, walk there with a little step, turning to face the way.
 func _walk(node: HedgePetNode, delta: float) -> void:
 	var w: Dictionary = _wander[node]
-	if w["mode"] == "away":
+	if w["mode"] == "away" or w["mode"] == "carried":
 		return
 	if w["mode"] in ["hiding", "hidden", "emerging"]:
 		hideouts.tend(node, w, delta)                    # climbing in / tucked away / climbing out
@@ -1125,14 +1160,15 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 			node.set_sleeping(true)                      # curled up beside its friend
 			w["wait"] = _rng.randf_range(25.0, 45.0)
 			return
-		if float(w["wait"]) <= 0.0 and w["mode"] == "roam" and _rng.randf() < 0.18:
+		var free: bool = w["mode"] == "roam" and not w.get("following", false)    # a follower stays with you
+		if float(w["wait"]) <= 0.0 and free and _rng.randf() < 0.18:
 			node.set_sleeping(true)                      # a nap, right here, however inconvenient
 			w["wait"] = _rng.randf_range(20.0, 40.0)
 			w["face"] = _rng.randf_range(-1.2, 1.2)
 			return
-		if float(w["wait"]) <= 0.0 and w["mode"] == "roam" and _rng.randf() < 0.15 and _curl_up(node, w):
+		if float(w["wait"]) <= 0.0 and free and _rng.randf() < 0.15 and _curl_up(node, w):
 			return
-		if float(w["wait"]) <= 0.0 and w["mode"] == "roam" and _rng.randf() < 0.12 and hideouts.go_hide(node, w):
+		if float(w["wait"]) <= 0.0 and free and _rng.randf() < 0.12 and hideouts.go_hide(node, w):
 			return
 		if float(w["wait"]) <= 0.0:
 			var fav: Dictionary = game.favourite(node) if game != null and _rng.randf() < 0.55 else {}

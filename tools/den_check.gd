@@ -42,10 +42,10 @@ func _run() -> void:
 		return _fail("%s isn't asleep in the den (y %.1f)" % [a.pet_name, na.global_position.y])
 	if garden.is_processing() or game.is_processing():
 		return _fail("the garden kept running while we were down")
-	var tucked: Dictionary = den._sleepers.filter(func(sl) -> bool: return sl["node"] == na)[0]
+	var tucked: Dictionary = den._borrowed.filter(func(sl) -> bool: return sl["node"] == na)[0]
 	var before: Transform3D = tucked["transform"]
 	var was_visible: bool = tucked["visible"]
-	if root.get_viewport().get_camera_3d() != den._cam:
+	if root.get_viewport().get_camera_3d() != den.cam:
 		return _fail("the den's camera isn't the one in use")
 	den.leave()
 	for k in range(120):                                 # until the swap behind the fade

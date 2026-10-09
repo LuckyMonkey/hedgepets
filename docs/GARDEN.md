@@ -136,6 +136,19 @@ curl up asleep on moss beds, and a tap makes one stir. The garden waits while yo
 muffled overhead) and every pet is back exactly where it was when you come up. `tools/den_check.gd` checks the visit,
 arranging and the save rule.
 
+**Friends (🐾):** *Follow me* asks a pet that lives here to come along (up to three): it keeps near whatever you're
+looking at, and won't wander off to nap or hide while it does. *Bucket* bribes any pet you can see - visitors too -
+with an apple (🪙 2): it climbs in after it and you carry it (it's out of the garden's hands until you tap the lawn to
+let it out). Both are saved.
+
+**The woods** (`woods.gd`, over the footbridge: tap the bridge): a dark, hilly hiking trail at night - lanterns at
+every clearing, fireflies, the moon over the ridge. You stand in a clearing and turn (drag anywhere); the trails out of
+it are signed, and the one you're facing lights up. Tap and you walk it, up and down the hills, to the next clearing:
+the trailhead, the mossy fork (the hub), fern hollow, the ridge, creek crossing, the old oak. The nursery's trail
+leaves the fork but is still overgrown. Your followers trail behind you and gather round when you stop; a pet in the
+bucket sits beside you in it, and *Let out* makes it one more follower, home with you afterwards.
+The burrow and the woods share `elsewhere.gd` (going, coming back, borrowing pets); `tools/woods_check.gd`.
+
 **Saving:** every 8 s and the moment you leave (tab hidden, app backgrounded, window closed). On the web the save also
 goes to the browser's localStorage, written at once; loading takes whichever copy is newer (`WebSave`).
 

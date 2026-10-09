@@ -8,6 +8,9 @@ extends Node
 ##          MOVES IN (stays; brings a few coins now and then) when its wishes are met (CharacterArtProfile.wants).
 ##          Junk is not all bad: some visitors want sticks, a leaf pile, a puddle, the tipped chair.
 ##   Journal what you know about each pet: the hint for its next step, revealed as it gets closer.
+##   Friends 🐾: ask a pet that lives here to follow you (it trails your view round the garden and comes into the woods
+##          over the footbridge), or bribe any pet you can see into the bucket with an apple (🪙 TREAT) and carry it
+##          with you; tap the lawn to let it out. Up to MAX_FOLLOWERS follow; the bucket holds one.
 ##   Saved to user://garden.json every few seconds and whenever you leave (on the web also to localStorage: WebSave).
 
 var save_path := "user://garden.json"
@@ -52,6 +55,8 @@ const BUILDS := {
 	"lantern": {"icon": "🏮", "price": 6, "name": "garden lantern", "radius": 0.3},
 	"stones": {"icon": "🪨", "price": 3, "name": "stepping stones", "radius": 0.3},
 }
+const MAX_FOLLOWERS := 3
+const TREAT := 2                   # an apple for the bucket
 const STAGE_SECONDS := 18.0        # watered growth time per stage
 const WATER_SECONDS := 40.0        # how long one watering lasts
 const INCOME_SECONDS := 30.0
@@ -65,6 +70,13 @@ var seedbeds: Array = []           # {at: Vector2, node, plant (or null)}
 var plants: Array = []             # {species, at, stage, water, progress, node, bed}
 var build_choice := "feeder"
 var placed: Array = []              # {kind, x, z, yaw}: what you built (saved)
+var following: Array = []           # pet names that follow you (saved)
+var carried := ""                   # the pet in the bucket, or "" (saved)
+var pet_choice := "follow"          # what the 🐾 tool does: "follow" | "bucket"
+var _pets_row: HBoxContainer
+var _pets_shown := false
+var _bucket_badge: Label
+var _lead := 0.0
 var discovered := {}                # pet name -> [plants it has visited in]: the variant collection
 var pet_plant := {}                # pet name -> the plant it was regrafted in with ✂️ (SpeciesBuilder.PLANTS)
 var pet_state := {}                # pet name -> "away" | "noticed" | "visiting" | "resident"
@@ -102,6 +114,7 @@ func setup(g: Node3D) -> void:
 	for p: CharacterArtProfile in garden.roster:
 		if pet_state[p.pet_name] != "away":
 			_apply_mode(_node(p), true)
+	_restore_friends()
 	_refresh()
 	if _away_for > 6.0 * 3600.0:
 		_welcome_back()
@@ -150,6 +163,10 @@ func _process(delta: float) -> void:
 	if _check <= 0.0:
 		_check = 1.0
 		_visitors()
+	_lead -= delta
+	if _lead <= 0.0:
+		_lead = 0.7
+		_lead_followers()
 	_income -= delta
 	if _income <= 0.0:
 		_income = INCOME_SECONDS
@@ -437,7 +454,13 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 	var p2 := Vector2(g.x, g.z)
 	if _collect_gift(p2):
 		return true
+	if pet == null and garden.on_bridge(p2):           # over the footbridge: into the woods
+		garden.woods.enter()
+		return true
 	match tool:
+		"pets":
+			_friends_tap(pet, p2)
+			return true
 		"hand":
 			if pet != null:
 				pet.tap()
@@ -560,6 +583,128 @@ func _place(kind: String, p2: Vector2, yaw: float, animate := true) -> void:
 	placed.append({"kind": kind, "x": p2.x, "z": p2.y, "yaw": yaw, "node": node})
 	if animate:
 		Motion.appear(node, Vector3.ONE)
+
+
+# ------------------------------------------------------------------ friends (🐾): following, and the bucket
+func node_by_name(name: String) -> HedgePetNode:
+	for p: CharacterArtProfile in garden.roster:
+		if p.pet_name == name:
+			return _node(p)
+	return null
+
+
+func _friends_tap(pet: HedgePetNode, p2: Vector2) -> void:
+	if pet_choice == "follow":
+		if pet == null:
+			toast("Tap a pet to ask it along.")
+			return
+		var name := pet.profile.pet_name
+		if following.has(name):
+			following.erase(name)
+			garden._wander[pet]["following"] = false
+			toast("%s goes back to pottering about." % name)
+		elif pet_state.get(name, "") != "resident":
+			toast("%s doesn't know you well enough yet. An apple in the bucket might do it (🪣)." % name)
+		elif following.size() >= MAX_FOLLOWERS:
+			toast("Three friends is plenty for one walk.")
+		else:
+			following.append(name)
+			garden._wander[pet]["following"] = true
+			pet.set_sleeping(false)
+			pet.tap()
+			toast("🐾 %s will follow you. Over the footbridge is the woods..." % name)
+		_refresh()
+		return
+	# the bucket
+	if carried != "":
+		if pet != null:
+			toast("The bucket's full: %s is in it. Tap the lawn to let them out." % carried)
+		elif not garden.BOUNDS.has_point(p2) or garden._blocked(p2, 0.6):
+			toast("Somewhere clear on the lawn.")
+		else:
+			put_down(Vector3(p2.x, 0, p2.y))
+		return
+	if pet == null:
+		toast("Tap a pet to offer it an apple in the bucket (🪙 %d)." % TREAT)
+	elif not garden.pet_mode(pet) in ["roam", "peek"]:
+		toast("%s is busy just now." % pet.profile.pet_name)
+	elif coins < TREAT:
+		toast("An apple costs 🪙 %d." % TREAT)
+	else:
+		bribe(pet)
+
+
+## An apple in the bucket: the pet climbs in after it, and you pick the bucket up.
+func bribe(pet: HedgePetNode) -> void:
+	coins -= TREAT
+	var name := pet.profile.pet_name
+	carried = name
+	following.erase(name)
+	var at := pet.position
+	var pail := GardenProps.paint_bucket(garden, Vector3(at.x, 0, at.z) + (garden.camera.global_position - at).normalized() * Vector3(1, 0, 1) * 0.6, 0.0)
+	Motion.appear(pail, Vector3.ONE)
+	var tw := Motion.channel(pet, "bucket")
+	tw.tween_property(pet, "position", pail.position + Vector3(0, 0.25, 0), Motion._d(Motion.BASE)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(pet, "scale", Vector3.ONE * garden.PET_SCALE * 0.3, Motion._d(Motion.BASE))
+	tw.tween_callback(func() -> void:
+		garden.carry(pet)
+		Motion.float_away(pail, 1.0, 0.8, 0.3).tween_callback(pail.queue_free))
+	toast("🍎 %s climbed into the bucket after the apple. 🪣" % name)
+	_refresh()
+
+
+func put_down(at: Vector3) -> void:
+	var node := node_by_name(carried)
+	carried = ""
+	if node != null:
+		garden.uncarry(node, at)
+		toast("%s hops out of the bucket." % node.profile.pet_name)
+	_refresh()
+
+
+## Back from the woods with a pet you let out there: it arrives beside where you're looking.
+func home_from_woods(node: HedgePetNode) -> void:
+	var g: Vector3 = garden._target
+	var spot: Vector2 = garden.free_spot(Vector2(g.x + randf_range(-1.5, 1.5), g.z + randf_range(-1.5, 1.5)), garden.pet_radius(node))
+	garden.uncarry(node, Vector3(spot.x, 0, spot.y), false)
+	garden._wander[node]["following"] = true
+
+
+## Loading a save: the bucket's occupant goes back in it; followers remember.
+func _restore_friends() -> void:
+	if carried != "":
+		var node := node_by_name(carried)
+		if node == null:
+			carried = ""
+		else:
+			garden.carry(node)
+	for name: String in following.duplicate():
+		var node := node_by_name(name)
+		if node == null:
+			following.erase(name)
+		else:
+			garden._wander[node]["following"] = true
+
+
+## Followers keep near whatever you're looking at: when you look away, they come over (walking, never blinking).
+func _lead_followers() -> void:
+	var g: Vector3 = garden._target
+	var i := 0
+	for name: String in following:
+		var node := node_by_name(name)
+		if node == null or not node.visible or garden.pet_mode(node) != "roam":
+			continue
+		var w: Dictionary = garden._wander[node]
+		w["following"] = true
+		var near := g + Vector3(cos(i * 2.1), 0, sin(i * 2.1)) * 1.8
+		i += 1
+		if Vector2(node.position.x, node.position.z).distance_to(Vector2(near.x, near.z)) > 2.4:
+			if node.sleeping:
+				node.set_sleeping(false)
+			var t: Vector3 = garden._fit(near, node, w)
+			if garden.BOUNDS.has_point(Vector2(t.x, t.z)):
+				w["target"] = t
+				w["wait"] = 0.4
 
 
 # ------------------------------------------------------------------ arranging (🧺)
@@ -759,6 +904,7 @@ func _pet_line(pet: HedgePetNode) -> String:
 # ------------------------------------------------------------------ ui
 const TOAST_AT := Vector2(90, 140)
 const SEEDS_AT := Vector2(44, 1460)
+const PETS_AT := Vector2(220, 1650)
 const JOURNAL_AT := Vector2(90, 260)
 var _shown_coins := -1
 var _seeds_shown := false
@@ -811,6 +957,17 @@ func _refresh() -> void:
 			Motion.slide_in(_build_row, BUILD_AT, Vector2(0, 26))
 		else:
 			Motion.fade(_build_row, 0.0, Motion.FAST)
+	var want_pets := tool == "pets"
+	if want_pets != _pets_shown:
+		_pets_shown = want_pets
+		if want_pets:
+			Motion.slide_in(_pets_row, PETS_AT, Vector2(0, 26))
+		else:
+			Motion.fade(_pets_row, 0.0, Motion.FAST)
+	for b in _pets_row.get_children():
+		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if b.name == pet_choice else 0.55, Motion._d(Motion.FAST))
+	_bucket_badge.visible = carried != ""
+	_bucket_badge.text = "🪣 %s is in the bucket" % carried
 	for b in _build_row.get_children():
 		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if b.name == build_choice else 0.55, Motion._d(Motion.FAST))
 		Motion.scale_to(b, 1.08 if b.name == build_choice else 1.0)
@@ -917,12 +1074,13 @@ func _build_ui() -> void:
 	bar.add_theme_constant_override("separation", 14)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
-	panel.position = Vector2(120, 1760)
-	panel.size = Vector2(840, 130)
+	panel.position = Vector2(50, 1760)
+	panel.size = Vector2(980, 130)
 	_ui.add_child(panel)
 	panel.add_child(bar)
 	for t: Array in [["hand", "✋", "Hand: tap to pet and look; press and drag junk to yank it loose and haul it"], ["shovel", "🪏", "Shovel: dig a seedbed, scoop up a leaf pile or something you built"],
-			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["build", "🧺", "Build: put a feeder, bath, scarecrow... in the garden; drag one you built to move it, tap it to turn it"], ["water", "💧", "Water: watered plants grow"]]:
+			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["build", "🧺", "Build: put a feeder, bath, scarecrow... in the garden; drag one you built to move it, tap it to turn it"], ["water", "💧", "Water: watered plants grow"],
+			["pets", "🐾", "Friends: ask a pet to follow you, or bribe one into a bucket and carry it"]]:
 		var b := _button(t[1], t[2])
 		var key: String = t[0]
 		b.pressed.connect(func() -> void:
@@ -964,6 +1122,26 @@ func _build_ui() -> void:
 		_build_row.add_child(b)
 	_build_row.visible = false
 	_ui.add_child(_build_row)
+	_pets_row = HBoxContainer.new()
+	_pets_row.position = PETS_AT
+	_pets_row.add_theme_constant_override("separation", 12)
+	for c: Array in [["follow", "🐾 Follow me", "Ask a pet that lives here to follow you (into the woods too)"], ["bucket", "🪣 Bucket 🍎%d" % TREAT, "Bribe a pet into the bucket with an apple, and carry it"]]:
+		var b := _button(str(c[1]), str(c[2]), 34)
+		b.name = str(c[0])
+		b.custom_minimum_size = Vector2(300, 90)
+		var key: String = c[0]
+		b.pressed.connect(func() -> void:
+			pet_choice = key
+			_refresh())
+		_pets_row.add_child(b)
+	_pets_row.visible = false
+	_ui.add_child(_pets_row)
+	_bucket_badge = Label.new()
+	_bucket_badge.add_theme_font_size_override("font_size", 32)
+	_bucket_badge.add_theme_color_override("font_color", Color(0.3, 0.24, 0.16))
+	_bucket_badge.position = Vector2(40, 90)
+	_bucket_badge.visible = false
+	_ui.add_child(_bucket_badge)
 	_journal = PanelContainer.new()
 	_journal.add_theme_stylebox_override("panel", style)
 	_journal.position = Vector2(90, 260)
@@ -995,6 +1173,7 @@ func save() -> void:
 		"flowers": pet_flowers,
 		"last_visit": Time.get_unix_time_from_system(),
 		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
+		"following": following, "carried": carried,
 		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["node"].position.x, "z": b["node"].position.z, "yaw": b["node"].rotation_degrees.y})}
 	var present := {}
 	for t in garden.things:
@@ -1092,6 +1271,8 @@ func _load() -> void:
 	discovered = data.get("discovered", {})
 	for b in data.get("placed", []):
 		_place(str(b["kind"]), Vector2(float(b["x"]), float(b["z"])), float(b["yaw"]), false)
+	following = (data.get("following", []) as Array).filter(func(n) -> bool: return n is String)
+	carried = str(data.get("carried", ""))
 	var saved: Dictionary = data.get("pets", {})
 	for name in saved:
 		if pet_state.has(name):
