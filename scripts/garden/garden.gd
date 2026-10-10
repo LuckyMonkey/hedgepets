@@ -387,8 +387,8 @@ func _leaf_material(sheet: String) -> ShaderMaterial:
 
 
 ## A leafy mass (hedge, tree crown, leaf pile) grown with the pets' foliage system.
-func _bush(center: Vector3, radii: Vector3, sheet: String, palette: Dictionary, inner: Color, leaf_size: float, density: float, shape: Variant = {}, flowering := 0.0, bloom := Color(1.0, 0.98, 0.92)) -> Node3D:
-	var seed := _rng.randi()
+func _bush(center: Vector3, radii: Vector3, sheet: String, palette: Dictionary, inner: Color, leaf_size: float, density: float, shape: Variant = {}, flowering := 0.0, bloom := Color(1.0, 0.98, 0.92), fixed_seed := -1) -> Node3D:
+	var seed := _rng.randi() if fixed_seed < 0 else fixed_seed     # (a fixed seed: the same leaves every time, bakeable)
 	var holder := Node3D.new()
 	add_child(holder)
 	# the mass and the leaves are pure functions of these inputs: read them from the bake cache when it has them

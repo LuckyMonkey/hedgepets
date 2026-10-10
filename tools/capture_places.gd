@@ -24,6 +24,7 @@ func _run() -> void:
 	garden.set_pet_mode(game._node(garden.roster[0]), "roam", true)
 	game.following = [garden.roster[0].pet_name]
 	var woods: Node = garden.woods
+	woods.build_now()
 	woods.enter()
 	await create_timer(1.5).timeout
 	woods.set_process_unhandled_input(false)

@@ -87,6 +87,7 @@ func _run() -> void:
 		return _fail("the nursery's lavender doesn't read as short and white")
 	# ---- the woods and the nursery
 	var woods: Node = garden.woods
+	woods.build_now()
 	woods.enter()
 	await create_timer(1.0).timeout
 	var c: Dictionary = woods.nursery.context()

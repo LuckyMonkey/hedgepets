@@ -76,6 +76,31 @@ The woods are always a bright morning outside and deep blue-green shade under th
 out past the ridge, a blue haze between the trunks, canopy shadows, and about 40 slanting sunbeams (the garden's
 `light_shaft.gdshader`, stronger) with motes turning in them. The lanterns are lit but low.
 
+## Walking, choosing, loading
+
+- **Choosing a trail.** A tap picks the trail whose first few metres (or sign) is nearest the tap on screen. Away from
+  all of them, it picks the one you're facing. Three chevrons glow on the ground along the trail a tap would take.
+- **Spacing.** Trails leave and reach every clearing straight on, for the first 5 m (`_trail`), so they never bunch
+  up.
+- **Water.** No trail dips under water: over the creek or the pond it rides on the stones (`water_at`). The creek runs
+  off the map at both ends.
+- **Building.** The first visit builds in steps (`build_steps`) behind a loading card (`Elsewhere._build_staged`,
+  the garden's `loading_card.gd`). The woods are in the bake (`tools/bake_cache.gd`: `woods.build_now()`), so with the
+  cache they build in about 0.5 s on desktop (9.9 s without).
+
+## Detail
+
+- **Trails:** a pale worn middle, loose darker soil to the sides, and a wandering edge. Pebbles, fallen autumn leaves,
+  and now and then a root across the path.
+- **Trees:** the 110 trees nearest the trails have leafy crowns made with the hedgepets' foliage. There are six
+  shared templates with fixed seeds, oak, maple, ivy and box leaves (`CROWNS`). The rest stay simple.
+- **Weeping willows:** seven, on the creek banks and by the pond, each with a curtain of strands swaying as one.
+- **Forest floor:** about 170 things off the trails (logs with moss on top, stumps, mossy boulders, clusters of
+  mushrooms), all in multimeshes.
+- **Wild hedgepets** (`WILD_COUNT` 4): pets that don't live in your garden appear off the trail ahead of you and nose
+  about, watching you. Closer than 6 m, they scurry off. Left 30 m behind, they slip away and turn up further on. A
+  tap tells you who it was. They're borrowed garden nodes, given back when you leave.
+
 ## The places look like their names
 
 - **Mossy fork:** mossy boulders.
@@ -86,7 +111,7 @@ out past the ridge, a blue haze between the trunks, canopy shadows, and about 40
   cross it on stepping stones.
 - **Old oak:** one huge tree alone in a glade, with furrowed bark, roots, a hollow and a crown of six great limbs.
 - **Trailhead:** a roofed board.
-- **Beaver pond** (off the creek crossing and the old oak): still water in a bowl, a lodge of sticks and mud, a dam,
+- **Beaver pond** (a dead end south of the creek crossing): still water in a bowl, a lodge of sticks and mud, a dam,
   lily pads, cattails, and stumps gnawed to a point.
 - **Cellar hole** (off the trailhead and fern hollow): the stone-lined pit of a long-gone farmhouse, with a granite
   step, a chimney base, a huge old lilac, and the dooryard apple tree (apples for the basket, wild rose seeds).

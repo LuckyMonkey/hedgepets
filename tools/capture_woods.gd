@@ -30,6 +30,7 @@ func _run() -> void:
 	await create_timer(2.0).timeout
 	game.pick_up_bucket(bt)
 	await create_timer(1.5).timeout
+	garden.woods.build_now()
 	garden.woods.enter()
 	await create_timer(2.0).timeout
 	_shot("woods_trailhead")

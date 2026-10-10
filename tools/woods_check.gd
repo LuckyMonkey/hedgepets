@@ -88,6 +88,11 @@ func _run() -> void:
 	var at: Vector2 = garden.camera.unproject_position(bridge)
 	game.tool = "hand"
 	game.tap(at, null)
+	var waited := 0.0                                    # the first time, it's built in steps behind a loading card
+	while root.get_viewport().get_camera_3d() != garden.woods.cam and waited < 90.0:
+		await process_frame
+		waited += 1.0 / 60.0
+	print("woods: built and entered in %.1f s (frames at 60 fps)" % waited)
 	await create_timer(1.0).timeout
 	var woods: Node = garden.woods
 	if not woods.inside or root.get_viewport().get_camera_3d() != woods.cam:

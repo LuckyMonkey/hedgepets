@@ -36,6 +36,7 @@ func _run() -> void:
 	var t0 := Time.get_ticks_msec()
 	var g: Node = (load("res://garden.tscn") as PackedScene).instantiate()
 	root.add_child(g)
+	g.woods.build_now()                                  # the woods too: their leafy trees and things bake as well
 	var live_ms := Time.get_ticks_msec() - t0
 	# every pet in its own plant: the first one (Gerald) is built at startup, the rest whenever they arrive
 	var t1 := Time.get_ticks_msec()

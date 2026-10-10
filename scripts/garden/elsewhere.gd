@@ -72,17 +72,52 @@ func enter() -> void:
 		return
 	inside = true
 	garden.game.save()
-	fade(func() -> void:
-		if not _built:
-			_built = true
-			_build()
-		pause_garden(true)
-		visible = true
-		cam.make_current()
-		_ui.visible = true
-		set_process(true)
-		set_process_unhandled_input(true)
-		_arrive())
+	var out := create_tween()
+	out.tween_property(_veil, "color:a", 1.0, 0.35)
+	await out.finished
+	if not _built:
+		await _build_staged()
+	pause_garden(true)
+	visible = true
+	cam.make_current()
+	_ui.visible = true
+	set_process(true)
+	set_process_unhandled_input(true)
+	_arrive()
+	create_tween().tween_property(_veil, "color:a", 0.0, 0.45)
+
+
+## The steps of building it, [words, Callable], with a loading card between them (empty: just _build()).
+func build_steps() -> Array:
+	return []
+
+
+## Build it all now, in one go (the bake, and checks that don't want to wait).
+func build_now() -> void:
+	if not _built:
+		_built = true
+		_build()
+
+
+func _build_staged() -> void:
+	_built = true
+	var steps := build_steps()
+	if steps.is_empty():
+		_build()
+		return
+	var card: CanvasLayer = preload("res://scripts/garden/loading_card.gd").new()
+	card.note = loading_note()
+	add_child(card)
+	for i in steps.size():
+		card.stage(str(steps[i][0]), float(i) / steps.size())
+		await get_tree().process_frame                     # let the card draw before the work
+		await get_tree().process_frame
+		(steps[i][1] as Callable).call()
+	card.finish()
+
+
+func loading_note() -> String:
+	return "The first time takes a little while."
 
 
 func leave() -> void:

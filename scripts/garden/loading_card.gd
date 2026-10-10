@@ -15,6 +15,7 @@ var _text := ""
 var _goal := 0.0
 var _shown := 0.0
 var _t := 0.0
+var note := "Waking the garden. The first visit takes a little while."
 
 
 func _ready() -> void:
@@ -46,9 +47,9 @@ func _ready() -> void:
 	_fill.position = track.position
 	_fill.size = Vector2(0, 14)
 	_root.add_child(_fill)
-	var note := _label("Waking the garden. The first visit takes a little while.", 28)
-	note.position = Vector2(0, 1160)
-	note.modulate.a = 0.55
+	var small := _label(note, 28)
+	small.position = Vector2(0, 1160)
+	small.modulate.a = 0.55
 
 
 func _label(text: String, size: int) -> Label:
