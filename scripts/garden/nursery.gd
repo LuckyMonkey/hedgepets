@@ -402,6 +402,7 @@ func arrive() -> void:
 	_usual.visible = int(game.nursery["visits"]) >= 6
 	_twist.visible = not game.nursery["gave"] and int(game.nursery["visits"]) >= GIFT_VISIT
 	_greeted = false
+	Telemetry.event("nursery", {"visits": int(game.nursery["visits"])})
 	var line := pick("greet")
 	if line != "":
 		say(line)
@@ -426,6 +427,7 @@ func tap(screen: Vector2, cam: Camera3D) -> bool:
 
 
 func talk() -> void:
+	Telemetry.event("talk")
 	if not game.nursery["gave"] and int(game.nursery["visits"]) >= GIFT_VISIT:
 		game.nursery["gave"] = true
 		for k in range(3):

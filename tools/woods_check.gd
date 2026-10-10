@@ -79,6 +79,7 @@ func _run() -> void:
 			game._clear(bt)
 	print("bucket: a water trail in, picked up and carried, set down, carried again")
 
+	game.following = [a.pet_name]                       # (another pet may have wandered into the poured water)
 	# into the woods by the footbridge
 	var bridge: Vector3 = Vector3(garden._creek_x(garden.GATES["creek"]["peek"].z), 0, garden.GATES["creek"]["peek"].z)
 	if not garden.on_bridge(Vector2(bridge.x, bridge.z)):

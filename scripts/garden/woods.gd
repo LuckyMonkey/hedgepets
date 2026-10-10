@@ -1484,6 +1484,7 @@ func take(f: Dictionary) -> void:
 		game.toast(["Stuck fast. Pull again.", "It's coming. Once more."][mini(1, 3 - int(f["tugs"]))] if f["tugs"] > 1 else "Nearly...")
 		return
 	game.woods_finds["taken"][f["id"]] = Time.get_unix_time_from_system()
+	Telemetry.event("find", {"kind": f["kind"], "at": f["at"]})
 	Motion.vanish(node, false)
 	match info["what"]:
 		"litter", "junk":
@@ -1609,6 +1610,7 @@ func _wild_tapped(at: Vector2) -> bool:
 		if w["gone"] or not node.visible or cam.is_position_behind(node.global_position):
 			continue
 		if cam.unproject_position(node.global_position + Vector3(0, 0.3, 0)).distance_to(at) < 110.0:
+			Telemetry.event("wild_tap", {"pet": node.profile.pet_name})
 			garden.game.toast("A wild %s, keeping its distance. It doesn't live in your garden - yet." % SpeciesBuilder.variant_name(node.profile))
 			return true
 	return false
@@ -1634,6 +1636,7 @@ func _arrive() -> void:
 	_walking = {}
 	_wild_begin()
 	_refresh_finds()
+	Telemetry.event("woods", {"followers": followers.size(), "carried": _carried != null})
 	show_basket()
 	_yaw = _heading_of(_way_to("fork")["dir"])
 	_goal_yaw = _yaw
@@ -1783,6 +1786,7 @@ func _step_walk(delta: float) -> void:
 		for node: HedgePetNode in followers:
 			node.walking = 0.0
 		_settle(pts[pts.size() - 1])
+		Telemetry.event("trail", {"to": _at})
 		if _at == "nursery":
 			nursery.arrive()
 

@@ -37,6 +37,7 @@ func setup(g: Node3D) -> void:
 
 
 func _arrive() -> void:
+	Telemetry.event("den")
 	_tuck_in()
 	if _sleepers.is_empty():
 		garden.game.toast("Nobody sleeps down here yet. Pets who move in nap here.")

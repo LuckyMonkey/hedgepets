@@ -70,6 +70,7 @@ func tapped(game: Node) -> void:
 		game.toast(["🔥 The fire crackles.", "🔥 Warm. Somebody might come and sit by it.", "🔥 Sparks go up into the dark."].pick_random())
 		return
 	_fire = BURN + EMBERS
+	Telemetry.event("fire")
 	game.toast("🔥 You light the fire. It'll burn a good while.")
 
 

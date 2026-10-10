@@ -163,6 +163,7 @@ func end(screen: Vector2) -> bool:
 		tw.tween_property(node, "basis", _base, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 		return true
 	if t["junk"] and _at_barrel(t):
+		Telemetry.event("bin", {"kind": t["kind"]})
 		_bin(t)
 		return true
 	if t["kind"] in ["stick", "branch"] and _onto_brush_pile(t):
@@ -248,6 +249,7 @@ func _break_free(t: Dictionary, dir: Vector3) -> void:
 	var hop := Motion.channel(node, "hop")
 	hop.tween_property(node, "position:y", 0.35, Motion._d(Motion.FAST)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	hop.tween_property(node, "position:y", 0.0, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	Telemetry.event("yank", {"kind": t["kind"]})
 	if t["tipped"]:
 		_right_chair(t)
 	game.toast(["Yanked it free!", "It came loose!", "Got it!", "Out it comes!"].pick_random() + "  %s ~%d lb" % [_label(t), int(t["lb"])])
@@ -477,6 +479,7 @@ func _mendable_at(p: Vector2):
 
 
 func _finish_mend(f: Dictionary) -> void:
+	Telemetry.event("mend", {"kind": f["kind"]})
 	if f["kind"] == "fence":
 		garden.mend_fence(f["index"])
 		game.toast("🔨 That bit of fence is standing straight again.")

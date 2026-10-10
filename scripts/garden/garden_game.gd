@@ -78,6 +78,8 @@ var keep_seeds: Array = []          # seeds the nursery gave you, {species, gene
 const SOW_SECONDS := 45.0           # how often an empty bed may get a self-sown seedling
 const SOW_REACH := 5.0              # from a flowering plant this near
 var _sow := SOW_SECONDS
+var _beat := 20.0
+var _beats := 0
 ## Digging. A hole beside another joins it into a row; the dirt goes on a pile beside it (dirt_piles, saved), which
 ## the 🪏 can scoop from to fill a hole again, and the wheelbarrow (garden_grab.gd) can carry about.
 const ROW_STEP := 0.8               # a hole dug this near another joins its row, this far along
@@ -134,7 +136,11 @@ func setup(g: Node3D) -> void:
 			_apply_mode(_node(p), true)
 	_restore_friends()
 	_refresh()
-	_refresh.call_deferred()                              # again once the toolbar is laid out (the chip finds its tool)
+	_refresh.call_deferred()
+	Telemetry.start()
+	var here := pet_state.values().filter(func(s) -> bool: return s != "away").size()
+	Telemetry.event("session", {"touch": DisplayServer.is_touchscreen_available(), "w": garden.get_viewport().get_visible_rect().size.x,
+		"back_after_h": snappedf(_away_for / 3600.0, 0.1), "coins": coins, "here": here, "plants": plants.size()})                              # again once the toolbar is laid out (the chip finds its tool)
 	if _away_for > 6.0 * 3600.0:
 		_welcome_back()
 	else:
@@ -200,6 +206,14 @@ func _process(delta: float) -> void:
 				var node: HedgePetNode = _node(p)
 				if node.visible:
 					_drop_gift(node)
+	_beat -= delta
+	if _beat <= 0.0:                                     # what the garden's like, now and then; and send what's queued
+		_beat = 20.0
+		_beats += 1
+		if _beats % 3 == 0:
+			Telemetry.event("beat", {"coins": coins, "tool": tool, "plants": plants.size(), "room": capacity(),
+				"here": pet_state.values().filter(func(s) -> bool: return s != "away").size()})
+		Telemetry.flush()
 	_save -= delta
 	if _save <= 0.0:
 		_save = 8.0
@@ -301,6 +315,7 @@ func _visitors() -> void:
 						next = "noticed" if _met(p.wants["notice"], counts) else "away"
 						toast("%s wandered home for now. Maybe another day." % name)
 		if next != state:
+			Telemetry.event(next if next != "away" else "left", {"pet": name, "from": state, "here": guests, "room": capacity()})
 			_since[name] = 0.0
 			pet_state[name] = next
 			_apply_mode(_node(p))
@@ -384,6 +399,7 @@ func _grow(delta: float) -> void:
 				pl["progress"] = 0.0
 				pl["stage"] += 1
 				_build_plant(pl)
+				Telemetry.event("grew", {"species": pl["species"], "stage": pl["stage"]})
 				var name: String = SpeciesBuilder.PLANT_NAMES.get(pl["species"], pl["species"])
 				toast(["🌱 Your %s is up.", "🌿 Your %s is a proper little bush now.", "🌸 Your %s is flowering."][int(pl["stage"]) - 1] % name)
 
@@ -735,6 +751,7 @@ func _shovel(p2: Vector2) -> bool:
 			d["at"] = spot + away * 0.95
 			Motion.channel(d["node"], "move").tween_property(d["node"], "position", Vector3(d["at"].x, 0, d["at"].y), Motion._d(Motion.BASE)).set_trans(Tween.TRANS_SINE)
 	var nb := _dig(spot)
+	Telemetry.event("dig", {"row": nb.get("linked", false)})
 	var cam: Vector3 = garden.camera.global_position
 	var side := (Vector2(cam.x, cam.z) - spot).normalized() * 1.0   # toward you: below the row on screen, out of its way
 	if nb.get("linked", false):
@@ -774,6 +791,7 @@ func _place(kind: String, p2: Vector2, yaw: float, animate := true) -> void:
 		garden.hideouts.add_spot(garden.things[-1])
 	placed.append({"kind": kind, "x": p2.x, "z": p2.y, "yaw": yaw, "node": node})
 	if animate:
+		Telemetry.event("build", {"kind": kind})
 		Motion.appear(node, Vector3.ONE)
 
 
@@ -797,6 +815,7 @@ func pick_up_bucket(t: Dictionary) -> void:
 	carried = node.profile.pet_name
 	following.erase(carried)
 	garden.carry(node)
+	Telemetry.event("bucket_carry", {"pet": carried})
 	_carried_bucket = t
 	garden.things.erase(t)
 	garden.hideouts.remove_spot(t)
@@ -854,6 +873,8 @@ func pour_move(screen: Vector2) -> void:
 ## Let go. False if it was really a tap (the garden treats it as one: water that plant, splash that pet).
 func pour_end(dragged: bool) -> bool:
 	_pour = Vector2.INF
+	if dragged or _pour_time > 0.35:
+		Telemetry.event("pour", {"s": snappedf(_pour_time, 0.1)})
 	return dragged or _pour_time > 0.35
 
 
@@ -917,6 +938,7 @@ func _lure(p: Vector2) -> void:
 			bucket["lured"] = true
 			following.erase(name)
 			_pour = Vector2.INF
+			Telemetry.event("bucket_in", {"pet": name})
 			toast("💧 %s followed the water right into the bucket! Pick it up with ✋ to carry it." % name)
 			return
 		var to := p + (here - p).normalized() * 0.7
@@ -927,6 +949,7 @@ func _lure(p: Vector2) -> void:
 			following.append(name)
 			w["following"] = true
 			node.tap()
+			Telemetry.event("follow", {"pet": name})
 			toast("💧 %s loves the water. It'll walk with you a while." % name)
 		if following.has(name):
 			_following_for[name] = FOLLOW_SECONDS
@@ -1132,6 +1155,7 @@ func _dirt_look(d: Dictionary) -> void:
 
 ## Fill a hole back in (it goes; what was sown in it comes back as a seed).
 func fill_hole(bed: Dictionary) -> void:
+	Telemetry.event("fill")
 	if bed["plant"] != null:
 		unplant(bed["plant"])
 	seedbeds.erase(bed)
@@ -1142,6 +1166,7 @@ func fill_hole(bed: Dictionary) -> void:
 ## Dig up what's growing in a bed: a seed or sprout comes back as a seed (same as it was); a bigger plant goes on the
 ## compost. The hole stays.
 func unplant(pl: Dictionary) -> void:
+	Telemetry.event("unplant", {"species": pl["species"], "stage": pl["stage"]})
 	plants.erase(pl)
 	pl["bed"]["plant"] = null
 	if pl["node"] != null:
@@ -1163,6 +1188,7 @@ func _clear(t: Dictionary) -> void:
 	garden.things.erase(t)
 	placed = placed.filter(func(b) -> bool: return b["node"] != t["node"])
 	cleared += 1
+	Telemetry.event("clear", {"kind": t["kind"]})
 	coins += int(t["value"])
 	Motion.vanish(t["node"], true, Motion.BASE)
 	toast("🪏 Cleared the %s. 🪙 +%d" % [_thing_name(t["kind"]), t["value"]])
@@ -1206,6 +1232,8 @@ func _plant(species: String, bed: Dictionary, stage: int, water := 0.6, progress
 	bed["plant"] = pl
 	plants.append(pl)
 	_build_plant(pl)
+	if stage == 0 and _loaded:
+		Telemetry.event("sow", {"species": species, "origin": origin})
 	if stage == 0 and origin == "seed":
 		toast("%s Planted %s. Water it (💧)." % [SEEDS[species]["icon"], species])
 	return pl
@@ -1347,6 +1375,7 @@ var _journal_open := false
 
 ## A message: slides in, stays a few seconds, fades. A new one replaces it smoothly.
 func toast(text: String) -> void:
+	Telemetry.event("say", {"t": text.left(100)})
 	if _toast.visible and _toast.modulate.a > 0.05 and _toast.text != "":   # one is showing: let it go first
 		var t := Motion.channel(_toast, "fade")
 		t.tween_property(_toast, "modulate:a", 0.0, Motion._d(Motion.FAST * 0.8))
@@ -1458,7 +1487,7 @@ func _fill_journal() -> void:
 		var vs: Array = SpeciesBuilder.variants_of(p).map(func(v) -> String: return SpeciesBuilder.PLANT_NAMES.get(v, v))
 		lines += "🐾 %s [color=#7a6a50]Seen near gardens growing %s.[/color]\n\n" % [p.hints["notice"], " or ".join(vs.slice(0, 2)) if vs.size() <= 2 else ", ".join(vs.slice(0, vs.size() - 1)) + " or " + vs[vs.size() - 1]]
 	lines += "[color=#7a6a50]Room here for %d at once.[/color]\n" % capacity()
-	lines += "\n[url=feedback]💬 Tell us what you think of the game[/url]\n"
+	lines += "\n[url=howto]❓ How to play[/url]     [url=feedback]💬 Tell us what you think[/url]\n"
 	_journal_text.text = lines
 
 
@@ -1499,6 +1528,7 @@ func _build_ui() -> void:
 	jb.pressed.connect(func() -> void:
 		_journal_open = not _journal_open
 		if _journal_open:
+			Telemetry.event("journal")
 			_fill_journal()
 			Motion.slide_in(_journal, JOURNAL_AT, Vector2(0, 40))
 		else:
@@ -1537,6 +1567,7 @@ func _build_ui() -> void:
 		var key: String = t[0]
 		b.pressed.connect(func() -> void:
 			tool = key
+			Telemetry.event("tool", {"tool": key})
 			if key == "build" and not _told_arrange:
 				_told_arrange = true
 				toast("Tap the lawn to put one down. Drag one you built to move it; tap it to turn it.")
@@ -1620,8 +1651,9 @@ func _build_ui() -> void:
 	_journal_text.add_theme_color_override("default_color", Color(0.25, 0.2, 0.14))
 	_journal_text.custom_minimum_size = Vector2(860, 1060)
 	_journal_text.meta_clicked.connect(func(meta) -> void:
-		if str(meta) == "feedback":                     # the survey, on its own page (a new tab on the web)
-			OS.shell_open("https://go.fridge.run/hedgepets/feedback"))
+		if str(meta) in ["feedback", "howto"]:          # the survey / the guide, on their own pages (a new tab on the web)
+			Telemetry.event("open_" + str(meta))
+			OS.shell_open("https://go.fridge.run/hedgepets/" + str(meta)))
 	_journal.add_child(_journal_text)
 	_ui.add_child(_journal)
 
@@ -1669,6 +1701,8 @@ func _notification(what: int) -> void:
 	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_WM_WINDOW_FOCUS_OUT]:
 		if garden != null and is_instance_valid(garden) and _loaded:
 			save()
+			Telemetry.event("hidden")
+			Telemetry.flush()
 
 
 var _all_ids: Array = []
