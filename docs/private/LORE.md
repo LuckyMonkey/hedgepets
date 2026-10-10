@@ -41,9 +41,15 @@ Fingerprints placed now, all deniable and all in `assets/talk/nursery.json` or t
 Lines that are hers in spirit but unattributable: everything about patience, leaves over flowers, untidy corners,
 and "Somebody paid attention."
 
-### Greg M.: the unseen influence (never on screen)
+### Greg M.: on screen as the man on the porch (2026-10-10, the owner's direction)
 
-He is never named, never a character, and never in books, plaques or credits. He exists only in how plants behave:
+The owner's update: Greg is a guy who photographs the hedgepets from his balcony, and every time the game camera sees
+him he puts his phone away fast or runs and hides in the house. He's hiding something. In game he is the man on the
+raised back porch of the blue-door house (`scripts/garden/porch_watcher.gd`). He is unnamed, has no dialogue, and his
+house is never called his anywhere. What he's hiding is reserved: what the photos are for, who sees them, and whether
+it connects to the scientists or to the plant rules. Still never named in game text, code or comments.
+
+His botanical fingerprint (from the first brief) stands. It is never stated, and lives only in how plants behave:
 
 - **The rules themselves** (`heredity.gd`): paired factors, a dominant and a recessive form, one of each pair from
   each parent, and two traits that assort independently. Flower colour (coloured/white) and stature (tall/short)

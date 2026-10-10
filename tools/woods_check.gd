@@ -1,8 +1,9 @@
 extends SceneTree
 
 ## Friends and the woods:
-##   - 🐾 follow: a resident agrees (a visitor doesn't), and walks over to wherever you look
-##   - 🪣 bucket: an apple (coins), the pet's carried (hidden, left alone by the visitor logic), let out on the lawn
+##   - 💧 water: a resident comes to water poured beside it, then walks over to wherever you look
+##   - 🪣 a water trail into a bucket: the pet climbs in; ✋ picks the bucket up (pet hidden, left alone by the visitor
+##     logic) and sets it down on the lawn
 ##   - tapping the footbridge goes into the woods; you stand at the trailhead facing the trail; turning and tapping
 ##     walks it (over the hills: the camera's height follows the ground) to the mossy fork, followers trailing behind
 ##     and gathered round you there; then on to the nursery
@@ -42,40 +43,41 @@ func _run() -> void:
 	var nc: HedgePetNode = game._node(c)
 	for n: HedgePetNode in [na, nb, nc]:
 		garden.set_pet_mode(n, "roam", true)
-	game.tool = "pets"
-	game.pet_choice = "follow"
-	game._friends_tap(nb, Vector2.ZERO)
-	if game.following.has(b.pet_name):
-		return _fail("a visitor followed straight away")
-	game._friends_tap(na, Vector2.ZERO)
+	# water: pour beside the resident and it comes to it, and walks with you
+	game._lure(Vector2(na.position.x + 0.8, na.position.z))
 	if not game.following.has(a.pet_name):
-		return _fail("a resident didn't agree to follow")
+		return _fail("pouring right beside a resident didn't bring it along")
 	garden._goal_target = Vector3(6.0, 0, 3.0)
 	garden._target = garden._goal_target
 	await create_timer(12.0).timeout
 	var d := Vector2(na.position.x, na.position.z).distance_to(Vector2(6.0, 3.0))
 	if d > 3.5:
 		return _fail("%s didn't come over to where we're looking (%.1f m away)" % [a.pet_name, d])
-	print("follow: %s came along to the new view (%.1f m)" % [a.pet_name, d])
+	print("water: %s came to the water and along to the new view (%.1f m)" % [a.pet_name, d])
 
-	# the bucket: carry the visitor, let it out, carry it again for the woods
-	game.pet_choice = "bucket"
-	var coins: int = game.coins
-	game._friends_tap(nb, Vector2.ZERO)
-	await create_timer(1.5).timeout
-	if game.carried != b.pet_name or nb.visible or garden.pet_mode(nb) != "carried" or game.coins != coins - game.TREAT:
-		return _fail("bribing into the bucket: carried '%s', visible %s, mode %s, coins %d" % [game.carried, nb.visible, garden.pet_mode(nb), game.coins])
-	game._apply_mode(nb)                                 # the visitor logic leaves a carried pet alone
-	if garden.pet_mode(nb) != "carried":
-		return _fail("the visitor logic took the pet out of the bucket")
-	game._friends_tap(null, Vector2(-2.0, 2.0))
-	if game.carried != "" or not nb.visible or garden.pet_mode(nb) != "roam":
-		return _fail("letting it out on the lawn")
-	game._friends_tap(nb, Vector2.ZERO)
-	await create_timer(1.5).timeout
-	if game.carried != b.pet_name:
-		return _fail("into the bucket a second time")
-	print("bucket: in for an apple, left alone while carried, out on the lawn, back in")
+	# the bucket: a water trail into it, the visitor climbs in, pick it up, set it down, again for the woods
+	for k in range(2):
+		game._place("bucket", Vector2(-3.0, 2.0 + k * 0.01), 0.0)
+		var bt: Dictionary = garden.things[-1]
+		var spot := Vector2(bt["node"].position.x, bt["node"].position.z)
+		nb.position = Vector3(spot.x + 1.0, 0, spot.y)
+		garden.set_pet_mode(nb, "roam", true)
+		game._lure(spot)
+		await create_timer(2.0).timeout
+		if not garden.hideouts.occupied(bt):
+			return _fail("%s didn't follow the water into the bucket (mode %s)" % [b.pet_name, garden.pet_mode(nb)])
+		game.pick_up_bucket(bt)
+		if game.carried != b.pet_name or nb.visible or garden.pet_mode(nb) != "carried":
+			return _fail("picking up the bucket: carried '%s', visible %s, mode %s" % [game.carried, nb.visible, garden.pet_mode(nb)])
+		game._apply_mode(nb)                             # the visitor logic leaves a carried pet alone
+		if garden.pet_mode(nb) != "carried":
+			return _fail("the visitor logic took the pet out of the bucket")
+		if k == 0:
+			game.put_down(Vector3(-2.0, 0, 2.0))
+			if game.carried != "" or not nb.visible or garden.pet_mode(nb) != "roam" or not garden.things.has(bt):
+				return _fail("setting the bucket down on the lawn")
+			game._clear(bt)
+	print("bucket: a water trail in, picked up and carried, set down, carried again")
 
 	# into the woods by the footbridge
 	var bridge: Vector3 = Vector3(garden._creek_x(garden.GATES["creek"]["peek"].z), 0, garden.GATES["creek"]["peek"].z)

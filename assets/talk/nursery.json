@@ -2,7 +2,7 @@
   "about": "What the lady at the nursery says. One line per tap. kind: greet (on arriving) | talk (tapping her) | gift. when: every condition must hold (visits_min, visits_max, season, hour, grows, flowering, resident, with, carried, wants, volunteers, crossed, returned, pale, short, kept). {pet} and {plant} are filled from what matched. once: said only ever once. Read docs/NURSERY.md before adding lines.",
   "lines": [
     {"id": "greet-first", "kind": "greet", "when": {"visits_max": 1}, "text": "Oh. Somebody found the path. Mind the step, it's been loose since spring."},
-    {"id": "greet-bluedoor", "kind": "greet", "when": {"visits_min": 2, "visits_max": 2}, "text": "You'll be from the house with the blue door. I've seen your lights through the trees."},
+    {"id": "greet-bluedoor", "kind": "greet", "when": {"visits_min": 2, "visits_max": 2}, "text": "You'll be from the garden behind the houses. The one with the fence that's seen better days."},
     {"id": "greet-again", "kind": "greet", "when": {"visits_min": 3}, "text": "Back again. The kettle isn't on, so don't get your hopes up."},
     {"id": "greet-feet", "kind": "greet", "when": {"visits_min": 3}, "text": "Come in, then. Wipe your feet on something."},
     {"id": "greet-late", "kind": "greet", "when": {"hour": "night", "visits_min": 2}, "text": "You're out late. So am I, evidently."},

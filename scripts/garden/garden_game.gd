@@ -8,9 +8,9 @@ extends Node
 ##          MOVES IN (stays; brings a few coins now and then) when its wishes are met (CharacterArtProfile.wants).
 ##          Junk is not all bad: some visitors want sticks, a leaf pile, a puddle, the tipped chair.
 ##   Journal what you know about each pet: the hint for its next step, revealed as it gets closer.
-##   Friends 🐾: ask a pet that lives here to follow you (it trails your view round the garden and comes into the woods
-##          over the footbridge), or bribe any pet you can see into the bucket with an apple (🪙 TREAT) and carry it
-##          with you; tap the lawn to let it out. Up to MAX_FOLLOWERS follow; the bucket holds one.
+##   Water  💧 hold and drag to pour. Hedgepets love water: the ones nearby trot after it, and the ones that reach it
+##          walk with you a while (into the woods over the footbridge too). Pour a trail into an empty bucket and the
+##          first to reach it climbs in; pick the bucket up with ✋ and carry it (tap the lawn with ✋ to set it down).
 ##   Saved to user://garden.json every few seconds and whenever you leave (on the web also to localStorage: WebSave).
 
 var save_path := "user://garden.json"
@@ -44,7 +44,7 @@ const BUILDS := {
 	"feeder": {"icon": "🐦", "price": 8, "name": "bird feeder", "radius": 0.5},
 	"bath": {"icon": "⛲", "price": 10, "name": "bird bath", "radius": 0.6},
 	"log_pile": {"icon": "🪵", "price": 6, "name": "log pile", "radius": 0.8},
-	"nest_box": {"icon": "🏠", "price": 7, "name": "nest box", "radius": 0.4},
+	"nest_box": {"icon": "🏠", "price": 7, "name": "birdhouse", "radius": 0.4},
 	"pumpkin": {"icon": "🎃", "price": 3, "name": "pumpkin", "radius": 0.5},
 	"apples": {"icon": "🍎", "price": 5, "name": "crate of apples", "radius": 0.7},
 	"bucket": {"icon": "🪣", "price": 4, "name": "steel bucket", "radius": 0.35},       # hideouts: a pet may hop in
@@ -54,9 +54,9 @@ const BUILDS := {
 	"scarecrow": {"icon": "🧑‍🌾", "price": 9, "name": "scarecrow", "radius": 0.45},
 	"lantern": {"icon": "🏮", "price": 6, "name": "garden lantern", "radius": 0.3},
 	"stones": {"icon": "🪨", "price": 3, "name": "stepping stones", "radius": 0.3},
+	"fire_pit": {"icon": "🔥", "price": 6, "name": "fire pit", "radius": 0.65},     # tap it with ✋ to light it
 }
 const MAX_FOLLOWERS := 3
-const TREAT := 2                   # an apple for the bucket
 const STAGE_SECONDS := 18.0        # watered growth time per stage
 const WATER_SECONDS := 40.0        # how long one watering lasts
 const INCOME_SECONDS := 30.0
@@ -72,15 +72,22 @@ var build_choice := "feeder"
 var placed: Array = []              # {kind, x, z, yaw}: what you built (saved)
 var following: Array = []           # pet names that follow you (saved)
 var carried := ""                   # the pet in the bucket, or "" (saved)
-var pet_choice := "follow"          # what the 🐾 tool does: "follow" | "bucket"
 var nursery := {"visits": 0, "said": [], "once": [], "gave": false, "crossed": false, "returned": false}   # nursery.gd (saved)
 var woods_finds := {"taken": {}, "basket": {}}   # woods.gd: what you've picked up there (when) and what's in the basket
 var keep_seeds: Array = []          # seeds the nursery gave you, {species, genes}: sown before bought ones of that kind
 const SOW_SECONDS := 45.0           # how often an empty bed may get a self-sown seedling
 const SOW_REACH := 5.0              # from a flowering plant this near
 var _sow := SOW_SECONDS
-var _pets_row: HBoxContainer
-var _pets_shown := false
+## Digging. A hole beside another joins it into a row; the dirt goes on a pile beside it (dirt_piles, saved), which
+## the 🪏 can scoop from to fill a hole again, and the wheelbarrow (garden_grab.gd) can carry about.
+const ROW_STEP := 0.8               # a hole dug this near another joins its row, this far along
+const DIRT_MAX := 4                 # loads on one pile
+var dirt_piles: Array = []          # {at: Vector2, loads, node}
+var shovelful := false              # the 🪏 is carrying a load of dirt
+var barrow: Dictionary = {}         # the wheelbarrow's thing (garden.things), its load in barrow["load"]
+## How many hedgepets the garden has room for at once (residents and guests together): a remarkable garden, six.
+const MAX_PETS := 6
+const MOVE_ON_SECONDS := 600.0      # a resident whose wishes go unmet this long moves on (it may come back)
 var _bucket_badge: Label
 var _lead := 0.0
 var discovered := {}                # pet name -> [plants it has visited in]: the variant collection
@@ -114,6 +121,11 @@ func setup(g: Node3D) -> void:
 	grab.name = "Grab"
 	add_child(grab)
 	grab.setup(garden, self, _ui)
+	var wb := GardenProps.wheelbarrow(garden, Vector3(3.2, 0, 7.4), -30.0)   # added last: earlier things keep their ids
+	garden._thing("wheelbarrow", wb, Vector2(3.2, 7.4), 0.6, 0, false)
+	barrow = garden.things[-1]
+	barrow["load"] = 0
+	grab.grabbable(barrow)                                # its weight and grip, ready to haul
 	for p: CharacterArtProfile in garden.roster:
 		pet_state[p.pet_name] = "resident" if p.starts_resident else "away"
 	_load()
@@ -122,6 +134,7 @@ func setup(g: Node3D) -> void:
 			_apply_mode(_node(p), true)
 	_restore_friends()
 	_refresh()
+	_refresh.call_deferred()                              # again once the toolbar is laid out (the chip finds its tool)
 	if _away_for > 6.0 * 3600.0:
 		_welcome_back()
 	else:
@@ -164,6 +177,7 @@ func _met(wants: Dictionary, counts: Dictionary) -> bool:
 # ------------------------------------------------------------------ the loop
 func _process(delta: float) -> void:
 	_grow(delta)
+	_pouring(delta)
 	_tend_gifts(delta)
 	_sow -= delta
 	if _sow <= 0.0:
@@ -213,7 +227,26 @@ func appeal() -> int:
 
 
 func max_guests() -> int:
-	return mini(3 + appeal() / 4, 6)
+	return capacity()
+
+
+## How many hedgepets the garden has room for at once, residents included: 2, up to MAX_PETS for a remarkable
+## garden (many kinds of plants grown, many kinds of things built).
+func capacity() -> int:
+	var kinds := {}
+	for pl in plants:
+		if pl["stage"] >= 2:
+			kinds[pl["species"]] = true
+	var built := {}
+	for b in placed:
+		built[b["kind"]] = true
+	return clampi(2 + (kinds.size() + built.size()) / 3, 2, MAX_PETS)
+
+
+## Whether you grow any plant this pet is made of (or one related): what draws each hedgepet in the first place.
+func grows_for(p: CharacterArtProfile) -> bool:
+	var vs: Array = SpeciesBuilder.variants_of(p)
+	return plants.any(func(pl) -> bool: return vs.has(pl["species"]))
 
 
 func notice_gap() -> float:
@@ -224,9 +257,9 @@ var _notice_wait := 4.0
 func _visitors() -> void:
 	var counts := garden_counts()
 	_notice_wait -= 1.0
-	var guests := 0
+	var guests := 0                                       # everyone here: residents too (room for capacity())
 	for k in pet_state:
-		if pet_state[k] == "noticed" or pet_state[k] == "visiting":
+		if pet_state[k] in ["noticed", "visiting", "resident"]:
 			guests += 1
 	var order: Array = garden.roster.duplicate()
 	order.shuffle()
@@ -236,7 +269,7 @@ func _visitors() -> void:
 		var next := state
 		match state:
 			"away":
-				if guests < max_guests() and _notice_wait <= 0.0 and _met(p.wants["notice"], counts):
+				if guests < capacity() and _notice_wait <= 0.0 and _met(p.wants["notice"], counts) and grows_for(p):
 					guests += 1
 					_notice_wait = notice_gap()
 					next = "noticed"
@@ -249,6 +282,14 @@ func _visitors() -> void:
 					_since[name] = float(_since.get(name, 0.0)) + 1.0
 					if float(_since[name]) > 90.0:          # lingers at the fence a good while first
 						next = "away"
+			"resident":
+				if not p.starts_resident and not _met(p.wants["resident"], counts):
+					_since[name] = float(_since.get(name, 0.0)) + 1.0
+					if float(_since[name]) > MOVE_ON_SECONDS:  # a long while: no hurry, no punishment, just change
+						next = "away"
+						toast("%s has moved on, somewhere that suits it better. It might come back one day." % name)
+				else:
+					_since[name] = 0.0
 			"visiting":
 				if _met(p.wants["resident"], counts):
 					next = "resident"
@@ -327,18 +368,33 @@ func _apply_mode(node: HedgePetNode, at_once := false) -> void:
 		garden.set_pet_mode(node, mode, at_once)
 
 
+## Everything planted grows: slowly on its own (rain, dew), three times as fast while watered. Wet soil looks dark.
+const DRY_GROWTH := 0.35
+
+
 func _grow(delta: float) -> void:
 	for pl in plants:
-		if pl["water"] > 0.0:
+		var wet: bool = pl["water"] > 0.0
+		if wet:
 			pl["water"] = maxf(0.0, pl["water"] - delta / WATER_SECONDS)
-			if pl["stage"] < 3:
-				pl["progress"] += delta / STAGE_SECONDS
-				if pl["progress"] >= 1.0:
-					pl["progress"] = 0.0
-					pl["stage"] += 1
-					_build_plant(pl)
-					if pl["stage"] == 3:
-						toast("Your %s is flowering." % pl["species"])
+		_wet_look(pl["bed"], pl["water"] > 0.0)
+		if pl["stage"] < 3:
+			pl["progress"] += delta / STAGE_SECONDS * (1.0 if wet else DRY_GROWTH)
+			if pl["progress"] >= 1.0:
+				pl["progress"] = 0.0
+				pl["stage"] += 1
+				_build_plant(pl)
+				var name: String = SpeciesBuilder.PLANT_NAMES.get(pl["species"], pl["species"])
+				toast(["🌱 Your %s is up.", "🌿 Your %s is a proper little bush now.", "🌸 Your %s is flowering."][int(pl["stage"]) - 1] % name)
+
+
+## A bed's soil darkens when watered and pales as it dries (eased, never a jump).
+func _wet_look(bed: Dictionary, wet: bool) -> void:
+	if bed.get("wet", false) == wet or bed["node"] == null:
+		return
+	bed["wet"] = wet
+	var m: StandardMaterial3D = bed["mat"]
+	Motion.channel(bed["node"], "wet").tween_property(m, "albedo_color", Color("3e2c1e") if wet else Color("6a5038"), Motion._d(Motion.SLOW * 2.0))
 
 
 ## The sunlit clearing: the middle of the lawn free of junk (sun-lovers want open grass to sit in).
@@ -372,6 +428,10 @@ func favourite(node: HedgePetNode) -> Dictionary:
 				for pl in plants:
 					if pl["species"] == sp and pl["stage"] >= 1:
 						options.append({"at": Vector3(pl["at"].x, 0, pl["at"].y), "radius": 0.6, "emote": "💚" if pl["stage"] < 3 else "🌸"})
+	for t in garden.things:                               # a lit fire: everyone likes sitting by it
+		if t["kind"] == "fire_pit" and t["node"].lit():
+			for k in range(3):
+				options.append({"at": Vector3(t["at"].x, 0, t["at"].y), "radius": 1.1, "emote": "🔥"})
 	return options.pick_random() if not options.is_empty() else {}
 
 
@@ -468,18 +528,30 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 		garden.woods.enter()
 		return true
 	match tool:
-		"pets":
-			_friends_tap(pet, p2)
-			return true
 		"hand":
+			if carried != "" and pet == null and _thing_at(p2) == null:
+				if not garden.BOUNDS.has_point(p2) or garden._blocked(p2, 0.6):
+					toast("Somewhere clear on the lawn.")
+				else:
+					put_down(Vector3(p2.x, 0, p2.y))
+				return true
 			if pet != null:
 				pet.tap()
 				pet.look_point = garden.camera.global_position
 				toast(_pet_line(pet))
 				return true
 			var t = _thing_at(p2)
-			if t != null and t["kind"] == "barrel":
+			var mend = grab._mendable_at(p2)
+			if t != null and t["kind"] == "fire_pit":
+				t["node"].tapped(self)
+			elif t == null and mend != null and mend["kind"] == "fence":
+				toast("A broken run of fence. Hold ✋ on it and it'll mend; the collapsed bit becomes a gate.")
+			elif t != null and t["kind"] == "wheelbarrow":
+				toast("The wheelbarrow (%d/%d loads of dirt). Haul it with ✋ over a dirt pile to load it, over holes to fill them." % [int(t.get("load", 0)), DIRT_MAX])
+			elif t != null and t["kind"] == "barrel":
 				grab.barrel_tapped()
+			elif t != null and t["kind"] == "bucket" and carried == "" and garden.hideouts.occupied(t):
+				pick_up_bucket(t)
 			elif t != null and garden.hideouts.coax(t):
 				toast("Someone's coming out...")
 			elif t != null and t["kind"] == "burrow":       # nobody in the doorway: go down and look in on the sleepers
@@ -490,6 +562,8 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 				toast(_plant_line(_plant_at(p2)))
 			return true
 		"shovel":
+			return _shovel(p2)
+		"_old_shovel":
 			var t = _thing_at(p2)
 			if t != null:
 				if grab.grabbable(t) and not t.get("placed", false):
@@ -573,6 +647,105 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 	return false
 
 
+## The 🪏: scoop dirt, fill holes, dig up what you sowed, dig new holes (joining rows), clear junk.
+func _shovel(p2: Vector2) -> bool:
+	var pile = dirt_at(p2)
+	var bed = _bed_at(p2, 0.38)
+	var t = _thing_at(p2)
+	if barrow.has("node") and p2.distance_to(barrow["at"]) < 0.7:
+		if shovelful:
+			if int(barrow.get("load", 0)) >= DIRT_MAX:
+				toast("The wheelbarrow's full.")
+			else:
+				shovelful = false
+				grab.barrow_load(barrow, 1)
+				toast("Into the wheelbarrow with it.")
+		elif int(barrow.get("load", 0)) > 0:
+			shovelful = true
+			grab.barrow_load(barrow, -1)
+			toast("🪏 A shovelful from the wheelbarrow. Tap a hole to fill it.")
+		else:
+			toast("An empty wheelbarrow. Haul it (✋) over a dirt pile to fill it, then over holes to fill them.")
+		_refresh()
+		return true
+	if shovelful:
+		if bed != null and bed["plant"] == null:
+			shovelful = false
+			fill_hole(bed)
+			toast("🪏 Filled it in.")
+		elif pile != null:
+			if pile["loads"] < DIRT_MAX:
+				pile["loads"] += 1
+				_dirt_look(pile)
+			shovelful = false
+			toast("Back on the pile.")
+		elif bed != null:
+			toast("Something's growing there. Fill an empty hole, or put the dirt down on the lawn.")
+		elif not garden._blocked(p2, 0.1) and garden.BOUNDS.has_point(p2):
+			shovelful = false
+			add_dirt(p2, Vector2.ZERO)
+			toast("Put the dirt down.")
+		else:
+			toast("Not here.")
+		_refresh()
+		return true
+	if pile != null:
+		shovelful = true
+		take_dirt(pile)
+		toast("🪏 A shovelful of dirt. Tap a hole to fill it in.")
+		_refresh()
+		return true
+	if bed != null:
+		if bed["plant"] != null:
+			var pl: Dictionary = bed["plant"]
+			var name: String = SpeciesBuilder.PLANT_NAMES.get(pl["species"], pl["species"])
+			unplant(pl)
+			toast(("🪏 Dug the %s back up. The seed's back in 🌱." if int(pl["stage"]) <= 1 else "🪏 Dug up the %s. It goes on the compost.") % name)
+			_refresh()
+			return true
+		var src = null                                     # fill it from the nearest dirt
+		for d in dirt_piles:
+			if d["at"].distance_to(bed["at"]) < 4.0 and (src == null or d["at"].distance_to(bed["at"]) < src["at"].distance_to(bed["at"])):
+				src = d
+		if src != null:
+			take_dirt(src)
+			fill_hole(bed)
+			toast("🪏 Filled it in from the pile.")
+		else:
+			toast("No dirt nearby to fill it. Bring some in the wheelbarrow.")
+		return true
+	if t != null:
+		if grab.grabbable(t) and not t.get("placed", false):
+			toast("Too heavy to shovel. Grab it with ✋, yank it loose, haul it to the trash barrel 🗑️.")
+			return true
+		if not t["junk"]:
+			toast("That stays.")
+			return true
+		_clear(t)
+		return true
+	var spot := _dig_spot(p2)
+	if _blocked_for_bed(spot):
+		spot = p2
+	if _blocked_for_bed(spot):
+		toast("Not here - too close to something.")
+		return true
+	for d in dirt_piles:                                  # a pile in the way of the row: shove it aside
+		if (d["at"] as Vector2).distance_to(spot) < 0.75:
+			var away: Vector2 = (d["at"] - spot).normalized() if (d["at"] as Vector2).distance_to(spot) > 0.01 else Vector2.UP
+			d["at"] = spot + away * 0.95
+			Motion.channel(d["node"], "move").tween_property(d["node"], "position", Vector3(d["at"].x, 0, d["at"].y), Motion._d(Motion.BASE)).set_trans(Tween.TRANS_SINE)
+	var nb := _dig(spot)
+	var cam: Vector3 = garden.camera.global_position
+	var side := (Vector2(cam.x, cam.z) - spot).normalized() * 1.0   # toward you: below the row on screen, out of its way
+	if nb.get("linked", false):
+		var dir := Vector2.from_angle(-deg_to_rad(nb["node"].rotation_degrees.y))
+		var perp := dir.orthogonal()
+		side = (perp if perp.dot(side) >= 0.0 else -perp) * 1.0
+	add_dirt(spot, side)
+	_burst_dirt(spot)
+	return true
+
+
 func _place(kind: String, p2: Vector2, yaw: float, animate := true) -> void:
 	var at := Vector3(p2.x, 0, p2.y)
 	var rng := RandomNumberGenerator.new()
@@ -592,6 +765,7 @@ func _place(kind: String, p2: Vector2, yaw: float, animate := true) -> void:
 		"scarecrow": node = GardenProps.scarecrow(garden, at, yaw)
 		"lantern": node = GardenProps.lantern(garden, at, yaw)
 		"stones": node = GardenProps.stepping_stones(garden, at, yaw, rng)
+		"fire_pit": node = preload("res://scripts/garden/fire_pit.gd").build(garden, at, yaw)
 	node.rotation_degrees.y = yaw                        # every kind the same way round (it's saved, and arranged)
 	garden._thing(kind, node, p2, float(BUILDS[kind]["radius"]), int(BUILDS[kind]["price"]) / 2)
 	garden.things[-1]["placed"] = true
@@ -611,73 +785,151 @@ func node_by_name(name: String) -> HedgePetNode:
 	return null
 
 
-func _friends_tap(pet: HedgePetNode, p2: Vector2) -> void:
-	if pet_choice == "follow":
-		if pet == null:
-			toast("Tap a pet to ask it along.")
-			return
-		var name := pet.profile.pet_name
-		if following.has(name):
-			following.erase(name)
-			garden._wander[pet]["following"] = false
-			toast("%s goes back to pottering about." % name)
-		elif pet_state.get(name, "") != "resident":
-			toast("%s doesn't know you well enough yet. An apple in the bucket might do it (🪣)." % name)
-		elif following.size() >= MAX_FOLLOWERS:
-			toast("Three friends is plenty for one walk.")
-		else:
-			following.append(name)
-			garden._wander[pet]["following"] = true
-			pet.set_sleeping(false)
-			pet.tap()
-			toast("🐾 %s will follow you. Over the footbridge is the woods..." % name)
-		_refresh()
-		return
-	# the bucket
-	if carried != "":
-		if pet != null:
-			toast("The bucket's full: %s is in it. Tap the lawn to let them out." % carried)
-		elif not garden.BOUNDS.has_point(p2) or garden._blocked(p2, 0.6):
-			toast("Somewhere clear on the lawn.")
-		else:
-			put_down(Vector3(p2.x, 0, p2.y))
-		return
-	if pet == null:
-		toast("Tap a pet to offer it an apple in the bucket (🪙 %d)." % TREAT)
-	elif not garden.pet_mode(pet) in ["roam", "peek"]:
-		toast("%s is busy just now." % pet.profile.pet_name)
-	elif coins < TREAT:
-		toast("An apple costs 🪙 %d." % TREAT)
-	else:
-		bribe(pet)
-
-
-## An apple in the bucket: the pet climbs in after it, and you pick the bucket up.
-func bribe(pet: HedgePetNode) -> void:
-	coins -= TREAT
-	var name := pet.profile.pet_name
-	carried = name
-	following.erase(name)
-	var at := pet.position
-	var pail := GardenProps.paint_bucket(garden, Vector3(at.x, 0, at.z) + (garden.camera.global_position - at).normalized() * Vector3(1, 0, 1) * 0.6, 0.0)
-	Motion.appear(pail, Vector3.ONE)
-	var tw := Motion.channel(pet, "bucket")
-	tw.tween_property(pet, "position", pail.position + Vector3(0, 0.25, 0), Motion._d(Motion.BASE)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tw.parallel().tween_property(pet, "scale", Vector3.ONE * garden.PET_SCALE * 0.3, Motion._d(Motion.BASE))
-	tw.tween_callback(func() -> void:
-		garden.carry(pet)
-		Motion.float_away(pail, 1.0, 0.8, 0.3).tween_callback(pail.queue_free))
-	toast("🍎 %s climbed into the bucket after the apple. 🪣" % name)
+## ✋ on a bucket with someone in it: you pick it up and carry it, pet and all.
+func pick_up_bucket(t: Dictionary) -> void:
+	var s: Dictionary = {}
+	for sp in garden.hideouts.spots:
+		if sp["thing"] == t:
+			s = sp
+	var node: HedgePetNode = s["occupant"]
+	garden.hideouts._fill(s, node, false)
+	s["occupant"] = null
+	carried = node.profile.pet_name
+	following.erase(carried)
+	garden.carry(node)
+	_carried_bucket = t
+	garden.things.erase(t)
+	garden.hideouts.remove_spot(t)
+	Motion.channel(t["node"], "lift").tween_property(t["node"], "position:y", 0.6, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_SINE)
+	Motion.vanish(t["node"], false)
+	toast("🪣 You pick up the bucket with %s in it. Over the footbridge, if you like - or ✋ tap the lawn to set it down." % carried)
 	_refresh()
+
+
+var _carried_bucket = null           # the bucket thing you're carrying (off the lawn while you are)
 
 
 func put_down(at: Vector3) -> void:
 	var node := node_by_name(carried)
 	carried = ""
+	if _carried_bucket != null:                           # the bucket goes down where you are, and out they hop
+		var t: Dictionary = _carried_bucket
+		_carried_bucket = null
+		var bn: Node3D = t["node"]
+		bn.position = at
+		bn.visible = true
+		bn.scale = Vector3.ONE
+		Motion.appear(bn, Vector3.ONE)
+		t["at"] = Vector2(at.x, at.z) + t.get("offset", Vector2.ZERO)
+		t["moved"] = true
+		garden.things.append(t)
+		garden.hideouts.add_spot(t)
+		at += (garden.camera.global_position - at).normalized() * Vector3(1, 0, 1) * 0.8
 	if node != null:
 		garden.uncarry(node, at)
 		toast("%s hops out of the bucket." % node.profile.pet_name)
 	_refresh()
+
+
+# ------------------------------------------------------------------ pouring (💧): hedgepets love water
+const TRAIL_LIFE := 25.0             # seconds a wet patch lasts
+const LURE_REACH := 7.0              # how far off a hedgepet notices water being poured
+const FOLLOW_SECONDS := 150.0        # how long one that reached the water walks with you
+var _pour := Vector2.INF             # where you're pouring (screen), or INF
+var _pour_time := 0.0
+var _drip := 0.0
+var trail: Array = []                # {at: Vector2, age, node}
+var _following_for := {}             # pet name -> seconds left walking with you
+
+
+func pour_begin(screen: Vector2) -> void:
+	_pour = screen
+	_pour_time = 0.0
+
+
+func pour_move(screen: Vector2) -> void:
+	_pour = screen
+
+
+## Let go. False if it was really a tap (the garden treats it as one: water that plant, splash that pet).
+func pour_end(dragged: bool) -> bool:
+	_pour = Vector2.INF
+	return dragged or _pour_time > 0.35
+
+
+func _pouring(delta: float) -> void:
+	for d in trail.duplicate():                           # the wet patches dry
+		d["age"] += delta
+		if d["age"] > TRAIL_LIFE:
+			trail.erase(d)
+			Motion.vanish(d["node"], true, Motion.SLOW)
+	for name in _following_for.keys():
+		_following_for[name] -= delta
+		if _following_for[name] <= 0.0:
+			_following_for.erase(name)
+			following.erase(name)
+	if _pour == Vector2.INF:
+		return
+	_pour_time += delta
+	if _pour_time < 0.2:
+		return
+	var g: Vector3 = garden.ground_point(_pour)
+	if g == Vector3.INF:
+		return
+	var p := Vector2(g.x, g.z)
+	_drip -= delta
+	var last: Vector2 = trail[-1]["at"] if not trail.is_empty() else Vector2.INF
+	if _drip <= 0.0 or (last != Vector2.INF and last.distance_to(p) > 0.45):
+		_drip = 0.35
+		var wet := GardenProps.part(garden, GardenProps.blob(Vector3(0.32, 0.012, 0.28), "pebble"), GardenProps.mat("wetgrass", Color("26341e"), 0.3), Vector3(p.x, 0.012, p.y), Vector3(0, randf() * 360.0, 0), 0.0)
+		wet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		Motion.appear(wet, Vector3.ONE)
+		trail.append({"at": p, "age": 0.0, "node": wet})
+		if randf() < 0.4:
+			_splash(Vector3(p.x, 0.0, p.y))
+		for pl in plants:
+			if (pl["at"] as Vector2).distance_to(p) < 0.8:
+				pl["water"] = 1.0
+	_lure(p)
+
+
+## Every hedgepet near the water comes after it; the first to reach it walks with you; a trail that ends at an empty
+## bucket: the first to reach it climbs in.
+func _lure(p: Vector2) -> void:
+	var bucket: Dictionary = {}
+	for sp in garden.hideouts.spots:
+		if sp["kind"] == "bucket" and sp["occupant"] == null and Vector2(garden.hideouts.opening(sp).x, garden.hideouts.opening(sp).z).distance_to(p) < 0.9:
+			bucket = sp
+	for node: HedgePetNode in garden.pets:
+		var name := node.profile.pet_name
+		if not node.visible or garden.pet_mode(node) != "roam" or not pet_state.get(name, "") in ["visiting", "resident"]:
+			continue
+		var here := Vector2(node.position.x, node.position.z)
+		var d := here.distance_to(p)
+		if d > LURE_REACH:
+			continue
+		var w: Dictionary = garden._wander[node]
+		if node.sleeping:
+			node.set_sleeping(false)
+		if not bucket.is_empty() and d < 1.4:
+			bucket["occupant"] = node
+			garden.hideouts.enter(node, bucket)
+			bucket["lured"] = true
+			following.erase(name)
+			_pour = Vector2.INF
+			toast("💧 %s followed the water right into the bucket! Pick it up with ✋ to carry it." % name)
+			return
+		var to := p + (here - p).normalized() * 0.7
+		var t: Vector3 = garden._fit(Vector3(to.x, 0, to.y), node, w)
+		w["target"] = t
+		w["wait"] = 0.2
+		if d < 1.3 and not following.has(name) and following.size() < MAX_FOLLOWERS:
+			following.append(name)
+			w["following"] = true
+			node.tap()
+			toast("💧 %s loves the water. It'll walk with you a while." % name)
+		if following.has(name):
+			_following_for[name] = FOLLOW_SECONDS
 
 
 ## Back from the woods with a pet you let out there: it arrives beside where you're looking.
@@ -702,6 +954,7 @@ func _restore_friends() -> void:
 			following.erase(name)
 		else:
 			garden._wander[node]["following"] = true
+			_following_for[name] = FOLLOW_SECONDS
 
 
 ## Followers keep near whatever you're looking at: when you look away, they come over (walking, never blinking).
@@ -792,11 +1045,13 @@ func _thing_at(p: Vector2):
 	return best
 
 
-func _bed_at(p: Vector2):
+## The hole nearest p, within reach (the 🪏 wants you right on it; sowing is more forgiving).
+func _bed_at(p: Vector2, reach := 0.9):
+	var best = null
 	for b in seedbeds:
-		if p.distance_to(b["at"]) < 0.9:
-			return b
-	return null
+		if p.distance_to(b["at"]) < reach and (best == null or p.distance_to(b["at"]) < p.distance_to(best["at"])):
+			best = b
+	return best
 
 
 func _plant_at(p: Vector2):
@@ -807,12 +1062,97 @@ func _plant_at(p: Vector2):
 
 
 func _blocked_for_bed(p: Vector2) -> bool:
-	if not garden.BOUNDS.has_point(p) or garden._blocked(p, 0.4):
+	if not garden.BOUNDS.has_point(p) or garden._blocked(p, 0.12):
 		return true
 	for b in seedbeds:
-		if p.distance_to(b["at"]) < 1.6:
+		if p.distance_to(b["at"]) < ROW_STEP * 0.7:
 			return true
 	return false
+
+
+## Where a new hole goes: right where you tapped, or - beside another hole - one step along from it, joining its row
+## (any direction: rows, curves, a square plot).
+func _dig_spot(p: Vector2) -> Vector2:
+	var near = null
+	var best := ROW_STEP * 1.6
+	for b in seedbeds:
+		var d: float = p.distance_to(b["at"])
+		if d < best:
+			best = d
+			near = b
+	if near == null:
+		return p
+	var dir: Vector2 = (p - near["at"]).normalized() if p.distance_to(near["at"]) > 0.01 else Vector2.RIGHT
+	return near["at"] + dir * ROW_STEP
+
+
+func dirt_at(p: Vector2):
+	for d in dirt_piles:
+		if p.distance_to(d["at"]) < 0.22 + 0.07 * d["loads"]:
+			return d
+	return null
+
+
+## A load of dirt onto the pile beside `beside` (or a new pile, a step off to the side of the row).
+func add_dirt(near: Vector2, side: Vector2 = Vector2.ZERO, loads := 1) -> void:
+	for d in dirt_piles:
+		if near.distance_to(d["at"]) < 1.7 and d["loads"] < DIRT_MAX:
+			d["loads"] += loads
+			_dirt_look(d)
+			return
+	var at := near + side                                 # (no side: right there)
+	for k in range(8):                                    # somewhere clear of the beds
+		if not seedbeds.any(func(b) -> bool: return at.distance_to(b["at"]) < 0.7) and garden.BOUNDS.has_point(at):
+			break
+		at = near + Vector2.from_angle(k * TAU / 8.0) * 1.0
+	var d := {"at": at, "loads": loads, "node": null}
+	dirt_piles.append(d)
+	_dirt_look(d)
+
+
+func take_dirt(d: Dictionary) -> void:
+	d["loads"] -= 1
+	if d["loads"] <= 0:
+		dirt_piles.erase(d)
+		Motion.vanish(d["node"], true)
+	else:
+		_dirt_look(d)
+
+
+func _dirt_look(d: Dictionary) -> void:
+	var s: float = 0.6 + 0.2 * d["loads"]
+	if d["node"] == null:
+		var node := GardenProps.part(garden, GardenProps.blob(Vector3(0.36, 0.22, 0.32), {"exponent": 2.0, "flat_bottom": 0.5}), GardenProps.mat("dirtpile", Color("5c4230")), Vector3(d["at"].x, 0.0, d["at"].y), Vector3(0, randf() * 360.0, 0), 0.006)
+		node.name = "DirtPile"
+		d["node"] = node
+		Motion.appear(node, Vector3.ONE * s)
+	else:
+		Motion.channel(d["node"], "scale").tween_property(d["node"], "scale", Vector3.ONE * s, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Fill a hole back in (it goes; what was sown in it comes back as a seed).
+func fill_hole(bed: Dictionary) -> void:
+	if bed["plant"] != null:
+		unplant(bed["plant"])
+	seedbeds.erase(bed)
+	_burst_dirt(bed["at"])
+	Motion.vanish(bed["node"], true)
+
+
+## Dig up what's growing in a bed: a seed or sprout comes back as a seed (same as it was); a bigger plant goes on the
+## compost. The hole stays.
+func unplant(pl: Dictionary) -> void:
+	plants.erase(pl)
+	pl["bed"]["plant"] = null
+	if pl["node"] != null:
+		Motion.vanish(pl["node"], true)
+	if int(pl["stage"]) <= 1:
+		keep_seeds.append({"species": pl["species"], "genes": pl["genes"]})
+
+
+func _burst_dirt(at: Vector2) -> void:
+	if grab != null:
+		grab._burst(Vector3(at.x, 0.05, at.y), Color("6a5038"), 10, 1.0)
 
 
 func _clear(t: Dictionary) -> void:
@@ -831,8 +1171,29 @@ func _clear(t: Dictionary) -> void:
 
 func _dig(p: Vector2) -> Dictionary:
 	var bed := {"at": p, "node": null, "plant": null}
-	var node := GardenProps.part(garden, GardenProps.blob(Vector3(0.7, 0.06, 0.6), "pebble"), GardenProps.mat("seedbed", Color("6a5038")), Vector3(p.x, 0.0, p.y), Vector3(0, randf() * 360.0, 0), 0.0)
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color("6a5038")
+	m.roughness = 1.0
+	m.metallic_specular = 0.0
+	GardenProps.near_fade(m)
+	bed["mat"] = m
+	var yaw := randf() * 360.0
+	var link = null                                       # the hole it joins, if any
+	for b in seedbeds:
+		if p.distance_to(b["at"]) < ROW_STEP * 1.05:
+			link = b
+			break
+	if link != null:
+		var dir: Vector2 = p - link["at"]
+		yaw = rad_to_deg(atan2(-dir.y, dir.x))
+		link["node"].rotation_degrees.y = yaw if not link.get("linked", false) else link["node"].rotation_degrees.y
+		link["linked"] = true
+		bed["linked"] = true
+	var node := GardenProps.part(garden, GardenProps.blob(Vector3(0.52, 0.06, 0.4), "pebble"), m, Vector3(p.x, 0.0, p.y), Vector3(0, yaw, 0), 0.0)
 	node.name = "Seedbed"
+	if link != null:                                       # the soil between them: one long hole
+		var mid := (link["at"] as Vector2 - p) * 0.5
+		GardenProps.part(node, GardenProps.blob(Vector3(0.42, 0.055, 0.34), "pebble"), m, Vector3(mid.x, 0.0, mid.y).rotated(Vector3.UP, -deg_to_rad(yaw)), Vector3.ZERO, 0.0)
 	Motion.appear(node, Vector3.ONE)
 	bed["node"] = node
 	seedbeds.append(bed)
@@ -956,7 +1317,7 @@ func _thing_name(kind: String) -> String:
 func _thing_line(t: Dictionary) -> String:
 	return {"lawn_chair": "A tipped-over lawn chair. Cosy underneath, if you're small.",
 		"grill": "A rusty grill. Nobody's cooked on it in years.",
-		"sprinkler": "The sprinkler's broken - it just leaks. There's a nice puddle, though.",
+		"sprinkler": "The sprinkler's broken - it just leaks. There's a nice puddle, though. Hold ✋ on it to fix it." if not t.get("fixed", false) else "💦 The sprinkler. Every minute it sweeps about and waters the plants it reaches.",
 		"tire": "An old tire. Why is there always an old tire?",
 		"pot": "A tipped flowerpot. The soil's all over the place.",
 		"branch": "A fallen branch.", "stick": "A stick. Somebody might want this.",
@@ -978,7 +1339,6 @@ func _pet_line(pet: HedgePetNode) -> String:
 # ------------------------------------------------------------------ ui
 const TOAST_AT := Vector2(90, 140)
 const SEEDS_AT := Vector2(44, 1460)
-const PETS_AT := Vector2(220, 1650)
 const JOURNAL_AT := Vector2(90, 260)
 var _shown_coins := -1
 var _seeds_shown := false
@@ -1015,8 +1375,9 @@ func _refresh() -> void:
 		Motion.pulse(_coin_label, 1.25 if coins > _shown_coins else 0.9)
 	for t in _tool_buttons:
 		var b: Button = _tool_buttons[t]
-		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if t == tool else 0.55, Motion._d(Motion.FAST))
-		Motion.scale_to(b, 1.12 if t == tool else 1.0)
+		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if t == tool else 0.5, Motion._d(Motion.FAST))
+		Motion.scale_to(b, 1.15 if t == tool else 0.92)
+	_show_tool()
 	var want_seeds := tool == "seeds" or tool == "shears"
 	if want_seeds != _seeds_shown:
 		_seeds_shown = want_seeds
@@ -1031,17 +1392,8 @@ func _refresh() -> void:
 			Motion.slide_in(_build_row, BUILD_AT, Vector2(0, 26))
 		else:
 			Motion.fade(_build_row, 0.0, Motion.FAST)
-	var want_pets := tool == "pets"
-	if want_pets != _pets_shown:
-		_pets_shown = want_pets
-		if want_pets:
-			Motion.slide_in(_pets_row, PETS_AT, Vector2(0, 26))
-		else:
-			Motion.fade(_pets_row, 0.0, Motion.FAST)
-	for b in _pets_row.get_children():
-		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if b.name == pet_choice else 0.55, Motion._d(Motion.FAST))
 	_bucket_badge.visible = carried != ""
-	_bucket_badge.text = "🪣 %s is in the bucket" % carried
+	_bucket_badge.text = "🪣 You're carrying %s in the bucket. ✋ tap the lawn to set it down." % carried
 	for b in _build_row.get_children():
 		Motion.channel(b, "fade").tween_property(b, "modulate:a", 1.0 if b.name == build_choice else 0.55, Motion._d(Motion.FAST))
 		Motion.scale_to(b, 1.08 if b.name == build_choice else 1.0)
@@ -1052,12 +1404,36 @@ func _refresh() -> void:
 		_fill_journal()
 
 
+const TOOL_WORDS := {
+	"hand": "✋ Hand - tap to look and pet · hold on junk to yank and haul it · hold on broken things to mend them",
+	"shovel": "🪏 Shovel - dig (beside a hole: a row) · scoop dirt · fill a hole · dig up what you sowed",
+	"seeds": "🌱 Seeds - pick a plant, then tap a hole to sow it",
+	"shears": "✂️ Shears - pick a plant, then tap a pet to regraft it",
+	"build": "🧺 Build - pick a thing, tap the lawn · drag one to move it · tap it to turn it",
+	"water": "💧 Watering can - hold and drag to pour · hedgepets love water and follow it",
+}
+var _puck: Panel
+var _caption: Label
+var _shown_tool := ""
+
+
+## The chip glides behind the tool in your hand; the caption says what it does.
+func _show_tool() -> void:
+	var b: Button = _tool_buttons.get(tool)
+	if b == null or _puck == null:
+		return
+	var goal := b.global_position + b.size * 0.5 - _puck.size * 0.5
+	if _shown_tool == "":
+		_puck.position = goal
+	else:
+		Motion.channel(_puck, "move").tween_property(_puck, "position", goal, Motion._d(Motion.BASE)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if _shown_tool != tool:
+		_shown_tool = tool
+		_caption.text = TOOL_WORDS.get(tool, "")
+		Motion.slide_in(_caption, Vector2(40, 1672), Vector2(0, 14))
+
+
 func _fill_journal() -> void:
-	var total := 0
-	var found := 0
-	for p: CharacterArtProfile in garden.roster:
-		total += SpeciesBuilder.variants_of(p).size()
-		found += (discovered.get(p.pet_name, []) as Array).size()
 	var lines := "[b]Journal[/b]\n\n"
 	var counts := garden_counts()
 	var unseen: Array = []
@@ -1079,7 +1455,9 @@ func _fill_journal() -> void:
 	lines += "[b]Around the neighbourhood[/b]\n\n"
 	unseen.sort_custom(func(a, b) -> bool: return _missing(a.wants["notice"], counts) < _missing(b.wants["notice"], counts))
 	for p: CharacterArtProfile in unseen.slice(0, 4):
-		lines += "%s %s\n\n" % ["🐾", p.hints["notice"]]
+		var vs: Array = SpeciesBuilder.variants_of(p).map(func(v) -> String: return SpeciesBuilder.PLANT_NAMES.get(v, v))
+		lines += "🐾 %s [color=#7a6a50]Seen near gardens growing %s.[/color]\n\n" % [p.hints["notice"], " or ".join(vs.slice(0, 2)) if vs.size() <= 2 else ", ".join(vs.slice(0, vs.size() - 1)) + " or " + vs[vs.size() - 1]]
+	lines += "[color=#7a6a50]Room here for %d at once.[/color]\n" % capacity()
 	_journal_text.text = lines
 
 
@@ -1153,8 +1531,7 @@ func _build_ui() -> void:
 	_ui.add_child(panel)
 	panel.add_child(bar)
 	for t: Array in [["hand", "✋", "Hand: tap to pet and look; press and drag junk to yank it loose and haul it"], ["shovel", "🪏", "Shovel: dig a seedbed, scoop up a leaf pile or something you built"],
-			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["build", "🧺", "Build: put a feeder, bath, scarecrow... in the garden; drag one you built to move it, tap it to turn it"], ["water", "💧", "Water: watered plants grow"],
-			["pets", "🐾", "Friends: ask a pet to follow you, or bribe one into a bucket and carry it"]]:
+			["seeds", "🌱", "Seeds: plant in a seedbed"], ["shears", "✂️", "Shears: regraft a pet in the chosen plant"], ["build", "🧺", "Build: put a feeder, bath, scarecrow... in the garden; drag one you built to move it, tap it to turn it"], ["water", "💧", "Watering can: hold and drag to pour"]]:
 		var b := _button(t[1], t[2])
 		var key: String = t[0]
 		b.pressed.connect(func() -> void:
@@ -1165,6 +1542,31 @@ func _build_ui() -> void:
 			_refresh())
 		bar.add_child(b)
 		_tool_buttons[key] = b
+	# which tool is in your hand: a bright rounded chip behind it that glides to the chosen one, and its name and
+	# what it does just above the bar
+	_puck = Panel.new()
+	var chip := StyleBoxFlat.new()
+	chip.bg_color = Color(0.36, 0.52, 0.3, 0.95)
+	chip.set_corner_radius_all(30)
+	chip.border_color = Color(0.98, 0.94, 0.8)
+	chip.set_border_width_all(4)
+	_puck.add_theme_stylebox_override("panel", chip)
+	_puck.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_puck.size = Vector2(128, 118)
+	_ui.add_child(_puck)
+	_ui.move_child(_puck, panel.get_index() + 1)
+	_ui.move_child(panel, _puck.get_index())
+	_caption = Label.new()
+	_caption.add_theme_font_size_override("font_size", 30)
+	_caption.add_theme_color_override("font_color", Color(0.98, 0.95, 0.86))
+	_caption.add_theme_color_override("font_outline_color", Color(0.12, 0.1, 0.07, 0.75))
+	_caption.add_theme_constant_override("outline_size", 9)
+	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_caption.position = Vector2(40, 1672)
+	_caption.size = Vector2(1000, 80)
+	_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.add_child(_caption)
 	_seed_row = GridContainer.new()
 	_seed_row.columns = 8
 	_seed_row.position = SEEDS_AT
@@ -1176,6 +1578,8 @@ func _build_ui() -> void:
 		b.custom_minimum_size = Vector2(116, 90)
 		b.pressed.connect(func() -> void:
 			seed_choice = sp
+			var kept := keep_seeds.filter(func(k) -> bool: return k["species"] == sp).size()
+			toast("%s %s seeds (🪙 %d)%s. Tap a hole to sow." % [SEEDS[sp]["icon"], SpeciesBuilder.PLANT_NAMES.get(sp, sp), SEEDS[sp]["price"], (" - you have %d of your own, free" % kept) if kept > 0 else ""])
 			_refresh())
 		_seed_row.add_child(b)
 	_seed_row.visible = false
@@ -1192,24 +1596,11 @@ func _build_ui() -> void:
 		b.custom_minimum_size = Vector2(136, 90)
 		b.pressed.connect(func() -> void:
 			build_choice = kind
+			toast("%s A %s (🪙 %d). Tap the lawn to put it down." % [item["icon"], item["name"], item["price"]])
 			_refresh())
 		_build_row.add_child(b)
 	_build_row.visible = false
 	_ui.add_child(_build_row)
-	_pets_row = HBoxContainer.new()
-	_pets_row.position = PETS_AT
-	_pets_row.add_theme_constant_override("separation", 12)
-	for c: Array in [["follow", "🐾 Follow me", "Ask a pet that lives here to follow you (into the woods too)"], ["bucket", "🪣 Bucket 🍎%d" % TREAT, "Bribe a pet into the bucket with an apple, and carry it"]]:
-		var b := _button(str(c[1]), str(c[2]), 34)
-		b.name = str(c[0])
-		b.custom_minimum_size = Vector2(300, 90)
-		var key: String = c[0]
-		b.pressed.connect(func() -> void:
-			pet_choice = key
-			_refresh())
-		_pets_row.add_child(b)
-	_pets_row.visible = false
-	_ui.add_child(_pets_row)
 	_bucket_badge = Label.new()
 	_bucket_badge.add_theme_font_size_override("font_size", 32)
 	_bucket_badge.add_theme_color_override("font_color", Color(0.3, 0.24, 0.16))
@@ -1248,6 +1639,8 @@ func save() -> void:
 		"last_visit": Time.get_unix_time_from_system(),
 		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
 		"following": following, "carried": carried, "nursery": nursery, "keep_seeds": keep_seeds, "woods_finds": woods_finds,
+		"dirt": dirt_piles.map(func(d) -> Array: return [d["at"].x, d["at"].y, d["loads"]]), "shovelful": shovelful,
+		"barrow": {"x": barrow["node"].position.x, "z": barrow["node"].position.z, "load": int(barrow.get("load", 0))} if barrow.has("node") else {},
 		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["node"].position.x, "z": b["node"].position.z, "yaw": b["node"].rotation_degrees.y})}
 	var present := {}
 	for t in garden.things:
@@ -1356,6 +1749,17 @@ func _load() -> void:
 	if wf is Dictionary:
 		woods_finds["taken"] = wf.get("taken", {}) if wf.get("taken", {}) is Dictionary else {}
 		woods_finds["basket"] = wf.get("basket", {}) if wf.get("basket", {}) is Dictionary else {}
+	for d in data.get("dirt", []):
+		if d is Array and d.size() == 3:
+			var pile := {"at": Vector2(float(d[0]), float(d[1])), "loads": int(d[2]), "node": null}
+			dirt_piles.append(pile)
+			_dirt_look(pile)
+	shovelful = bool(data.get("shovelful", false))
+	var bw = data.get("barrow", {})
+	if bw is Dictionary and bw.has("x") and barrow.has("node"):
+		barrow["node"].position = Vector3(float(bw["x"]), 0, float(bw["z"]))
+		barrow["at"] = Vector2(float(bw["x"]), float(bw["z"]))
+		grab.barrow_load(barrow, int(bw.get("load", 0)))
 	keep_seeds = (data.get("keep_seeds", []) as Array).filter(func(k) -> bool: return k is Dictionary and SEEDS.has(str(k.get("species", ""))))
 	var saved: Dictionary = data.get("pets", {})
 	for name in saved:

@@ -11,7 +11,7 @@ extends Node3D
 const DATA := "res://assets/talk/nursery.json"
 const RECENT := 24                       # lines she won't repeat until this many others have been said
 const GIFT_VISIT := 3
-const PRICES := {"cone": 1, "acorn": 1, "mushroom": 2, "feather": 2}
+const PRICES := {"cone": 1, "acorn": 1, "mushroom": 2, "feather": 2, "apple": 1}
 
 var woods: Node3D
 var game: Node
@@ -96,7 +96,7 @@ func _build() -> void:
 	GardenProps.lantern(self, bench + Vector3(1.25, 0, 0.1), 180.0)
 	var lamp := OmniLight3D.new()
 	lamp.light_color = Color("ffc47e")
-	lamp.light_energy = 2.2
+	lamp.light_energy = 0.8
 	lamp.omni_range = 8.0
 	lamp.position = bench + Vector3(0.9, 1.6, 0.3)
 	add_child(lamp)
@@ -189,8 +189,8 @@ func _build_glasshouse(at: Vector3) -> void:
 		GardenProps.part(g, GardenProps.blob(Vector3(s, s * 1.1, s), {"exponent": 2.0}), leaf, p + Vector3(0, s, 0), Vector3(0, rng.randf() * 360, 0), 0.008)
 	var light := OmniLight3D.new()
 	light.light_color = Color("ffd49a")
-	light.light_energy = 2.6
-	light.omni_range = 7.0
+	light.light_energy = 1.0
+	light.omni_range = 6.0
 	light.position = Vector3(0, 1.4, 0)
 	g.add_child(light)
 
@@ -459,6 +459,7 @@ func _trade_line(kinds: Array) -> String:
 		"acorn": "Acorns. I'll plant a few and give the rest back to the squirrels. They'll only take them anyway.",
 		"mushroom": "Mind, I don't eat these. I draw them. They sit still better than birds do.",
 		"feather": "A jay's feather. They drop them like they're showing off. Which they are.",
+		"apple": "From the old tree at the cellar hole? Nobody's pruned that in a hundred years. Best apples in the county.",
 	}
 	return lines.get(kinds.pick_random(), "I'll find a use for these. I always do.")
 

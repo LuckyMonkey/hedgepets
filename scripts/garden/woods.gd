@@ -6,11 +6,15 @@ extends Elsewhere
 ## the garden) trail along behind and gather round when you stop; a pet you're carrying (🪣) rides in its bucket and
 ## sits beside you, and "Let out" turns it into one more follower.
 ##
+## Daytime under the trees: deep blue-green shade, a blue haze between the trunks, and the morning sun coming through
+## in places - sunbeams slanting down (the garden's light-shaft shader), motes drifting in them, the canopy's shadows
+## dappling the trails.
+##
 ## Clearings (NODES) and the trails between them (EDGES): the trailhead by the creek, the mossy fork (the hub, mossy
 ## boulders), the fern hollow down low (ferns), the ridge up high (an overlook: the land falls away to a misty valley,
-## far hills, a few porch lights, the moon), the creek crossing (a real creek in its channel, stepping stones where the
+## far hills, the morning sun), the creek crossing (a real creek in its channel, stepping stones where the
 ## trails cross it), the old oak (one huge tree alone in its glade), and the nursery (nursery.gd). Dark, but kind:
-## lanterns at every clearing, fireflies, moonlight, stars. Never spooky.
+## lanterns at every clearing, sunbeams, motes in the light. Never spooky.
 ##
 ## Finds (FINDS, SPOTS): litter to pick up, dumped junk to work loose, and what the woods drop - pine cones, acorns,
 ## mushrooms and feathers for the basket (the nursery buys them), and wild seeds to sow. Tap them from the clearing.
@@ -27,8 +31,15 @@ const NODES := {
 	"creek": {"at": Vector2(-28, -64), "lift": -3.0, "name": "Creek crossing"},
 	"oak": {"at": Vector2(4, -70), "lift": 2.0, "name": "The old oak", "room": 10.0},
 	"nursery": {"at": Vector2(24, -16), "lift": 0.5, "name": "The nursery", "flat": 9.0, "room": 12.0},
+	"pond": {"at": Vector2(-26, -92), "lift": -3.0, "name": "Beaver pond", "room": 8.0},
+	"cellar": {"at": Vector2(-40, -14), "lift": 1.0, "name": "The cellar hole", "room": 8.0},
 }
-const EDGES := [["trailhead", "fork"], ["fork", "hollow"], ["fork", "ridge"], ["hollow", "creek"], ["ridge", "oak"], ["creek", "oak"], ["fork", "nursery"]]
+const EDGES := [["trailhead", "fork"], ["fork", "hollow"], ["fork", "ridge"], ["hollow", "creek"], ["ridge", "oak"], ["creek", "oak"], ["fork", "nursery"],
+	["creek", "pond"], ["pond", "oak"], ["trailhead", "cellar"], ["cellar", "hollow"]]
+## The beaver pond (its middle, how wide), and the old farmhouse's cellar hole.
+const POND_AT := Vector2(-18.5, -96.0)
+const POND_R := 6.5
+const CELLAR_AT := Vector2(-46.0, -17.0)
 ## Trails that don't lead anywhere yet: a few overgrown metres and a sign. {id: {from, toward: Vector2, name}}
 const STUBS := {}
 ## The creek: a channel through the creek crossing's clearing (it stands on one bank; both its trails cross).
@@ -36,6 +47,8 @@ const CREEK_AT := Vector2(-23.8, -60.5)
 const CREEK_DIR := Vector2(-0.643, 0.766)
 ## From the ridge, the way the land falls away (east-northeast, toward the moon).
 const VIEW_DIR := Vector2(0.89, -0.456)
+## Toward the sun: low in the morning sky, out past the ridge.
+const TO_SUN := Vector3(0.55, 0.5, -0.32)
 ## Things to find, and what each is. what: litter (a coin, gone for good), junk (a few tugs, more coins, gone for good),
 ## forage (into the basket for the nursery; grows back), seeds (wild seeds to sow; grow back).
 const FINDS := {
@@ -50,6 +63,7 @@ const FINDS := {
 	"acorn": {"what": "forage", "say": "Acorns, a handful. Into the basket."},
 	"mushroom": {"what": "forage", "say": "A mushroom, picked carefully. Into the basket."},
 	"feather": {"what": "forage", "say": "A blue jay's feather. Into the basket."},
+	"apple": {"what": "forage", "say": "An apple off the old tree. Small and sour and perfect. Into the basket."},
 	"seeds": {"what": "seeds"},
 }
 const SPOTS := {
@@ -59,8 +73,11 @@ const SPOTS := {
 	"ridge": ["can", "drum", "cone", "feather", "seeds"],
 	"creek": ["bottle", "tire", "line", "acorn", "seeds"],
 	"oak": ["wrapper", "acorn", "mushroom", "feather", "seeds"],
+	"pond": ["bottle", "can", "feather", "cone", "seeds"],
+	"cellar": ["can", "bottle", "apple", "acorn", "seeds"],
 }
-const WILD_SEEDS := {"trailhead": "clover", "fork": "moss", "hollow": "fern", "ridge": "pine", "creek": "willow", "oak": "oak"}
+const WILD_SEEDS := {"trailhead": "clover", "fork": "moss", "hollow": "fern", "ridge": "pine", "creek": "willow", "oak": "oak",
+	"pond": "willow", "cellar": "rose"}
 const REGROW := 20.0 * 60.0                      # seconds of real time before what the woods drop is back
 
 var _noise: FastNoiseLite
@@ -85,6 +102,7 @@ var _told := false
 var _finds: Array = []                # {id, kind, at (node id), node: Node3D, tugs}
 var _basket_label: Label
 var nursery: Node3D                   # nursery.gd
+var campfire: Node3D                  # fire_pit.gd, in fern hollow
 var basket: Dictionary:
 	get:
 		return garden.game.woods_finds["basket"]
@@ -136,6 +154,10 @@ func height(x: float, z: float) -> float:
 	if s > 3.0:                                          # past the ridge's edge the land falls away
 		var lat := rv.dot(VIEW_DIR.orthogonal())
 		v -= 20.0 * smoothstep(3.0, 22.0, s) * exp(-lat * lat / (2.0 * 20.0 * 20.0))
+	var dp := Vector2(x, z).distance_to(POND_AT)                # the pond's bowl
+	v -= 1.6 * smoothstep(POND_R + 2.5, POND_R - 1.5, dp)
+	var dc := (Vector2(x, z) - CELLAR_AT).abs()                 # the cellar hole: a square pit, stone-lined
+	v -= 1.2 * smoothstep(3.6, 2.8, maxf(dc.x, dc.y))
 	return v - _channel(x, z)
 
 
@@ -209,31 +231,48 @@ func _build() -> void:
 	for id in _labels:
 		for way: Dictionary in _labels[id]:
 			way["label"] = _sign(id, way["dir"], str(way["name"]))
-	var moon := MeshInstance3D.new()
+	var to_sun := TO_SUN.normalized()
+	var disc := MeshInstance3D.new()                      # the sun, seen from the ridge
 	var ms := SphereMesh.new()
-	ms.radius = 7.0
-	ms.height = 14.0
-	moon.mesh = ms
-	var mm := StandardMaterial3D.new()
-	mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mm.albedo_color = Color("ece6cc")
-	mm.disable_fog = true
-	moon.material_override = mm
-	moon.position = node_pos("ridge") + Vector3(VIEW_DIR.x * 0.85, 0.3, VIEW_DIR.y * 0.85 - 0.25).normalized() * 220.0
-	add_child(moon)
-	_stars(rng)
+	ms.radius = 6.0
+	ms.height = 12.0
+	disc.mesh = ms
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.albedo_color = Color("fff6dc")
+	dm.disable_fog = true
+	disc.material_override = dm
+	disc.position = node_pos("ridge") + to_sun * 260.0
+	add_child(disc)
 	_far_valley(rng)
-	var moonlight := DirectionalLight3D.new()
-	moonlight.light_color = Color("c4cede")
-	moonlight.light_energy = 0.18
-	moonlight.rotation_degrees = Vector3(-35, 145, 0)
-	add_child(moonlight)
-	var env := dark_env(Color("0c130e"), Color("4a5a44"), 0.7)
+	var sun := DirectionalLight3D.new()
+	sun.light_color = Color("ffe4b8")
+	sun.light_energy = 1.15
+	sun.shadow_enabled = true
+	sun.directional_shadow_max_distance = 40.0
+	sun.basis = Basis.looking_at(-to_sun, Vector3.UP)
+	add_child(sun)
+	var sky := ProceduralSkyMaterial.new()
+	sky.sky_top_color = Color("5a86b4")
+	sky.sky_horizon_color = Color("c4d4dc")
+	sky.ground_bottom_color = Color("24342c")
+	sky.ground_horizon_color = Color("6a8494")
+	sky.sun_angle_max = 8.0
+	var env := Environment.new()
+	env.background_mode = Environment.BG_SKY
+	env.sky = Sky.new()
+	env.sky.sky_material = sky
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color("38506a")                 # the shade is blue
+	env.ambient_light_energy = 0.95
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	env.fog_enabled = true
-	env.fog_light_color = Color("101a12")
-	env.fog_density = 0.012
+	env.fog_light_color = Color("47637a")                     # and the distance is a blue haze
+	env.fog_density = 0.016
+	env.fog_sky_affect = 0.0
 	env.fog_height = ORIGIN.y + node_pos("ridge").y - 9.0       # mist lies in the low ground; the ridge is above it
-	env.fog_height_density = 0.12
+	env.fog_height_density = 0.06
+	_sunbeams(rng, to_sun)
 	cam = Camera3D.new()
 	cam.fov = 70.0
 	cam.near = 0.08
@@ -432,6 +471,8 @@ func _keep_open(p: Vector2, rng: RandomNumberGenerator) -> bool:
 	var s := rv.dot(VIEW_DIR)
 	if s > 1.0 and absf(rv.dot(VIEW_DIR.orthogonal())) < 7.0 + s * 0.9:
 		return s < 20.0 or rng.randf() < 0.75
+	if p.distance_to(POND_AT) < POND_R + 2.0 or p.distance_to(CELLAR_AT) < 6.5:
+		return true
 	return p.distance_to(_oak_at()) < 13.0
 
 
@@ -505,7 +546,7 @@ func _undergrowth(rng: RandomNumberGenerator) -> void:
 func _clearings(rng: RandomNumberGenerator) -> void:
 	var fly := StandardMaterial3D.new()
 	fly.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	fly.albedo_color = Color("fff2a0")
+	fly.albedo_color = Color("fff2cc")                          # motes, drifting (daytime: not fireflies)
 	var dot := SphereMesh.new()
 	dot.radius = 0.035
 	dot.height = 0.07
@@ -526,8 +567,8 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 		GardenProps.lantern(self, spot, rad_to_deg(a))
 		var light := OmniLight3D.new()
 		light.light_color = Color("ffbe72")
-		light.light_energy = 1.6
-		light.omni_range = 9.0
+		light.light_energy = 0.45                                  # lit, but it's daytime: a little warmth in the shade
+		light.omni_range = 6.0
 		light.position = spot + Vector3(0, 1.4, 0)
 		add_child(light)
 		for k in range(3):
@@ -549,6 +590,11 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 	_ridge(rng)
 	_mossy_fork(rng)
 	_trailhead_board()
+	_pond(rng)
+	_cellar_hole(rng)
+	var camp := node_pos("hollow") + Vector3(2.6, 0, -1.8)     # a ring of stones in fern hollow: tap it to light it
+	camp.y = height(camp.x, camp.z)
+	campfire = preload("res://scripts/garden/fire_pit.gd").build(self, camp, 0.0)
 
 
 func _clear_spot(c: Vector3, r: float, rng: RandomNumberGenerator) -> Vector3:
@@ -669,7 +715,7 @@ func _creek(rng: RandomNumberGenerator) -> void:
 	water.roughness = 0.05
 	water.metallic_specular = 1.0
 	water.emission_enabled = true
-	water.emission = Color("1c2c34")
+	water.emission = Color("0c161c")
 	water.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var node := MeshInstance3D.new()
 	node.mesh = st.commit()
@@ -729,7 +775,7 @@ func _far_valley(rng: RandomNumberGenerator) -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(1400, 1400)
 	floor.mesh = plane
-	floor.material_override = GardenProps.mat("valleyfloor", Color("16201a"))
+	floor.material_override = GardenProps.mat("valleyfloor", Color("2a3a2c"))
 	floor.position = Vector3(r.x, base, r.z)
 	add_child(floor)
 	var heading := atan2(VIEW_DIR.y, VIEW_DIR.x)
@@ -739,7 +785,7 @@ func _far_valley(rng: RandomNumberGenerator) -> void:
 		var d := lerpf(80.0, 360.0, far) + rng.randf_range(-15.0, 15.0)
 		var size := lerpf(40.0, 120.0, far) * rng.randf_range(0.8, 1.2)
 		var m := StandardMaterial3D.new()
-		m.albedo_color = Color("1e2c24").lerp(Color("4a5a62"), far * 0.85)
+		m.albedo_color = Color("2c4034").lerp(Color("9cb0bc"), far * 0.85)   # paler and bluer with distance
 		m.roughness = 1.0
 		m.disable_fog = true
 		var h := MeshInstance3D.new()
@@ -762,21 +808,67 @@ func _far_valley(rng: RandomNumberGenerator) -> void:
 		sheet.position = Vector3(r.x, base + 3.0 + k * 2.5, r.z) + Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 470.0
 		sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(sheet)
-	var glow := StandardMaterial3D.new()
-	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	glow.albedo_color = Color("ffcf86")
-	glow.disable_fog = true
+
+
+## Where the sun gets through: a slanting beam (two crossed cards, the garden's light-shaft shader, stronger). A couple near most clearings (off to the side, never in your face), more along
+## the trails.
+func _sunbeams(rng: RandomNumberGenerator, to_sun: Vector3) -> void:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/light_shaft.gdshader")
+	var spots: Array = []
+	for id in NODES:
+		for k in range(2 if id != "nursery" else 1):
+			var c: Vector2 = NODES[id]["at"]
+			spots.append(c + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(4.0, 8.0))
+	for e in _paths:
+		var pts: PackedVector3Array = e["pts"]
+		for i in range(6, pts.size() - 6, 14):
+			if rng.randf() < 0.6:
+				spots.append(Vector2(pts[i].x, pts[i].z) + Vector2(rng.randf_range(-2.0, 2.0), rng.randf_range(-2.0, 2.0)))
+	var side := to_sun.cross(Vector3.FORWARD if absf(to_sun.z) < 0.9 else Vector3.RIGHT).normalized()
+	for p: Vector2 in spots:
+		var at := Vector3(p.x, height(p.x, p.y), p.y)
+		var beam := Node3D.new()
+		beam.name = "Sunbeam"
+		add_child(beam)
+		beam.position = at
+		beam.basis = Basis(side, to_sun, side.cross(to_sun).normalized())
+		var mi := m.duplicate() as ShaderMaterial
+		mi.set_shader_parameter("seed", rng.randf())
+		mi.set_shader_parameter("strength", rng.randf_range(0.02, 0.032))
+		mi.set_shader_parameter("colour", Color("ffe6b4"))
+		var w := rng.randf_range(0.8, 2.0)
+		for k in range(2):
+			var card := MeshInstance3D.new()
+			var q := QuadMesh.new()
+			q.size = Vector2(w, 20.0)
+			card.mesh = q
+			card.material_override = mi
+			card.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			card.rotation.y = k * PI * 0.5
+			card.position = Vector3(0, 10.0, 0)
+			beam.add_child(card)
+		for k in range(4):                                # motes, turning slowly in the light
+			_fireflies.append(_mote(at + to_sun * rng.randf_range(0.8, 3.5) + Vector3(rng.randf_range(-0.4, 0.4), 0, rng.randf_range(-0.4, 0.4)), rng))
+
+
+func _mote(at: Vector3, rng: RandomNumberGenerator) -> Node3D:
+	var f := MeshInstance3D.new()
 	var dot := SphereMesh.new()
-	dot.radius = 0.5
-	dot.height = 1.0
-	for k in range(7):                                    # somebody's porch light
-		var a := heading + rng.randf_range(-0.45, 0.45)
-		var d := rng.randf_range(70.0, 160.0)
-		var l := MeshInstance3D.new()
-		l.mesh = dot
-		l.material_override = glow
-		l.position = Vector3(r.x + cos(a) * d, base + 1.0, r.z + sin(a) * d)
-		add_child(l)
+	dot.radius = 0.018
+	dot.height = 0.036
+	dot.radial_segments = 4
+	dot.rings = 2
+	f.mesh = dot
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color("fff2cc")
+	f.material_override = m
+	f.position = at
+	f.set_meta("home", at)
+	f.set_meta("phase", rng.randf() * TAU)
+	add_child(f)
+	return f
 
 
 func _stars(rng: RandomNumberGenerator) -> void:
@@ -819,6 +911,89 @@ func _mossy_fork(rng: RandomNumberGenerator) -> void:
 		var size := rng.randf_range(0.7, 1.4)
 		GardenProps.rock(self, p - Vector3(0, 0.2, 0), size, rng)
 		GardenProps.part(self, GardenProps.blob(Vector3(size * 0.9, size * 0.28, size * 0.7), {"exponent": 2.2}), moss, p + Vector3(0, size * 0.42, 0), Vector3(0, rng.randf_range(0, 360), 0), 0.006)
+
+
+## Beaver pond: still water in a bowl, the lodge (a dome of sticks and mud) out in it, a dam of sticks across the low
+## end, lily pads, cattails round the edge, a few gnawed stumps.
+func _pond(rng: RandomNumberGenerator) -> void:
+	var rim := INF
+	for k in range(16):
+		var a := k * TAU / 16.0
+		var q := POND_AT + Vector2.from_angle(a) * (POND_R + 0.5)
+		rim = minf(rim, height(q.x, q.y))
+	var y := rim - 0.25
+	var water := StandardMaterial3D.new()
+	water.albedo_color = Color(0.2, 0.3, 0.36, 0.92)
+	water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	water.roughness = 0.05
+	water.metallic_specular = 1.0
+	water.emission_enabled = true
+	water.emission = Color("0c161c")
+	var disc := GardenProps.part(self, GardenProps.cyl(POND_R + 0.6, POND_R + 0.6, 0.04, 32), water, Vector3(POND_AT.x, y, POND_AT.y), Vector3.ZERO, 0.0)
+	disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var sticks := GardenProps.mat("lodgesticks", Color("5a4a36"))
+	var lodge := Vector3(POND_AT.x + 1.5, y, POND_AT.y - 1.0)
+	GardenProps.part(self, GardenProps.blob(Vector3(1.7, 1.0, 1.5), {"exponent": 2.0, "flat_bottom": 0.6}), GardenProps.mat("lodgemud", Color("4a3c2e")), lodge, Vector3.ZERO, 0.014)
+	for k in range(26):
+		var a := rng.randf() * TAU
+		var up := rng.randf_range(0.1, 0.8)
+		var at := lodge + Vector3(cos(a) * 1.5 * (1.0 - up * 0.6), up, sin(a) * 1.3 * (1.0 - up * 0.6))
+		GardenProps.part(self, GardenProps.cyl(0.025, 0.035, rng.randf_range(0.9, 1.6), 5), sticks, at, Vector3(rng.randf_range(40, 80), rng.randf_range(0, 360), 0), 0.0)
+	var low := POND_AT + Vector2(-POND_R, 1.5)                  # the dam across the low end
+	for k in range(40):
+		var along := rng.randf_range(-3.0, 3.0)
+		var at := Vector3(low.x + rng.randf_range(-0.4, 0.4), y + rng.randf_range(-0.1, 0.4), low.y + along)
+		GardenProps.part(self, GardenProps.cyl(0.03, 0.04, rng.randf_range(0.8, 1.5), 5), sticks, at, Vector3(rng.randf_range(60, 100), rng.randf_range(-30, 30), rng.randf_range(-20, 20)), 0.0)
+	var pad := GardenProps.mat("lilypad", Color("4a6a34"))
+	for k in range(14):
+		var q := POND_AT + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(2.5, POND_R - 0.5)
+		GardenProps.part(self, GardenProps.cyl(0.32, 0.32, 0.015, 10), pad, Vector3(q.x, y + 0.03, q.y), Vector3.ZERO, 0.0)
+		if rng.randf() < 0.3:
+			GardenProps.part(self, GardenProps.blob(Vector3(0.09, 0.06, 0.09), "pebble"), GardenProps.mat("lily", Color("f2ece4")), Vector3(q.x, y + 0.08, q.y), Vector3.ZERO, 0.0)
+	for k in range(10):
+		var q := POND_AT + Vector2.from_angle(rng.randf() * TAU) * (POND_R + rng.randf_range(0.2, 1.0))
+		if not _near_trail(q, 1.2):
+			GardenProps.cattails(self, Vector3(q.x, height(q.x, q.y), q.y), rng)
+	for k in range(4):                                      # stumps, gnawed to a point
+		var q := POND_AT + Vector2.from_angle(rng.randf() * TAU) * (POND_R + rng.randf_range(1.5, 3.0))
+		var gy := height(q.x, q.y)
+		GardenProps.part(self, GardenProps.cyl(0.0, 0.22, 0.55, 8), GardenProps.mat("gnawed", Color("c8a878")), Vector3(q.x, gy + 0.27, q.y), Vector3.ZERO, 0.008)
+
+
+## The cellar hole: all that's left of a farmhouse - a square of dry-laid stone round a pit, a granite step, the
+## chimney's base, an old lilac grown huge, and the apple tree that was in the dooryard.
+func _cellar_hole(rng: RandomNumberGenerator) -> void:
+	var c := Vector3(CELLAR_AT.x, height(CELLAR_AT.x, CELLAR_AT.y), CELLAR_AT.y)
+	var stone := GardenProps.mat("cellarstone", Color("7e7a70"))
+	for side in range(4):
+		var a := side * PI * 0.5
+		var along := Vector3(cos(a), 0, sin(a))
+		var out := Vector3(-sin(a), 0, cos(a))
+		for k in range(9):
+			var at := c + out * 3.2 + along * (-3.2 + k * 0.8)
+			at.y = height(at.x, at.z)
+			for course in range(2):
+				GardenProps.part(self, GardenProps.blob(Vector3(0.42, 0.18, 0.3) * rng.randf_range(0.8, 1.2), "pebble"), stone, at + Vector3(rng.randf_range(-0.1, 0.1), -0.2 - course * 0.32, 0), Vector3(0, rad_to_deg(a) + rng.randf_range(-10, 10), 0), 0.008)
+	var step := c + Vector3(0, 0, 3.7)
+	step.y = height(step.x, step.z)
+	GardenProps.part(self, GardenProps.box(Vector3(1.3, 0.22, 0.5)), GardenProps.mat("granite", Color("9a968c")), step + Vector3(0, 0.05, 0), Vector3(0, 0, 2), 0.01)
+	var chimney := c + Vector3(-1.6, 0, -1.4)
+	chimney.y = height(chimney.x, chimney.z)
+	GardenProps.part(self, GardenProps.box(Vector3(0.9, 1.3, 0.9)), stone, chimney + Vector3(0, 0.3, 0), Vector3(0, 8, 0), 0.012)
+	var lilac := c + Vector3(-4.6, 0, -1.6)
+	lilac.y = height(lilac.x, lilac.z)
+	GardenProps.part(self, GardenProps.blob(Vector3(1.6, 1.4, 1.5), {"exponent": 2.0}), GardenProps.mat("lilacleaf", Color("3a5030")), lilac + Vector3(0, 1.3, 0), Vector3.ZERO, 0.01)
+	for k in range(9):
+		var q := lilac + Vector3(rng.randf_range(-1.3, 1.3), rng.randf_range(1.5, 2.4), rng.randf_range(-1.2, 1.2))
+		GardenProps.part(self, GardenProps.blob(Vector3(0.14, 0.22, 0.14), "pebble"), GardenProps.mat("lilacbloom", Color("a98ac8")), q, Vector3.ZERO, 0.0)
+	var apple := c + Vector3(-2.4, 0, 5.0)
+	apple.y = height(apple.x, apple.z)
+	var bark := GardenProps.mat("applebark", Color("4a3c30"))
+	GardenProps.part(self, GardenProps.cyl(0.18, 0.28, 2.4, 9), bark, apple + Vector3(0, 1.2, 0), Vector3(0, 0, 8), 0.01)
+	GardenProps.part(self, GardenProps.blob(Vector3(2.2, 1.4, 2.0), {"exponent": 2.0}), GardenProps.mat("applecrown", Color("3a4c28")), apple + Vector3(0.3, 3.0, 0), Vector3.ZERO, 0.0)
+	for k in range(14):
+		var q := apple + Vector3(rng.randf_range(-1.8, 2.2), rng.randf_range(2.2, 3.6), rng.randf_range(-1.6, 1.6))
+		GardenProps.part(self, GardenProps.blob(Vector3(0.07, 0.07, 0.07), "pebble"), GardenProps.mat("redapple", Color("b8402e")), q, Vector3.ZERO, 0.0)
 
 
 ## The trailhead: a little roofed board where a map would go.
@@ -875,6 +1050,8 @@ func _find_look(h: Node3D, kind: String, rng: RandomNumberGenerator) -> void:
 			for k in range(3):
 				var o := Vector3(rng.randf_range(-0.06, 0.06), 0.02, rng.randf_range(-0.06, 0.06))
 				GardenProps.part(h, GardenProps.blob(Vector3(0.022, 0.03, 0.022), "pebble"), GardenProps.mat("acorn", Color("a87a3a")), o, Vector3(80, k * 50, 0), 0.0)
+		"apple":
+			GardenProps.part(h, GardenProps.blob(Vector3(0.05, 0.048, 0.05), "pebble"), GardenProps.mat("redapple", Color("b8402e")), Vector3(0, 0.045, 0), Vector3.ZERO, 0.004)
 		"mushroom":
 			GardenProps.part(h, GardenProps.cyl(0.02, 0.028, 0.1, 8), GardenProps.mat("mushstem", Color("e6dcc4")), Vector3(0, 0.05, 0), Vector3.ZERO, 0.003)
 			GardenProps.part(h, GardenProps.blob(Vector3(0.07, 0.04, 0.07), "dome"), GardenProps.mat("mushcap", Color("a8583a")), Vector3(0, 0.1, 0), Vector3.ZERO, 0.004)
@@ -1245,6 +1422,9 @@ func _tap(at: Vector2) -> void:
 			garden.game.toast(["%s sniffs the night air.", "%s's leaves rustle. It likes it out here.", "%s looks up at the trees, then at you.", "%s is right behind you."].pick_random() % node.profile.pet_name)
 			return
 	if _at == "nursery" and nursery.tap(at, cam):
+		return
+	if _at == "hollow" and not cam.is_position_behind(campfire.global_position) and cam.unproject_position(campfire.global_position + Vector3(0, 0.3, 0)).distance_to(at) < 130.0:
+		campfire.tapped(garden.game)
 		return
 	var f := _find_at(at)
 	if not f.is_empty():

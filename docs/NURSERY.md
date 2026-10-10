@@ -70,6 +70,12 @@ Small things glint.
 Forage and seeds grow back after 20 minutes of real time (`REGROW`). Nothing expires, and nothing is lost by staying
 away. The 🌱 tool sows a kept seed (from the nursery or the woods) before buying a packet of that kind.
 
+## Daytime in the woods
+
+The woods are always a bright morning outside and deep blue-green shade under the trees. There's a sky with the sun
+out past the ridge, a blue haze between the trunks, canopy shadows, and about 40 slanting sunbeams (the garden's
+`light_shaft.gdshader`, stronger) with motes turning in them. The lanterns are lit but low.
+
 ## The places look like their names
 
 - **Mossy fork:** mossy boulders.
@@ -80,7 +86,11 @@ away. The 🌱 tool sows a kept seed (from the nursery or the woods) before buyi
   cross it on stepping stones.
 - **Old oak:** one huge tree alone in a glade, with furrowed bark, roots, a hollow and a crown of six great limbs.
 - **Trailhead:** a roofed board.
-- **Night sky:** 260 stars.
+- **Beaver pond** (off the creek crossing and the old oak): still water in a bowl, a lodge of sticks and mud, a dam,
+  lily pads, cattails, and stumps gnawed to a point.
+- **Cellar hole** (off the trailhead and fern hollow): the stone-lined pit of a long-gone farmhouse, with a granite
+  step, a chimney base, a huge old lilac, and the dooryard apple tree (apples for the basket, wild rose seeds).
+- **Campfire** in fern hollow: tap it to light it.
 
 Checks: `tools/nursery_check.gd --fixed-fps 60` (headless) and `tools/woods_check.gd`. To see each place:
 `DISPLAY=:0 godot --path . --script tools/capture_places.gd --disable-vsync`.

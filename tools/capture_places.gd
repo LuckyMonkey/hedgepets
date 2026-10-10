@@ -34,6 +34,8 @@ func _run() -> void:
 		"hollow": Vector3(1, 0, 0.3),
 		"fork": Vector3(0.4, 0, -1),
 		"trailhead": Vector3(1, 0, 0.6),
+		"pond": Vector3(woods.POND_AT.x, 0, woods.POND_AT.y) - woods.node_pos("pond"),
+		"cellar": Vector3(woods.CELLAR_AT.x, 0, woods.CELLAR_AT.y) - woods.node_pos("cellar"),
 	}
 	for id in looks:
 		var d: Vector3 = looks[id]
@@ -45,6 +47,9 @@ func _run() -> void:
 		woods._refresh_finds()
 		woods._settle(Vector3.INF)
 		await create_timer(1.2).timeout
+		if id == "hollow":
+			woods.campfire.tapped(game)
+			await create_timer(0.8).timeout
 		_shot("place_" + id)
 	# the signs at the fork: facing the nursery's trail, and a little to one side
 	woods._at = "fork"

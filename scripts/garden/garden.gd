@@ -515,10 +515,13 @@ func _surroundings() -> void:
 	var gx: float = GATES["houses"]["peek"].x
 	GardenProps.broken_fence(south, -16.0, 16.0, 10.0, r, Vector2(gx - 1.1, gx + 1.1))
 	GardenProps.house(south, Vector3(-12.5, 0, 20.0), 0.0, Color("e8e2d2"), Vector3(8.0, 5.0, 6.5), false, r)
-	GardenProps.house(south, Vector3(0.0, 0, 18.5), 0.0, Color("eeeae0"), Vector3(9.0, 5.5, 7.0), true, r, Color("3a5a8a"))   # white siding, blue door, small steps
+	GardenProps.house(south, Vector3(0.0, 0, 18.5), 0.0, Color("eeeae0"), Vector3(9.0, 5.5, 7.0), true, r, Color("3a5a8a"), gx)   # white siding, blue door; its stairs come down to the gate
 	GardenProps.house(south, Vector3(12.5, 0, 20.5), 0.0, Color("8a3a2a"), Vector3(8.0, 5.0, 6.5), false, r)
 	GardenProps.bake_static(south)
 	GardenProps.open_gate(self, Vector3(gx + 1.1, 0, 10.0), 2.1, 115.0)
+	var watcher: Node3D = preload("res://scripts/garden/porch_watcher.gd").new()   # the man on the porch
+	add_child(watcher)
+	watcher.setup(self, Vector3(0.0, 0, 18.5))
 	# east: woods past the stone wall, through the gap in it
 	for k in range(12):
 		var at := Vector3(r.randf_range(12.0, 28.0), 0, r.randf_range(-24.0, 16.0))
@@ -1474,11 +1477,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			_holder = "arrange"
 		elif game != null and game.grab.begin(event.position):      # on a piece of junk: work it, don't turn
 			_holder = "grab"
+		elif game != null and game.tool == "water":                  # the watering can pours where you hold it
+			_holder = "pour"
+			game.pour_begin(event.position)
 	elif released and _press_at != Vector2.INF:
 		if _holder == "arrange":
 			game.arrange_end(event.position, _dragged)
 		elif _holder == "grab":
 			if not game.grab.end(event.position):
+				_tap(event.position)
+		elif _holder == "pour":
+			if not game.pour_end(_dragged):
 				_tap(event.position)
 		elif not _dragged:
 			_tap(event.position)
@@ -1492,6 +1501,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if _holder == "grab":
 			game.grab.move(event.position)
+			return
+		if _holder == "pour":
+			game.pour_move(event.position)
 			return
 		if _dragged and _pan_drag:
 			_pan_by(event.relative)

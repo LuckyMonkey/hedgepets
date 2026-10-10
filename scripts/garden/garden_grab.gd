@@ -26,7 +26,7 @@ const PHYS := {
 	"tire": {"lb": 25, "stuck": 0.75}, "pot": {"lb": 15, "stuck": 0.3}, "pumpkin": {"lb": 12, "stuck": 0.35},
 	"feeder": {"lb": 30, "stuck": 0.0}, "bath": {"lb": 120, "stuck": 0.0}, "log_pile": {"lb": 80, "stuck": 0.0},
 	"nest_box": {"lb": 25, "stuck": 0.0}, "apples": {"lb": 35, "stuck": 0.0},
-	"chair": {"lb": 12, "stuck": 0.0},
+	"chair": {"lb": 12, "stuck": 0.0}, "wheelbarrow": {"lb": 30, "stuck": 0.0}, "fire_pit": {"lb": 140, "stuck": 0.0},
 }
 const AREA := Rect2(-13.0, -10.4, 26.0, 19.8)        # where things can be hauled to
 const BARREL_CAP := 100.0
@@ -279,6 +279,13 @@ func _haul(t: Dictionary, g: Vector3, delta: float) -> void:
 			var v2 := Vector2(_vel.x, _vel.z)
 			v2 -= n * minf(0.0, v2.dot(n))             # lose the speed going into it
 			_vel = Vector3(v2.x, 0, v2.y)
+	if t["kind"] == "wheelbarrow":                       # rolling over a dirt pile shovels it in
+		var here := Vector2(pos.x, pos.z)
+		for d in game.dirt_piles.duplicate():
+			if int(t.get("load", 0)) < game.DIRT_MAX and here.distance_to(d["at"]) < 0.7:
+				game.take_dirt(d)
+				barrow_load(t, 1)
+				game.toast("Dirt into the wheelbarrow (%d/%d)." % [int(t["load"]), game.DIRT_MAX])
 	var light := lb < 20.0
 	pos.y = lerpf(node.position.y, (0.45 + 0.05 * sin(_t * 5.0)) if light else 0.0, clampf(delta * 8.0, 0.0, 1.0))
 	node.position = pos
@@ -305,6 +312,28 @@ func _drop(t: Dictionary) -> void:
 		_burst(node.position, Color("8a7a5a"), 14, 1.2)          # a heavy thud
 	t["at"] = Vector2(node.position.x, node.position.z) + t["offset"]
 	t["moved"] = true
+	if t["kind"] == "wheelbarrow" and int(t.get("load", 0)) > 0:   # let go over holes: it fills them
+		var filled := 0
+		for bed in game.seedbeds.duplicate():
+			if int(t["load"]) > 0 and bed["plant"] == null and (bed["at"] as Vector2).distance_to(t["at"]) < 1.3:
+				game.fill_hole(bed)
+				barrow_load(t, -1)
+				filled += 1
+		if filled > 0:
+			game.toast("Tipped the wheelbarrow: %d hole%s filled." % [filled, "" if filled == 1 else "s"])
+
+
+## The wheelbarrow's load of dirt (0..DIRT_MAX), and the heap you can see in its tray.
+func barrow_load(t: Dictionary, change: int) -> void:
+	t["load"] = clampi(int(t.get("load", 0)) + change, 0, game.DIRT_MAX)
+	var node: Node3D = t["node"]
+	var heap: Node3D = node.get_node_or_null("Load")
+	if heap == null:
+		heap = GardenProps.part(node, GardenProps.blob(Vector3(0.55, 0.16, 0.36), {"exponent": 2.0}), GardenProps.mat("dirtpile", Color("5c4230")), Vector3(-0.05, 0.78, 0), Vector3.ZERO, 0.004)
+		heap.name = "Load"
+		heap.scale = Vector3.ONE * 0.01
+	var s := 0.01 if int(t["load"]) == 0 else 0.55 + 0.15 * int(t["load"])
+	Motion.channel(heap, "scale").tween_property(heap, "scale", Vector3(1, s, 1) * maxf(s, 0.01) if s > 0.02 else Vector3.ONE * 0.01, Motion._d(Motion.BASE))
 
 
 ## Sticks and branches dropped on the brush pile join it: the pile grows (and shy woodland visitors like it more).

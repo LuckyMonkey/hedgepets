@@ -658,7 +658,7 @@ static func cattails(parent: Node3D, at: Vector3, rng: RandomNumberGenerator) ->
 
 ## A New England house seen from the back: clapboard box, steep gable roof, chimney, windows with white trim, a back
 ## door. `porch` adds steps toward the garden.
-static func house(parent: Node3D, at: Vector3, yaw: float, siding: Color, size: Vector3, porch: bool, rng: RandomNumberGenerator, door := Color("3a4a3a")) -> Node3D:
+static func house(parent: Node3D, at: Vector3, yaw: float, siding: Color, size: Vector3, porch: bool, rng: RandomNumberGenerator, door := Color("3a4a3a"), stair_x := INF) -> Node3D:
 	var r := root(parent, "House", at, yaw)
 	var wall := mat("siding%s" % siding.to_html(false), siding)
 	var trim := mat("trim", Color("efeae0"))
@@ -681,7 +681,7 @@ static func house(parent: Node3D, at: Vector3, yaw: float, siding: Color, size: 
 			var lit := rng.randf() < 0.3
 			part(r, box(Vector3(0.7, 0.9, 0.08)), mat("windowlit", Color("e8c878")) if lit else glass, Vector3(x, y, face - 0.01), Vector3.ZERO, 0.0)
 	if porch:
-		_back_porch(r, face, size, door)
+		_back_porch(r, face, size, door, stair_x)
 	else:
 		part(r, box(Vector3(1.0, 2.0, 0.08)), mat("door%s" % door.to_html(false), door), Vector3(0, 1.0, face), Vector3.ZERO, 0.008)
 	return r
@@ -781,10 +781,11 @@ static func brush_pile(parent: Node3D, at: Vector3, rng: RandomNumberGenerator) 
 ## The raised back porch of the house that overlooks the garden: a plank deck on posts at first-floor height, a
 ## railing with balusters, stairs down the side to the yard, a lattice skirt underneath, the back door opening onto
 ## it. (This house will keep getting more detailed.)
-static func _back_porch(r: Node3D, face: float, size: Vector3, door: Color) -> void:
+static func _back_porch(r: Node3D, face: float, size: Vector3, door: Color, stair_x := INF) -> void:
 	var deck_h := 1.35
 	var depth := 2.6
 	var width := 5.2
+	var sx := stair_x if stair_x != INF else width * 0.5 - 0.55   # the stairs' middle (lined up with the yard's gate)
 	var wood := mat("deckwood", Color("9a7a58"))
 	var post_m := mat("deckpost", Color("8a6a4a"))
 	var rail_m := mat("rail", Color("efeae0"))
@@ -807,9 +808,9 @@ static func _back_porch(r: Node3D, face: float, size: Vector3, door: Color) -> v
 		var x := -width * 0.5 + 0.2 + k * (width - 0.4) / 17.0
 		part(r, box(Vector3(0.03, deck_h * 1.1, 0.02)), lattice, Vector3(x, deck_h * 0.45, front + 0.16), Vector3(0, 0, 32), 0.0)
 		part(r, box(Vector3(0.03, deck_h * 1.1, 0.02)), lattice, Vector3(x, deck_h * 0.45, front + 0.17), Vector3(0, 0, -32), 0.0)
-	# railing: front and sides (an opening at the front-right corner for the stairs)
+	# railing: front and sides (an opening in the front for the stairs)
 	var rail_y := deck_h + 0.95
-	var runs := [[Vector3(-width * 0.5, 0, front), Vector3(width * 0.5 - 1.1, 0, front)],
+	var runs := [[Vector3(-width * 0.5, 0, front), Vector3(sx - 0.55, 0, front)], [Vector3(sx + 0.55, 0, front), Vector3(width * 0.5, 0, front)],
 		[Vector3(-width * 0.5, 0, front), Vector3(-width * 0.5, 0, face)],
 		[Vector3(width * 0.5, 0, front + 0.0), Vector3(width * 0.5, 0, face)]]
 	for run: Array in runs:
@@ -823,13 +824,13 @@ static func _back_porch(r: Node3D, face: float, size: Vector3, door: Color) -> v
 		for k in range(n + 1):
 			var p: Vector3 = a.lerp(b, float(k) / maxf(1.0, float(n)))
 			part(r, box(Vector3(0.04, 0.9, 0.04)), rail_m, p + Vector3(0, deck_h + 0.48, 0), Vector3.ZERO, 0.0)
-	# stairs down to the yard from the front-right corner, toward the garden
+	# stairs down to the yard, toward the garden
 	var steps := 8
 	var rise := deck_h / steps
 	for k in range(steps):
 		var z := front - 0.14 - k * 0.28
-		part(r, box(Vector3(1.0, 0.06, 0.3)), wood, Vector3(width * 0.5 - 0.55, deck_h - (k + 1) * rise + 0.03, z), Vector3.ZERO, 0.004)
-	for x: float in [width * 0.5 - 1.05, width * 0.5 - 0.05]:
+		part(r, box(Vector3(1.0, 0.06, 0.3)), wood, Vector3(sx, deck_h - (k + 1) * rise + 0.03, z), Vector3.ZERO, 0.004)
+	for x: float in [sx - 0.5, sx + 0.5]:
 		var top := Vector3(x, deck_h + 0.9, front)
 		var bottom := Vector3(x, 0.9, front - steps * 0.28)
 		var rail := MeshInstance3D.new()

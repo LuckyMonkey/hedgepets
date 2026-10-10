@@ -42,9 +42,9 @@ func _run() -> void:
 		return _fail("clover did not grow")
 	var bed2: Dictionary = game._dig(Vector2(-2.5, 1.0))
 	var pl2: Dictionary = game._plant("clover", bed2, 2)
-	for k in game.pet_state:                     # everyone else already settled: Clover is the only guest
+	for k in game.pet_state:                     # everyone else out of the picture: Clover is the only guest
 		if not k in ["Gerald", "Clover"]:
-			game.pet_state[k] = "resident"
+			game.pet_state[k] = "elsewhere"           # (a state the loop leaves alone; room counts only who's here)
 	for i in range(4):
 		game._notice_wait = 0.0
 		game._visitors()

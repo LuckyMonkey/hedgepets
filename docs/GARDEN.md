@@ -9,12 +9,36 @@ like a tabletop model.
 
 | Tool | Does |
 |---|---|
-| ✋ hand | tap: pet a pet, look at things. Press and drag on junk: yank it loose, haul it (see Yard work) |
-| 🪏 shovel | dig a seedbed on bare lawn; scoop up a leaf pile or something you built (junk is too heavy: haul it) |
-| 🌱 seeds | 17 plants: ivy, Boston ivy, Virginia creeper, variegated ivy, clover, fern, sage, jasmine, oak, pine, maple, boxwood, willow, rose, lavender, moss, holly |
+| ✋ hand | tap: pet a pet, look at things (broken things say how to fix them). Press and drag on junk: yank it loose, haul it (see Yard work). Hold on the broken sprinkler or a broken run of fence: it mends. Tap a fire pit: light it. Tap a bucket with a pet in it: pick it up and carry it; tap the lawn to set it down |
+| 🪏 shovel | dig a hole anywhere clear; dig beside a hole and it joins it, one step along in that direction (rows, curves, plots). The dirt goes on a pile beside it. Tap a pile: a shovelful; then tap a hole to fill it (or the lawn to put it down). Tap a sown hole: dig it back up (seeds and sprouts come back as seeds). Tap junk: clear it |
+| 🌱 seeds | sow in a hole. Seeds you were given (the nursery, the woods) are sown first, free |
 | ✂️ shears | regraft a pet in the chosen seed's plant (its price) |
-| 🧺 build | bird feeder 8, bird bath 10, log pile 6, nest box 7, pumpkin 3, crate of apples 5 (shovel them back for half) |
-| 💧 water | a watered plant grows: mound → sprout → bush → flowering (~18 s a stage; water lasts ~40 s) |
+| 🧺 build | bird feeder 8, bird bath 10, log pile 6, birdhouse 7, pumpkin 3, crate of apples 5, bucket, clay pot, lawn chair, hay bale, scarecrow, lantern, stepping stones, **fire pit 6** (shovel them back for half) |
+| 💧 water | **hold and drag to pour.** Plants under it are watered; a wet trail darkens the grass and dries in 25 s. Hedgepets love water: visitors and residents within 7 m trot after it, and the ones that reach it walk with you for a while (up to 3; into the woods too). Pour a trail into an empty bucket and the first to reach it climbs in. A quick tap still waters one plant or splashes a pet |
+
+The chosen tool has a green chip behind it that glides from tool to tool, and a caption over the bar says what it
+does. Picking a seed or a thing to build says its name and price.
+
+**Growing.** Everything planted grows: slowly on its own, three times as fast while watered (wet soil looks dark). The
+fixed sprinkler waters whatever it reaches every minute. mound → sprout → bush → flowering, about 18 s a stage watered.
+
+**Dirt and the wheelbarrow.** Dirt piles (up to 4 loads each) are saved. The wheelbarrow (by the houses' gate) hauls
+with ✋: rolled over a pile it shovels the pile in (up to 4 loads, heaped in its tray), and let go over holes it
+fills them. 🪏 on the wheelbarrow takes a shovelful out of it (or puts one in).
+
+**Room for six.** The garden holds 2 hedgepets at once to begin with, residents included, and one more for every three
+kinds of plants grown or things built, up to 6 (`capacity()`). A hedgepet only notices a garden that grows one of its
+plants (`grows_for`: its own or a related one, `SpeciesBuilder.variants_of`). The journal's "around the neighbourhood"
+says which plants each is seen near. A resident whose wishes go unmet for 10 minutes moves on (it may come back
+another day; Gerald never leaves). They aren't a collection: every garden ends up with its own.
+
+**The fire pit** (`fire_pit.gd`): ✋ lights it; it burns 4 minutes, then embers for 1.5, and residents like to sit by
+it (🔥). There's another in the woods, in fern hollow.
+
+**The porch** (`porch_watcher.gd`): the house with the blue door has a raised back porch whose stairs come down to the
+gate in the picket fence. A man comes out onto it when you're not looking and photographs the hedgepets (a flash now
+and then at the edge of your view). When the camera finds him he either pockets the phone and studies the sky, or
+hurries back in.
 
 ## Yard work (`scripts/garden/garden_grab.gd`)
 
@@ -136,10 +160,9 @@ curl up asleep on moss beds, and a tap makes one stir. The garden waits while yo
 muffled overhead) and every pet is back exactly where it was when you come up. `tools/den_check.gd` checks the visit,
 arranging and the save rule.
 
-**Friends (🐾):** *Follow me* asks a pet that lives here to come along (up to three): it keeps near whatever you're
-looking at, and won't wander off to nap or hide while it does. *Bucket* bribes any pet you can see - visitors too -
-with an apple (🪙 2): it climbs in after it and you carry it (it's out of the garden's hands until you tap the lawn to
-let it out). Both are saved.
+**Friends:** the 🐾 tool is gone; water does it now (see 💧). Followers keep near whatever you're looking at when you
+aren't pouring. A pet in a bucket you're carrying is out of the garden's hands until you set the bucket down. Both are
+saved.
 
 **The woods** (`woods.gd`, over the footbridge: tap the bridge): a dark, hilly hiking trail at night - lanterns at
 every clearing, fireflies, the moon over the ridge. You stand in a clearing and turn (drag anywhere); the trails out of

@@ -22,8 +22,13 @@ func _run() -> void:
 		game.pet_state[garden.roster[i].pet_name] = "resident"
 		garden.set_pet_mode(game._node(garden.roster[i]), "roam", true)
 	game.following = [garden.roster[0].pet_name]
-	game.pet_choice = "bucket"
-	game._friends_tap(game._node(garden.roster[1]), Vector2.ZERO)
+	game._place("bucket", Vector2(-3.0, 2.0), 0.0)
+	var bt: Dictionary = garden.things[-1]
+	var nb: HedgePetNode = game._node(garden.roster[1])
+	nb.position = bt["node"].position + Vector3(1.0, 0, 0)
+	game._lure(Vector2(bt["node"].position.x, bt["node"].position.z))
+	await create_timer(2.0).timeout
+	game.pick_up_bucket(bt)
 	await create_timer(1.5).timeout
 	garden.woods.enter()
 	await create_timer(2.0).timeout
