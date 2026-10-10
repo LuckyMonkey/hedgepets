@@ -144,8 +144,9 @@ let it out). Both are saved.
 **The woods** (`woods.gd`, over the footbridge: tap the bridge): a dark, hilly hiking trail at night - lanterns at
 every clearing, fireflies, the moon over the ridge. You stand in a clearing and turn (drag anywhere); the trails out of
 it are signed, and the one you're facing lights up. Tap and you walk it, up and down the hills, to the next clearing:
-the trailhead, the mossy fork (the hub), fern hollow, the ridge, creek crossing, the old oak. The nursery's trail
-leaves the fork but is still overgrown. Your followers trail behind you and gather round when you stop; a pet in the
+the trailhead, the mossy fork (the hub), fern hollow, the ridge (an overlook), creek crossing (a real creek), the old oak,
+and the nursery off the fork, where the lady potting at her bench has something to say and seeds for you. Each clearing
+has things to find: litter and dumped junk (coins), forage for the nursery's basket, and wild seeds. See docs/NURSERY.md. Your followers trail behind you and gather round when you stop; a pet in the
 bucket sits beside you in it, and *Let out* makes it one more follower, home with you afterwards.
 The burrow and the woods share `elsewhere.gd` (going, coming back, borrowing pets); `tools/woods_check.gd`.
 

@@ -73,6 +73,12 @@ var placed: Array = []              # {kind, x, z, yaw}: what you built (saved)
 var following: Array = []           # pet names that follow you (saved)
 var carried := ""                   # the pet in the bucket, or "" (saved)
 var pet_choice := "follow"          # what the 🐾 tool does: "follow" | "bucket"
+var nursery := {"visits": 0, "said": [], "once": [], "gave": false, "crossed": false, "returned": false}   # nursery.gd (saved)
+var woods_finds := {"taken": {}, "basket": {}}   # woods.gd: what you've picked up there (when) and what's in the basket
+var keep_seeds: Array = []          # seeds the nursery gave you, {species, genes}: sown before bought ones of that kind
+const SOW_SECONDS := 45.0           # how often an empty bed may get a self-sown seedling
+const SOW_REACH := 5.0              # from a flowering plant this near
+var _sow := SOW_SECONDS
 var _pets_row: HBoxContainer
 var _pets_shown := false
 var _bucket_badge: Label
@@ -159,6 +165,10 @@ func _met(wants: Dictionary, counts: Dictionary) -> bool:
 func _process(delta: float) -> void:
 	_grow(delta)
 	_tend_gifts(delta)
+	_sow -= delta
+	if _sow <= 0.0:
+		_sow = SOW_SECONDS
+		_self_sow()
 	_check -= delta
 	if _check <= 0.0:
 		_check = 1.0
@@ -476,6 +486,8 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 				garden.den.enter()
 			elif t != null:
 				toast(_thing_line(t))
+			elif _plant_at(p2) != null:
+				toast(_plant_line(_plant_at(p2)))
 			return true
 		"shovel":
 			var t = _thing_at(p2)
@@ -501,6 +513,12 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 			if bed["plant"] != null:
 				toast("Something's already growing there.")
 				return true
+			for i in keep_seeds.size():
+				if keep_seeds[i]["species"] == seed_choice:
+					var given: Dictionary = keep_seeds.pop_at(i)
+					_plant(seed_choice, bed, 0, 0.6, 0.0, str(given["genes"]), "nursery")
+					toast("%s You sow one of the nursery's seeds. Water it (💧)." % SEEDS[seed_choice]["icon"])
+					return true
 			var price: int = SEEDS[seed_choice]["price"]
 			if coins < price:
 				toast("Not enough coins for %s seeds (🪙 %d)." % [seed_choice, price])
@@ -821,12 +839,13 @@ func _dig(p: Vector2) -> Dictionary:
 	return bed
 
 
-func _plant(species: String, bed: Dictionary, stage: int, water := 0.6, progress := 0.0) -> Dictionary:
-	var pl := {"species": species, "at": bed["at"], "stage": stage, "water": water, "progress": progress, "node": null, "bed": bed}
+func _plant(species: String, bed: Dictionary, stage: int, water := 0.6, progress := 0.0, genes := Heredity.STOCK, origin := "seed") -> Dictionary:
+	var pl := {"species": species, "at": bed["at"], "stage": stage, "water": water, "progress": progress, "node": null, "bed": bed,
+		"genes": Heredity.valid(genes), "origin": origin}
 	bed["plant"] = pl
 	plants.append(pl)
 	_build_plant(pl)
-	if stage == 0:
+	if stage == 0 and origin == "seed":
 		toast("%s Planted %s. Water it (💧)." % [SEEDS[species]["icon"], species])
 	return pl
 
@@ -841,7 +860,10 @@ func _build_plant(pl: Dictionary) -> void:
 	var from_scale := 0.01
 	if old != null:
 		var old_stage: int = maxi(0, int(pl["stage"]) - 1)
-		from_scale = float(STAGE_SIZE[old_stage]) / float(STAGE_SIZE[pl["stage"]])
+		var squat := Heredity.SHORT if Heredity.short(pl["genes"]) else 1.0
+		var was: float = STAGE_SIZE[old_stage] * (squat if old_stage >= 2 else 1.0)
+		var now: float = STAGE_SIZE[pl["stage"]] * (squat if int(pl["stage"]) >= 2 else 1.0)
+		from_scale = was / now
 		Motion.vanish(old, true, Motion.BASE)
 	var at := Vector3(pl["at"].x, 0.0, pl["at"].y)
 	var stage: int = pl["stage"]
@@ -852,9 +874,11 @@ func _build_plant(pl: Dictionary) -> void:
 		GardenProps.part(holder, GardenProps.blob(Vector3(0.25, 0.12, 0.25), "dome"), GardenProps.mat("mound", Color("5c432e")), at, Vector3.ZERO, 0.0)
 	else:
 		var size: float = [0.0, 0.32, 0.55, 0.62][stage]
+		if stage >= 2 and Heredity.short(pl["genes"]):
+			size *= Heredity.SHORT
 		var look: Array = SpeciesBuilder.PLANTS[pl["species"]]
 		var palette := SpeciesBuilder.palette_of(look[0])
-		var bush: Node3D = garden._bush(at + Vector3(0, size * 0.75, 0), Vector3(size, size * 0.85, size), SEEDS[pl["species"]]["sheet"], palette, Color(SpeciesBuilder.PALETTES[look[0]][6]), 0.22 + size * 0.2, 1.6, "dome", 1.0 if stage == 3 else 0.0)
+		var bush: Node3D = garden._bush(at + Vector3(0, size * 0.75, 0), Vector3(size, size * 0.85, size), SEEDS[pl["species"]]["sheet"], palette, Color(SpeciesBuilder.PALETTES[look[0]][6]), 0.22 + size * 0.2, 1.6, "dome", 1.0 if stage == 3 else 0.0, Heredity.bloom(pl["species"], pl["genes"]))
 		bush.reparent(holder)
 	pl["node"] = holder
 	holder.scale = Vector3.ONE * from_scale
@@ -870,6 +894,56 @@ func _splash(at: Vector3) -> void:
 	drop.position = at + Vector3(0, 0.8, 0)
 	garden.add_child(drop)
 	Motion.float_away(drop, 0.8, 0.8, 0.2)
+
+
+## Now and then an empty seedbed near something flowering gets a seedling of its own. It takes after the flowering
+## plant and after another of the same kind (the bees' doing), or the plant itself (Heredity.cross).
+func _self_sow() -> void:
+	var empty := seedbeds.filter(func(b) -> bool: return b["plant"] == null)
+	if empty.is_empty() or randf() > 0.4:
+		return
+	var bed: Dictionary = empty.pick_random()
+	var near := plants.filter(func(pl) -> bool: return pl["stage"] >= 3 and (pl["at"] as Vector2).distance_to(bed["at"]) < SOW_REACH)
+	if near.is_empty():
+		return
+	var mother: Dictionary = near.pick_random()
+	var kin := plants.filter(func(pl) -> bool: return pl["stage"] >= 3 and pl["species"] == mother["species"])
+	var father: Dictionary = kin.pick_random()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var genes := Heredity.cross(mother["genes"], father["genes"], rng)
+	_plant(mother["species"], bed, 0, 0.3, 0.0, genes, "volunteer")
+	toast("🌱 Something's come up on its own in an empty bed.")
+	if mother["genes"] != father["genes"]:
+		nursery["crossed"] = true
+	var m: String = mother["genes"]
+	var f: String = father["genes"]
+	if (Heredity.pale(genes) and not Heredity.pale(m) and not Heredity.pale(f)) or (Heredity.short(genes) and not Heredity.short(m) and not Heredity.short(f)):
+		nursery["returned"] = true                       # it skipped the parents and came back
+
+
+## What a plant looks like, said plainly: tall or short, in flower or not, and the colour when it's unexpected.
+func _plant_line(pl: Dictionary) -> String:
+	var name: String = SpeciesBuilder.PLANT_NAMES.get(pl["species"], pl["species"])
+	var stage: int = pl["stage"]
+	var g: String = pl["genes"]
+	var line := ""
+	match stage:
+		0:
+			line = "Something's just come up here on its own." if pl["origin"] == "volunteer" else "A seedbed, freshly sown with %s." % name
+			return line
+		1:
+			line = "A %s sprout." % name
+		2:
+			line = "A %s %s." % ["short" if Heredity.short(g) else "tall", name]
+		_:
+			line = "A %s %s, in flower" % ["short" if Heredity.short(g) else "tall", name]
+			line += " - white ones." if Heredity.pale(g) and Heredity.shows_colour(pl["species"]) else "."
+	if pl["origin"] == "volunteer":
+		line += " It came up on its own."
+	elif pl["origin"] == "nursery":
+		line += " From the nursery's seed."
+	return line
 
 
 # ------------------------------------------------------------------ words
@@ -1173,7 +1247,7 @@ func save() -> void:
 		"flowers": pet_flowers,
 		"last_visit": Time.get_unix_time_from_system(),
 		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
-		"following": following, "carried": carried,
+		"following": following, "carried": carried, "nursery": nursery, "keep_seeds": keep_seeds, "woods_finds": woods_finds,
 		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["node"].position.x, "z": b["node"].position.z, "yaw": b["node"].rotation_degrees.y})}
 	var present := {}
 	for t in garden.things:
@@ -1183,7 +1257,8 @@ func save() -> void:
 			data["gone"].append(id)
 	for b in seedbeds:
 		var pl = b["plant"]
-		data["beds"].append({"x": b["at"].x, "z": b["at"].y, "plant": null if pl == null else {"species": pl["species"], "stage": pl["stage"], "water": pl["water"], "progress": pl["progress"]}})
+		data["beds"].append({"x": b["at"].x, "z": b["at"].y, "plant": null if pl == null else {"species": pl["species"], "stage": pl["stage"], "water": pl["water"], "progress": pl["progress"],
+			"genes": pl["genes"], "origin": pl["origin"]}})
 	var text := JSON.stringify(data)
 	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f != null:
@@ -1233,7 +1308,7 @@ func _load() -> void:
 		var bed := _dig(Vector2(float(b["x"]), float(b["z"])))
 		var pl = b.get("plant")
 		if pl != null:
-			_plant(str(pl["species"]), bed, int(pl["stage"]), float(pl["water"]), float(pl["progress"]))
+			_plant(str(pl["species"]), bed, int(pl["stage"]), float(pl["water"]), float(pl["progress"]), str(pl.get("genes", Heredity.STOCK)), str(pl.get("origin", "seed")))
 	pet_flowers = data.get("flowers", {})
 	for g in data.get("gifts", []):
 		_restore_gift(str(g["icon"]), Vector3(float(g["x"]), 0, float(g["z"])), int(g["value"]))
@@ -1273,6 +1348,15 @@ func _load() -> void:
 		_place(str(b["kind"]), Vector2(float(b["x"]), float(b["z"])), float(b["yaw"]), false)
 	following = (data.get("following", []) as Array).filter(func(n) -> bool: return n is String)
 	carried = str(data.get("carried", ""))
+	var ns = data.get("nursery", {})
+	if ns is Dictionary:
+		for k in ns:
+			nursery[k] = ns[k]
+	var wf = data.get("woods_finds", {})
+	if wf is Dictionary:
+		woods_finds["taken"] = wf.get("taken", {}) if wf.get("taken", {}) is Dictionary else {}
+		woods_finds["basket"] = wf.get("basket", {}) if wf.get("basket", {}) is Dictionary else {}
+	keep_seeds = (data.get("keep_seeds", []) as Array).filter(func(k) -> bool: return k is Dictionary and SEEDS.has(str(k.get("species", ""))))
 	var saved: Dictionary = data.get("pets", {})
 	for name in saved:
 		if pet_state.has(name):

@@ -387,12 +387,15 @@ func _leaf_material(sheet: String) -> ShaderMaterial:
 
 
 ## A leafy mass (hedge, tree crown, leaf pile) grown with the pets' foliage system.
-func _bush(center: Vector3, radii: Vector3, sheet: String, palette: Dictionary, inner: Color, leaf_size: float, density: float, shape: Variant = {}, flowering := 0.0) -> Node3D:
+func _bush(center: Vector3, radii: Vector3, sheet: String, palette: Dictionary, inner: Color, leaf_size: float, density: float, shape: Variant = {}, flowering := 0.0, bloom := Color(1.0, 0.98, 0.92)) -> Node3D:
 	var seed := _rng.randi()
 	var holder := Node3D.new()
 	add_child(holder)
 	# the mass and the leaves are pure functions of these inputs: read them from the bake cache when it has them
-	var k := BakeCache.key(["bush", center, radii, sheet, palette, inner, leaf_size, density, shape, flowering, seed])
+	var parts: Array = ["bush", center, radii, sheet, palette, inner, leaf_size, density, shape, flowering, seed]
+	if bloom != Color(1.0, 0.98, 0.92):
+		parts.append(bloom)                                  # (only then: the baked scenery keeps its keys)
+	var k := BakeCache.key(parts)
 	var cached = BakeCache.fetch(k)
 	var mass_mesh: Mesh
 	var mm: MultiMesh
@@ -405,6 +408,7 @@ func _bush(center: Vector3, radii: Vector3, sheet: String, palette: Dictionary, 
 		p.leaf_size = leaf_size
 		p.growth = 1.0
 		p.flowering = flowering
+		p.flower_color = bloom
 		p.leaves_per_cluster = 16
 		p.palette = palette
 		p.anchors = {}

@@ -5,7 +5,7 @@ extends SceneTree
 ##   - 🪣 bucket: an apple (coins), the pet's carried (hidden, left alone by the visitor logic), let out on the lawn
 ##   - tapping the footbridge goes into the woods; you stand at the trailhead facing the trail; turning and tapping
 ##     walks it (over the hills: the camera's height follows the ground) to the mossy fork, followers trailing behind
-##     and gathered round you there; the nursery trail is still overgrown
+##     and gathered round you there; then on to the nursery
 ##   - a pet carried in is set down in the woods with "Let out", and comes home with you
 ##   - back in the garden every pet that went along is home; following and the bucket are in the save
 ##   godot --headless --path . --script tools/woods_check.gd --fixed-fps 60
@@ -123,8 +123,13 @@ func _run() -> void:
 		return _fail("couldn't face the nursery trail")
 	woods._tap(Vector2(540, 400))
 	await process_frame
-	if not woods._walking.is_empty() or woods._at != "fork":
-		return _fail("walked into the overgrown nursery trail")
+	if woods._walking.is_empty():
+		return _fail("didn't set off down the nursery trail")
+	while not woods._walking.is_empty():
+		await process_frame
+	if woods._at != "nursery":
+		return _fail("didn't arrive at the nursery (at %s)" % woods._at)
+	print("woods: mossy fork -> the nursery")
 	# let the bucket's pet out here
 	woods.let_out()
 	if game.carried != "" or not woods.followers.has(nb) or not game.following.has(b.pet_name):
