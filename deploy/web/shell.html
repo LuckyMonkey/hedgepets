@@ -48,6 +48,8 @@ body.phone #canvas{border-radius:0}
 .side button{font:inherit;font-size:15px;color:var(--paper);background:rgba(239,230,210,.08);border:1px solid rgba(239,230,210,.18);
   border-radius:999px;padding:9px 18px;cursor:pointer;transition:background .2s,border-color .2s}
 .side button:hover{background:rgba(239,230,210,.15);border-color:rgba(239,230,210,.32)}
+.side a.fb{font-size:15px;color:var(--paper);text-decoration:none;background:rgba(239,230,210,.08);border:1px solid rgba(239,230,210,.18);border-radius:999px;padding:9px 16px}
+.side a.fb:hover{background:rgba(239,230,210,.15);border-color:rgba(239,230,210,.32)}
 .side small{opacity:.5;font-size:13.5px;max-width:240px}
 body.phone .brand,body.phone .side,body.narrow .brand,body.narrow .side{display:none}
 /* loading: the same paper and Gerald as the in-game card, inside the frame */
@@ -76,6 +78,7 @@ $GODOT_HEAD_INCLUDE
   </div>
   <div class="side">
     <button id="fullscreen" type="button" title="Full screen (Esc to leave)">⛶&nbsp; Full screen</button>
+    <a class="fb" href="/hedgepets/feedback" target="_blank" rel="noopener">💬&nbsp; Tell us what you think</a>
     <small>Drag to look around · right-drag to pan · scroll to zoom</small>
   </div>
 </div>

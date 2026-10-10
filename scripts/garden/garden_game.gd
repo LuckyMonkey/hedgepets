@@ -1458,6 +1458,7 @@ func _fill_journal() -> void:
 		var vs: Array = SpeciesBuilder.variants_of(p).map(func(v) -> String: return SpeciesBuilder.PLANT_NAMES.get(v, v))
 		lines += "🐾 %s [color=#7a6a50]Seen near gardens growing %s.[/color]\n\n" % [p.hints["notice"], " or ".join(vs.slice(0, 2)) if vs.size() <= 2 else ", ".join(vs.slice(0, vs.size() - 1)) + " or " + vs[vs.size() - 1]]
 	lines += "[color=#7a6a50]Room here for %d at once.[/color]\n" % capacity()
+	lines += "\n[url=feedback]💬 Tell us what you think of the game[/url]\n"
 	_journal_text.text = lines
 
 
@@ -1618,6 +1619,9 @@ func _build_ui() -> void:
 	_journal_text.add_theme_font_size_override("bold_font_size", 34)
 	_journal_text.add_theme_color_override("default_color", Color(0.25, 0.2, 0.14))
 	_journal_text.custom_minimum_size = Vector2(860, 1060)
+	_journal_text.meta_clicked.connect(func(meta) -> void:
+		if str(meta) == "feedback":                     # the survey, on its own page (a new tab on the web)
+			OS.shell_open("https://go.fridge.run/hedgepets/feedback"))
 	_journal.add_child(_journal_text)
 	_ui.add_child(_journal)
 
