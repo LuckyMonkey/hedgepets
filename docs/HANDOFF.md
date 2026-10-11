@@ -44,6 +44,7 @@ ordinary backyard at the edge of the woods if you grow and build what they like.
 | Plant inheritance (flower colour, height) | `scripts/garden/heredity.gd` | `docs/NURSERY.md` |
 | Porch man | `scripts/garden/porch_watcher.gd` | `docs/private/LORE.md` |
 | The land beyond the woods (1:16 3D skybox) | `scripts/garden/distant_land.gd`, `shaders/distant_sky.gdshader` | `docs/NURSERY.md` |
+| Woods trees (oak, maple, birch, pine; batched per patch; clear of the walk) | `scripts/garden/woods_trees.gd` | `docs/NURSERY.md` |
 | Fire pit / campfire | `scripts/garden/fire_pit.gd` | |
 | Places away (burrow, woods): staged build behind a loading card | `scripts/garden/elsewhere.gd`, `den.gd`, `loading_card.gd` | |
 | Pets: profiles, data species, art | `scripts/art/*`, `pets/*.tres`, `pets/species.json` | `docs/ART_DIRECTION.md` |

@@ -13,7 +13,7 @@ extends RefCounted
 
 const PATCH := 24.0
 const LEAFY_REACH := 7.5                       # trees nearer a trail than this get leaves (the ones you walk past)
-const DENSITY := 0.2                           # of the full cluster's leaves (bigger leaves cover the gaps): a phone budget
+const DENSITY := 0.3                           # of the full cluster's leaves (bigger leaves cover the gaps): a phone budget
 const LEAF_SIZE := 1.5
 const KINDS := {
 	"oak": {"sheet": "hedgeoak", "palettes": ["autumn", "green"], "bark": Color("4a3c30"), "build": "broad"},
@@ -54,7 +54,7 @@ func _patch(p: Vector2) -> Dictionary:
 	if not _patches.has(key):
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees4", key])) != null}
+		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees6", key])) != null}
 	return _patches[key]
 
 
@@ -83,7 +83,7 @@ func _add_cluster(pt: Dictionary, c: Dictionary, at: Vector3, s: Vector3, yaw: f
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		pt["mass"][inner_key] = [st, c["inner"]]
-	(pt["mass"][inner_key][0] as SurfaceTool).append_from(c["mass"], 0, xf * Transform3D(Basis().scaled(Vector3.ONE * (0.96 if with_leaves else 1.08)), Vector3.ZERO))
+	(pt["mass"][inner_key][0] as SurfaceTool).append_from(c["mass"], 0, xf * Transform3D(Basis().scaled(Vector3.ONE * (0.72 if with_leaves else 1.08)), Vector3.ZERO))   # leafy: a small core, the leaves make the shape
 	if not with_leaves:
 		return
 	var mm: MultiMesh = c["leaves"]
@@ -96,7 +96,7 @@ func _add_cluster(pt: Dictionary, c: Dictionary, at: Vector3, s: Vector3, yaw: f
 
 
 ## A tree of this kind at p (woods-local, on the ground).
-func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool) -> void:
+func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool, blaze := Vector3.ZERO) -> void:
 	var k: Dictionary = KINDS[kind]
 	var pal: String = k["palettes"][rng.randi_range(0, k["palettes"].size() - 1)]
 	var pt := _patch(Vector2(p.x, p.z))
@@ -146,11 +146,8 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool) 
 				var at := p.lerp(top, f)
 				var w := lerpf(1.25, 0.45, f)
 				var off := Vector3(rng.randf_range(-0.3, 0.3), 0, rng.randf_range(-0.3, 0.3)) * s
-				var c := _cluster(kind, pal, t % 3)
-				if leaves:
-					_plan_cluster(c, at + off, Vector3(w, w * 0.9, w) * s, rng.randf() * TAU, leaves)
-				else:                                     # far off: a drooping tier of needles (a cone), no leaf cards
-					_cones_plan.append([at + off - Vector3(0, 0.6, 0) * s, w * 2.0 * s, 1.9 * w * s, Color("22382a").lerp(Color("2c4630"), rng.randf())])
+				# a drooping tier of needles (a cone): reads as a white pine near or far, and costs next to nothing
+				_cones_plan.append([at + off - Vector3(0, 0.6, 0) * s, w * 2.0 * s, 1.9 * w * s, Color("22382a").lerp(Color("2e4a30"), rng.randf())])
 	# never in your way: nothing of it near the camera's path along any trail (its eye height, all the way)
 	for l: Array in _limbs_plan:
 		for f: float in [0.0, 0.5, 1.0]:
@@ -169,6 +166,10 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool) 
 		return
 	for c: Array in _cones_plan:
 		_cone(st, c[0], c[1], c[2], c[3])
+	if blaze != Vector3.ZERO and not _limbs_plan.is_empty():     # a painted blaze on the trunk, facing the path
+		var l: Array = _limbs_plan[0]
+		var at: Vector3 = (l[0] as Vector3).lerp(l[1], clampf(1.9 / maxf((l[1] - l[0]).y, 0.1), 0.0, 1.0))
+		_blaze(st, at + blaze * (lerpf(l[2], l[3], 0.3) + 0.01), blaze)
 	for l: Array in _limbs_plan:
 		_limb(st, l[0], l[1], l[2], l[3], l[4])
 	for c: Array in _clusters_plan:
@@ -177,6 +178,16 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool) 
 
 var _limbs_plan: Array = []
 var _cones_plan: Array = []                        # [base centre, radius, height, colour]
+
+
+## A trail blaze: a small painted rectangle (pale blue, as on the old trails) on a trunk, facing `out`.
+func _blaze(st: SurfaceTool, at: Vector3, out: Vector3) -> void:
+	var side := out.cross(Vector3.UP).normalized() * 0.07
+	var up := Vector3(0, 0.13, 0)
+	var c := Color("7ab0d8")
+	for v: Vector3 in [at - side - up, at + side - up, at + side + up, at - side - up, at + side + up, at - side + up]:
+		st.set_color(c)
+		st.add_vertex(v + out * 0.01)
 
 
 ## A cone of needles (base at b), into the patch's trunk mesh: a far pine's tier.
@@ -217,7 +228,7 @@ func finish() -> void:
 	var leaf_mats := {}
 	for key: Vector2i in _patches:
 		var pt: Dictionary = _patches[key]
-		var ck := BakeCache.key(["woodstrees4", key])
+		var ck := BakeCache.key(["woodstrees6", key])
 		var cached = BakeCache.fetch(ck)
 		var made: Array
 		if cached != null:

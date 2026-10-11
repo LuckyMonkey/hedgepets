@@ -633,7 +633,11 @@ func _trees(rng: RandomNumberGenerator) -> void:
 			continue
 		var roll := rng.randf()
 		var kind := "pine" if roll < 0.35 else ("oak" if roll < 0.6 else ("maple" if roll < 0.85 else "birch"))
-		maker.tree(kind, Vector3(p.x, height(p.x, p.y), p.y), rng, _near_trail(p, maker.LEAFY_REACH))
+		var blaze := Vector3.ZERO                            # a painted trail blaze on trunks right by the path
+		if _near_trail(p, 4.2) and rng.randf() < 0.3:
+			var t := _nearest_trail(p)
+			blaze = Vector3(t.x - p.x, 0, t.y - p.y).normalized()
+		maker.tree(kind, Vector3(p.x, height(p.x, p.y), p.y), rng, _near_trail(p, maker.LEAFY_REACH), blaze)
 	maker.finish()
 	set_meta("trees_rejected", maker.rejected)
 	_willows(rng)
@@ -1512,8 +1516,8 @@ static func _wild_genes(rng: RandomNumberGenerator) -> String:
 ## Hedgepets that don't live in your garden, out in the woods: a few at a time, off the trail ahead of you, nosing
 ## about and watching you. Come within a few metres and they scurry off; fall far behind and they slip away, and
 ## others turn up further on. You can't catch them - tap one and you learn who it was.
-const WILD_COUNT := 4
-const SHY := 6.0                       # closer than this, they're off
+const WILD_COUNT := 6
+const SHY := 8.0                       # closer than this, they're off
 var _wild: Array = []                  # {node, pos (local), goal, speed, wait, gone}
 var _wrng := RandomNumberGenerator.new()
 
@@ -1538,7 +1542,8 @@ func _wild_spot() -> Vector3:
 	var fwd := Vector3(-sin(_yaw), 0, -cos(_yaw))
 	var right := fwd.cross(Vector3.UP)
 	for k in range(20):
-		var q := cam.position + fwd * _wrng.randf_range(8.0, 16.0) + right * _wrng.randf_range(-8.0, 8.0)
+		var ahead := _wrng.randf_range(10.0, 16.0)          # ahead and on screen: you see them, then see them go
+		var q := cam.position + fwd * ahead + right * _wrng.randf_range(-0.35, 0.35) * ahead
 		var p2 := Vector2(q.x, q.z)
 		if p2.x < -56 or p2.x > 58 or p2.y < -106 or p2.y > 14 or _near_trail(p2, 1.4) or water_at(p2.x, p2.y) > -INF:
 			continue
@@ -1559,7 +1564,7 @@ func _wild_tick(delta: float) -> void:
 					w["goal"] = at
 					node.position = to_global(at)
 					node.rotation.y = _wrng.randf() * TAU
-					Motion.appear(node, Vector3.ONE * garden.PET_SCALE * 0.85)
+					Motion.appear(node, Vector3.ONE * garden.PET_SCALE)
 			continue
 		var pos: Vector3 = w["pos"]
 		var off := Vector3(pos.x - cam.position.x, 0, pos.z - cam.position.z)
@@ -1571,7 +1576,9 @@ func _wild_tick(delta: float) -> void:
 			continue
 		if d < SHY and w["speed"] < 3.0:                 # too close: off it goes, away from you
 			var away := off.normalized().rotated(Vector3.UP, _wrng.randf_range(-0.7, 0.7))
-			var g := pos + away * _wrng.randf_range(5.0, 8.0)
+			var g := pos + away * _wrng.randf_range(6.0, 10.0)
+			if _near_trail(Vector2(g.x, g.z), 1.2):          # off through the trees, not up the path
+				g = pos + away.rotated(Vector3.UP, PI * 0.5 * signf(_wrng.randf() - 0.5)) * 7.0
 			w["goal"] = Vector3(g.x, height(g.x, g.z), g.z)
 			w["speed"] = 3.8
 		var to: Vector3 = w["goal"] - pos

@@ -79,7 +79,12 @@ out past the ridge, a blue haze between the trunks, canopy shadows, and about 40
 ## Walking, choosing, loading
 
 - **Choosing a trail.** A tap picks the trail whose first few metres (or sign) is nearest the tap on screen. Away from
-  all of them, it picks the one you're facing. Three chevrons glow on the ground along the trail a tap would take.
+  all of them, it picks the one you're facing. A big glowing arrow and three chevrons pulse on the ground along the
+  trail a tap would take.
+- **Signs** are dark stained boards with routed-look cream lettering (`assets/fonts/SignBookman-Demi.otf`, URW Bookman
+  Demi). Each has an arrow end pointing down its trail.
+- **Walkthrough capture:** `tools/capture_walk.gd` (`WALK_EDGES=0,2` for some trails) saves a frame every 2.5 m along
+  every trail.
 - **Spacing.** Trails leave and reach every clearing straight on, for the first 5 m (`_trail`), so they never bunch
   up.
 - **Water.** No trail dips under water: over the creek or the pond it rides on the stones (`water_at`). The creek runs
@@ -114,9 +119,26 @@ mountains barely move.
 - **Not done:** the runbook's separate `.tscn` (it's built in code, like the rest of the woods), and an iPhone
   FPS/memory measurement.
 
+## Trees (`woods_trees.gd`)
+
+- **Kinds:** oak, maple, birch and white pine, with real trunks and limbs.
+  - **Broadleaf crowns** are clusters of the hedgepets' glyph leaves around a small dark core. Only trees within
+    7.5 m of a trail get leaves (`LEAFY_REACH`); further off, only the dark masses.
+  - **Pines** are drooping cone tiers, near and far.
+- **Batching:** everything is merged per 24 m patch (trunk mesh, mass mesh, a leaf multimesh per leaf sheet) and
+  baked (`woodstrees6` keys; bump the version when tree code changes).
+- **Budget:** about 110k leaf cards in total.
+- **Trail blazes:** pale blue paint on some trunks right by the paths.
+- **Clear of the walk:** each tree is planned, then checked against the camera's path (`woods.eye_clear`: its eye
+  from knee height to over its head along every trail). A tree in the way isn't planted. Planning always draws the
+  same random numbers whether a patch is baked or not, so the live layout is the checked layout.
+
 ## Nothing stands on a trail
 
-Lanterns, signs, the oak, the board, the bench, clearing logs, rocks and boulders are all placed through
+Lanterns go in the widest gap between a clearing's trails (`_gap_dir`). Sunbeams stay 2.5 m off and fade within
+6 m of the camera. Willows stay 4.4 m off, logs by their whole length, and fern tufts beside the path, never on it.
+The trail-side roots lie across it. Signs, the oak, the board, the bench, and clearing logs and rocks are all placed
+through
 `_off_trail(p, clearance)`, which pushes a spot off every trail by the thing's size. The camera walks the trails, so
 anything on one is walked through. `woods_check` fails if one is too close.
 
