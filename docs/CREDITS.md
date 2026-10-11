@@ -10,3 +10,8 @@ Everything in HedgePets is made for it (code, art, generated sounds) except:
 
 CC BY-SA 4.0 means credit the author, and this audio file (and any changed version of it) stays under the same
 licence. It doesn't extend to the rest of the game.
+
+## Trail-sign font
+
+`assets/fonts/SignBookman-Demi.otf` is URW Bookman Demi from the URW++ base35 fonts (Debian `fonts-urw-base35`).
+Licence: AGPL-3.0 with the font exception, which allows embedding and bundling.

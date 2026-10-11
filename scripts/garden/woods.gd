@@ -946,6 +946,9 @@ func _brambles(at: Vector3, rng: RandomNumberGenerator) -> void:
 		GardenProps.part(self, GardenProps.blob(Vector3(0.9, 0.7, 0.9) * snappedf(rng.randf_range(0.7, 1.3), 0.1), "pebble"), bramble, Vector3(p.x, height(p.x, p.z) + 0.3, p.z), Vector3(0, rng.randf_range(0, 360), 0), 0.012)
 
 
+const SIGN_FONT := preload("res://assets/fonts/SignBookman-Demi.otf")
+
+
 ## A wooden arrow sign at the mouth of a trail: a post beside the path, and a painted board turned to face the
 ## clearing, its pointed end aimed down the trail. Returns the painted name (the one you're facing reads brighter).
 func _sign(from: String, dir: Vector3, text: String) -> Label3D:
@@ -958,8 +961,8 @@ func _sign(from: String, dir: Vector3, text: String) -> Label3D:
 	holder.position = at
 	var face := Vector3(c.x - at.x, 0, c.z - at.z).normalized()
 	holder.rotation.y = atan2(face.x, face.z) + deg_to_rad(32.0)   # facing you, its right-hand point swung down the trail
-	var post := GardenProps.mat("signpost", Color("5a4432"))
-	var board := GardenProps.mat("signboard", Color("7a5c3e"))
+	var post := GardenProps.mat("signpost", Color("4a3626"))
+	var board := GardenProps.mat("signboard", Color("5a3e28"))            # stained dark, like a park sign
 	var w := clampf(0.3 + text.length() * 0.08, 0.9, 1.9)
 	GardenProps.part(holder, GardenProps.cyl(0.05, 0.06, 1.75, 7), post, Vector3(-w * 0.5 + 0.12, 0.85, -0.05), Vector3(0, 0, -2), 0.008)
 	GardenProps.part(holder, GardenProps.box(Vector3(w, 0.32, 0.045)), board, Vector3(0.0, 1.45, 0), Vector3(0, 0, 1.5), 0.01)
@@ -967,8 +970,10 @@ func _sign(from: String, dir: Vector3, text: String) -> Label3D:
 	var paint := Color(0.78, 0.7, 0.54)
 	var front := Label3D.new()
 	front.text = text
-	front.font_size = 44
-	front.outline_size = 0
+	front.font = SIGN_FONT                                          # routed letters, painted cream
+	front.font_size = 46
+	front.outline_size = 7
+	front.outline_modulate = Color("24180e")                         # the cut edge
 	front.pixel_size = 0.0041
 	front.modulate = paint
 	front.position = Vector3(-0.02, 1.45 + 0.0, 0.026)
@@ -997,11 +1002,12 @@ func _chevrons(from: String, way: Dictionary) -> Dictionary:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.albedo_color = Color(1.0, 0.94, 0.76, 0.0)
-	m.no_depth_test = false
+	m.albedo_color = Color(1.0, 0.95, 0.78, 0.0)
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var bar := BoxMesh.new()
 	bar.size = Vector3(0.07, 0.02, 0.5)
-	for want: float in [2.6, 3.7, 4.8]:
+	var arrow := _arrow_mesh()
+	for want: float in [2.2, 3.5, 4.6, 5.7]:
 		var acc := 0.0
 		for i in range(1, pts.size()):
 			var seg := pts[i].distance_to(pts[i - 1])
@@ -1012,6 +1018,13 @@ func _chevrons(from: String, way: Dictionary) -> Dictionary:
 				chev.position = at + Vector3(0, 0.1, 0)
 				chev.rotation.y = atan2(d.x, d.z)
 				add_child(chev)
+				if want < 3.0:                                  # first, a big arrow: this way
+					var a := MeshInstance3D.new()
+					a.mesh = arrow
+					a.material_override = m
+					a.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+					chev.add_child(a)
+					break
 				for sgn: float in [-1.0, 1.0]:
 					var arm := MeshInstance3D.new()
 					arm.mesh = bar
@@ -1023,6 +1036,20 @@ func _chevrons(from: String, way: Dictionary) -> Dictionary:
 				break
 			acc += seg
 	return {"mat": m}
+
+
+## A flat arrow on the ground pointing along +z: a shaft and a broad head.
+func _arrow_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pts := [Vector3(-0.09, 0, -0.55), Vector3(0.09, 0, -0.55), Vector3(0.09, 0, 0.05), Vector3(-0.09, 0, 0.05),
+		Vector3(-0.34, 0, 0.05), Vector3(0.34, 0, 0.05), Vector3(0, 0, 0.6)]
+	for t: Array in [[0, 1, 2], [0, 2, 3], [4, 5, 6]]:
+		for i: int in t:
+			st.set_normal(Vector3.UP)
+			st.add_vertex(pts[i])
+	var m := st.commit()
+	return m
 
 
 # ------------------------------------------------------------------ the landmarks
