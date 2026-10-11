@@ -461,8 +461,93 @@ def build_ivy_type_glyphs(species: str) -> list[dict]:
     return glyphs
 
 
+def leaflet(length: float, width: float, teeth: int = 9) -> list[Point]:
+    """One narrow, saw-edged leaflet along +y from the origin: widest a little below the middle, a long point."""
+    left, right = [], []
+    n = teeth * 4
+    for k in range(n + 1):
+        t = k / n
+        hw = width * (math.sin(math.pi * t) ** 0.85) * (1.0 - 0.25 * t)
+        saw = 1.0 + 0.32 * (((t * teeth) % 1.0) - 0.5) * (1.0 if 0.08 < t < 0.94 else 0.0)   # forward-leaning teeth
+        y = t * length
+        left.append((-hw * saw, y))
+        right.append((hw * saw, y))
+    return left + list(reversed(right))
+
+
+def add_palmate(parts, leaflets=7, offset=(0.0, 0.0), scale=1.0, angle=0.0, spread=1.0, size=1.0):
+    """A cannabis leaf: leaflets fanned from the top of a stalk, the middle one longest, the outer ones small."""
+    stalk = [(0.0, 0.0), (0.0, 0.16)]
+    parts["ink"].append(translate(stalk, offset, scale, angle))
+    half = (leaflets - 1) / 2.0
+    for k in range(leaflets):
+        f = (k - half) / max(half, 1.0)                         # -1 .. 1
+        a = f * math.radians(88.0) * spread
+        length = (0.74 - 0.42 * abs(f) ** 1.4) * size
+        width = (0.075 - 0.025 * abs(f)) * size
+        shape = translate(leaflet(length, width), (0.0, 0.0), 1.0, -a)
+        rib = translate([(0.0, 0.0), (0.0, length * 0.92)], (0.0, 0.0), 1.0, -a)
+        shape = [(x, y + 0.16) for x, y in shape]
+        rib = [(x, y + 0.16) for x, y in rib]
+        parts["fill"].append(translate(shape, offset, scale, angle))
+        parts["ink"].append(translate(shape, offset, scale, angle))
+        parts["ink"].append(translate(rib, offset, scale, angle))
+
+
+def build_cannabis_glyphs() -> list[dict]:
+    """HedgeCannabis: the same 16 slots. Leaves are fans of narrow saw-edged leaflets (7, 5, 9, a young 3); the bloom
+    is a frosty bud (a knot of tiny bracts with a few hairs); seeds are small speckled ovals."""
+    glyphs: list[dict] = []
+
+    def slot(name, category, draw):
+        item = glyph(name, category)
+        draw(item)
+        glyphs.append(item)
+
+    slot("leaf_simple", "leaf", lambda i: add_palmate(i, 7))
+    slot("leaf_narrow", "leaf", lambda i: add_palmate(i, 5, spread=0.8))
+    slot("leaf_round", "leaf", lambda i: add_palmate(i, 9, spread=1.05, size=0.95))
+    slot("leaf_pointed", "leaf", lambda i: add_palmate(i, 3, spread=0.55, size=0.9))
+    slot("leaf_bent", "leaf", lambda i: add_palmate(i, 7, angle=0.22, spread=0.9))
+    slot("leaf_pair", "cluster", lambda i: (add_stem(i, stem_curve("curved")), add_palmate(i, 5, (0.0, 0.3), 0.55, 0.8), add_palmate(i, 5, (0.03, 0.48), 0.55, -0.7)))
+    slot("leaf_pair_alternating", "cluster", lambda i: (add_stem(i, stem_curve("curved")), add_palmate(i, 7, (-0.04, 0.22), 0.5, -0.8), add_palmate(i, 5, (0.05, 0.52), 0.5, 0.6)))
+    slot("three_leaf_cluster", "cluster", lambda i: (add_stem(i, stem_curve("curved")), [add_palmate(i, (5, 7, 5)[k], (0.0, 0.18 + 0.2 * k), 0.45, (-0.7, 0.0, 0.7)[k]) for k in range(3)]))
+    slot("stem_segment", "stem", lambda i: add_stem(i, stem_curve("straight")))
+    slot("curved_stem", "stem", lambda i: add_stem(i, stem_curve("curved")))
+    slot("branch_fork", "branch", lambda i: (add_stem(i, [(0.0, 0.0), (0.0, 0.96)]), add_stem(i, [(0.0, 0.45), (-0.28, 0.82)])))
+    slot("tendril", "stem", lambda i: add_stem(i, stem_curve("tendril")))
+
+    def bud(i, big=1.0):
+        add_stem(i, [(0.0, 0.0), (0.0, 0.32)])
+        for k in range(14):                                     # a knot of little bracts
+            a = k * 2.4
+            r = 0.05 + 0.012 * (k % 4)
+            c = (math.cos(a) * 0.07 * big, 0.42 + k * 0.022 * big)
+            e = ellipse(c, (r * big, r * 1.4 * big), 12)
+            i["fill"].append(e)
+            i["ink"].append(e)
+        for k in range(7):                                      # a few hairs
+            a = -1.2 + k * 0.4
+            base = (0.0, 0.5 + 0.03 * k)
+            i["ink"].append([base, (base[0] + math.sin(a) * 0.12, base[1] + math.cos(a) * 0.1)])
+    slot("bud", "bud", lambda i: bud(i, 0.7))
+    slot("simple_flower", "flower", lambda i: bud(i, 1.0))
+
+    def seeds(i):
+        add_stem(i, [(0.0, 0.0), (0.0, 0.42)])
+        for c in ((-0.09, 0.55), (0.07, 0.62), (0.0, 0.48)):
+            e = ellipse(c, (0.05, 0.07), 14)
+            i["fill"].append(e)
+            i["ink"].append(e)
+    slot("berry_cluster", "berry", seeds)
+    slot("seed_pod", "seed", seeds)
+    return glyphs
+
+
 def build_species_glyphs(species: str) -> list[dict]:
     """Build the shared semantic slots with species-specific geometry."""
+    if species == "HedgeCannabis":
+        return build_cannabis_glyphs()
     if species in IVY_TYPES:
         return build_ivy_type_glyphs(species)
     if species == "HedgeInk":

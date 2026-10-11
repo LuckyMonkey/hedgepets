@@ -22,6 +22,7 @@ extends RefCounted
 const PALETTES := {
 	"green": ["2f4a2a", "4a6b36", "6e8c42", "889a44", "72886a", "b9c58a", "34502a"],
 	"spring": ["2e5a2a", "4a8a3a", "6eae4a", "9cc25a", "7a9e6a", "c8e08e", "345a2c"],
+	"hemp": ["2a5420", "468a2e", "68ae3c", "92c84e", "70a05a", "c6e486", "2a4c20"],
 	"autumn": ["6b3d1f", "9a5426", "b8702e", "c9923c", "8a6a3a", "e0b25a", "5a3418"],
 	"crimson": ["6a2420", "9a3428", "c0482e", "d07038", "8a4a3a", "e89a5a", "5a2018"],
 	"silver": ["46574a", "66786a", "869684", "9aa58e", "a7b3a6", "cfd6c8", "4a5a4c"],
@@ -52,12 +53,13 @@ const PLANTS := {
 	"bostonivy": ["bostonivy", "2a3050", 0.3], "creeper": ["creeper", "2a2a48", 0.35], "variegated": ["frost", "f4f0d8", 0.3],
 	"needlepoint": ["green", "c8d070", 0.3], "heartivy": ["spring", "c8d070", 0.3], "persianivy": ["glossy", "c8d070", 0.25],
 	"goldchild": ["gold", "d8d070", 0.3], "fig": ["spring", "b8c860", 0.2],
+	"cannabis": ["hemp", "e8ecc8", 0.3],                  # never sold; see garden_game "contraband"
 }
 
 ## How many leaves a plant needs to cover a body: broad ivy covers with few, willow and lavender need twice as many.
 const LEAF_FULLNESS := {"ivy": 1.0, "bostonivy": 1.0, "creeper": 1.2, "variegated": 1.0, "oak": 1.2, "maple": 1.4,
 	"pine": 1.8, "holly": 1.0, "boxwood": 1.3, "moss": 1.4, "jasmine": 1.2, "rose": 1.1, "lavender": 2.0, "clover": 1.2,
-	"fern": 1.4, "willow": 2.0, "sage": 1.3, "needlepoint": 1.5, "heartivy": 1.0, "persianivy": 0.8, "goldchild": 1.0, "fig": 1.4}
+	"fern": 1.4, "willow": 2.0, "sage": 1.3, "needlepoint": 1.5, "heartivy": 1.0, "persianivy": 0.8, "goldchild": 1.0, "fig": 1.4, "cannabis": 1.7}
 
 
 static func fullness(plant: String) -> int:
@@ -80,9 +82,9 @@ const GROUPS := [
 const PREFIX := {"ivy": "Ivy", "bostonivy": "Boston", "creeper": "Creeper", "variegated": "Frostleaf", "oak": "Oakleaf",
 	"maple": "Maple", "pine": "Pine", "holly": "Holly", "boxwood": "Box", "moss": "Mossback", "jasmine": "Jasmine",
 	"rose": "Briar", "lavender": "Lavender", "clover": "Clover", "fern": "Fern", "willow": "Willow", "sage": "Sage",
-	"needlepoint": "Needlepoint", "heartivy": "Heartleaf", "persianivy": "Persian", "goldchild": "Goldchild", "fig": "Fig"}
+	"needlepoint": "Needlepoint", "heartivy": "Heartleaf", "persianivy": "Persian", "goldchild": "Goldchild", "fig": "Fig", "cannabis": "Hempleaf"}
 const PLANT_NAMES := {"ivy": "English ivy", "bostonivy": "Boston ivy", "creeper": "Virginia creeper",
-	"variegated": "variegated ivy", "boxwood": "boxwood", "moss": "moss", "holly": "holly"}
+	"variegated": "variegated ivy", "boxwood": "boxwood", "moss": "moss", "holly": "holly", "cannabis": "cannabis"}
 
 
 ## The plant a pet is made of by nature (its profile's own), not a regraft.

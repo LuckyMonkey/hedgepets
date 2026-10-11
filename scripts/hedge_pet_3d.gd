@@ -67,6 +67,16 @@ func _load_pet(index: int) -> void:
 
 
 ## Cycle the pet through every plant (fonts and leaf sheets): HedgeMoss, HedgeHolly, ivy, oak...
+func _toggle_debug() -> void:
+	var dbg := get_node_or_null("ArtDebug")
+	if dbg == null:
+		dbg = preload("res://scripts/art/art_debug.gd").new()
+		dbg.name = "ArtDebug"
+		add_child(dbg)
+	else:
+		dbg.queue_free()
+
+
 func next_plant() -> void:
 	var plants: Array = SpeciesBuilder.PLANTS.keys()
 	var i := plants.find(SpeciesBuilder.plant_of(profile))
@@ -221,6 +231,21 @@ func _build_ui() -> void:
 		b.tooltip_text = "Previous pet" if side < 0 else "Next pet"
 		b.pressed.connect(func() -> void: _load_pet(pet_index + side))
 		layer.add_child(b)
+	# buttons for what the keys do (phones have no F1): the developer view, and the way back to the garden on the web
+	var tools := [["🛠 Debug", "Developer view: parts, regions, leaves, sliders (F1)", _toggle_debug]]
+	if OS.has_feature("web"):
+		tools.append(["🏡 Garden", "Back to the garden", func() -> void: JavaScriptBridge.eval("location.href='/hedgepets/'")])
+	for k in tools.size():
+		var t := Button.new()
+		t.text = tools[k][0]
+		t.tooltip_text = tools[k][1]
+		t.flat = true
+		t.add_theme_font_size_override("font_size", 30)
+		t.add_theme_color_override("font_color", Color(0.36, 0.27, 0.19, 0.85))
+		t.position = Vector2(40 + k * 220, 40)
+		t.size = Vector2(200, 70)
+		t.pressed.connect(tools[k][2])
+		layer.add_child(t)
 
 
 # ------------------------------------------------------------------ life
@@ -252,13 +277,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_F1:
-				var dbg := get_node_or_null("ArtDebug")
-				if dbg == null:
-					dbg = preload("res://scripts/art/art_debug.gd").new()
-					dbg.name = "ArtDebug"
-					add_child(dbg)
-				else:
-					dbg.queue_free()
+				_toggle_debug()
 			KEY_F:
 				next_plant()
 			KEY_LEFT:

@@ -117,6 +117,9 @@ const BUILD_STEPS := [
 
 
 func _ready() -> void:
+	if OS.has_feature("web") and str(JavaScriptBridge.eval("location.search")).contains("viewer"):
+		get_tree().change_scene_to_file.call_deferred("res://main3d.tscn")   # /hedgepets/?viewer: the pet viewer
+		return
 	Assets.web_fonts()
 	_rng.seed = 20261008
 	var staged := not OS.has_feature("editor") or OS.get_environment("HEDGEPETS_STAGED") != ""

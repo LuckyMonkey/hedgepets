@@ -148,5 +148,29 @@ func _run() -> void:
 	if w._state != w.INSIDE:
 		return _fail("kept being looked at, and didn't go in (state %d)" % w._state)
 	print("porch: came out unseen, caught, went in")
+	# ---- the contraband: leaves look different, a strong smell, then cannabis; it wants the street-gate sun
+	garden.set_process(true)
+	game.pet_state["Clover"] = "resident"
+	var clover: HedgePetNode = game._node(garden.roster.filter(func(p) -> bool: return p.pet_name == "Clover")[0])
+	garden.set_pet_mode(clover, "roam", true)
+	for k in range(3):
+		game._tend_contraband("Clover")
+	if not game.is_contraband("Clover") or game.pet_plant.get("Clover", "") != "cannabis":
+		return _fail("the contraband didn't come about (%s)" % game.contraband)
+	var gate: Vector3 = garden.GATES["houses"]["inside"]
+	var sunny := 0
+	for k in range(40):
+		var fav: Dictionary = game.favourite(clover)
+		if not fav.is_empty() and Vector2(fav["at"].x, fav["at"].z).distance_to(Vector2(gate.x, gate.z)) < 2.5:
+			sunny += 1
+	if sunny < 20:
+		return _fail("the contraband doesn't head for the sun out front often (%d of 40)" % sunny)
+	game.tool = "shears"
+	game.seed_choice = "clover"
+	game.coins = 50
+	game.regraft(clover)
+	if game.is_contraband("Clover") or int(game.contraband.get("stage", 0)) != 4:
+		return _fail("regrafting didn't settle it (%s)" % game.contraband)
+	print("contraband: leaves, smell, cannabis; off to the sun by the gate; regrafted, settled")
 	print("PASS yard_check")
 	quit(0)

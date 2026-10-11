@@ -52,6 +52,30 @@ ordinary backyard at the edge of the woods if you grow and build what they like.
 | Bake cache (startup speed) | `tools/bake_cache.gd` → `assets/baked/garden.res` | `docs/MOBILE.md` |
 | Web page around the game | `deploy/web/shell.html` | `docs/MOBILE.md` |
 
+## The pet viewer and debugger
+
+- **Desktop:** `godot --path . res://main3d.tscn`.
+- **Web:** `go.fridge.run/hedgepets/?viewer`, linked as "🔍 Pet viewer" on the page beside the game.
+- **Controls:** ‹ › or arrow keys change pet, and 🍃 or F regrows it in the next plant (every leaf style). 🛠 Debug
+  or F1 opens the developer view (`art_debug.gd`) with parts, regions, leaves and sliders. On the web, 🏡 Garden goes
+  back.
+- **Side-by-side tuning** (desktop): `godot --path . res://dev/swatches.tscn`.
+
+## The contraband (cannabis, pet 48's look)
+
+Your notes asked for "the weed HedgePet". It isn't a new animal; it's a slow, rare change to a resident (usually
+Clover): "leaves look different", then "smells really strong", then the journal identifies it as cannabis
+(`garden_game._tend_contraband`).
+
+- **Its leaves:** the glyph font `HedgeCannabis` (`tools/generate_hedgeink.py`: fans of saw-edged leaflets, a frosty
+  bud) and the sheet `assets/sprites/hedgecannabis.png`, made with
+  `python3 tools/bake_leaf_sprites.py hedgecannabis` and `make_normal_maps.py`. The plant is `cannabis` in
+  `SpeciesBuilder.PLANTS`, on the `hemp` palette. It's never sold.
+- **Odds:** about 1.2% per minute of play while there's a likely resident; the stages are 10 real minutes apart.
+  `HEDGEPETS_CONTRABAND=1` forces it, and so does `game._tend_contraband("Clover")`.
+- **Behaviour:** it wants the sun by the street gate, in view of the porch, where the porch man photographs it
+  furiously. No meter and no penalty. Lure it back with water, or regraft it (✂️) and it settles (stage 4).
+
 ## Running and checking
 
 All checks run headless. Run them before every commit that touches what they cover:

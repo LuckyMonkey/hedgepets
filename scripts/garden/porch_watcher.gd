@@ -31,6 +31,7 @@ var _raise := 0.0                     # 0 = phone down, 1 = held up taking pictu
 var _seen_for := 0.0
 var _walk_phase := 0.0
 var _caught_times := 0
+var _hot := false                      # photographing the contraband (lots of pictures)
 
 
 func setup(g: Node3D, house_at: Vector3) -> void:
@@ -131,6 +132,11 @@ func _door_seen() -> bool:
 func _subject() -> Vector3:
 	var best := Vector3(0, 0.4, 0)
 	var bd := INF
+	for node: HedgePetNode in garden.pets:            # the contraband sunbathing out front: that's the one he's after
+		if node.visible and garden.game.is_contraband(node.profile.pet_name) and node.global_position.distance_to(global_position) < 11.0:
+			_hot = true
+			return node.global_position + Vector3(0, 0.3, 0)
+	_hot = false
 	for node: HedgePetNode in garden.pets:
 		if node.visible and node.global_position.distance_to(global_position) < bd:
 			bd = node.global_position.distance_to(global_position)
@@ -175,7 +181,10 @@ func _process(delta: float) -> void:
 				rotation.y = lerp_angle(rotation.y, atan2(flat.x, flat.z), clampf(delta * 2.0, 0.0, 1.0))
 				_flash_in -= delta
 				if _flash_in <= 0.0:
-					_flash_in = randf_range(3.0, 8.0)
+					_flash_in = randf_range(0.8, 2.0) if _hot else randf_range(3.0, 8.0)
+					if _hot and not garden.game._contra_told:
+						garden.game._contra_told = true
+						garden.game.toast("A flash from the porch. Somebody's very interested in your garden today.")
 					var tw := Motion.channel(_flash, "flash")
 					tw.tween_property(_flash, "light_energy", 6.0, 0.04)
 					tw.tween_property(_flash, "light_energy", 0.0, 0.18)

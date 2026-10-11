@@ -78,6 +78,17 @@ var keep_seeds: Array = []          # seeds the nursery gave you, {species, gene
 const SOW_SECONDS := 45.0           # how often an empty bed may get a self-sown seedling
 const SOW_REACH := 5.0              # from a flowering plant this near
 var _sow := SOW_SECONDS
+## The contraband (the owner's design notes): very rarely a resident made of something leafy and herby starts to
+## change - "Hmm. Clover's leaves look different." - then, a while later, smells really strong; then the journal
+## quietly identifies the volunteer growth, and it's made of cannabis. From then on it wants full sun, preferably
+## right by the street gate in front of the house with the porch. Nothing bad happens; there's no meter. Lure it back
+## with water, or regraft it with ✂️ and it settles down. Saved; telemetry "contraband".
+var contraband := {}                 # {name, stage (1 leaves, 2 smell, 3 cannabis, 4 settled), next_at}
+const CONTRABAND_CHANCE := 0.012     # per minute of play, while there's a likely resident
+const CONTRABAND_STEP := 600.0       # real seconds between the signs
+const CONTRABAND_PLANTS := ["clover", "fern", "sage", "moss", "variegated", "ivy"]
+var _contra_check := 60.0
+var _contra_told := false
 var _beat := 20.0
 var _beats := 0
 ## Digging. A hole beside another joins it into a row; the dirt goes on a pile beside it (dirt_piles, saved), which
@@ -206,6 +217,10 @@ func _process(delta: float) -> void:
 				var node: HedgePetNode = _node(p)
 				if node.visible:
 					_drop_gift(node)
+	_contra_check -= delta
+	if _contra_check <= 0.0:
+		_contra_check = 60.0
+		_tend_contraband()
 	_beat -= delta
 	if _beat <= 0.0:                                     # what the garden's like, now and then; and send what's queued
 		_beat = 20.0
@@ -383,6 +398,49 @@ func _apply_mode(node: HedgePetNode, at_once := false) -> void:
 		garden.set_pet_mode(node, mode, at_once)
 
 
+func _tend_contraband(force := "") -> void:
+	var now := Time.get_unix_time_from_system()
+	if contraband.is_empty():
+		var likely: Array = garden.roster.filter(func(p) -> bool: return pet_state.get(p.pet_name, "") == "resident" and not p.starts_resident \
+			and CONTRABAND_PLANTS.has(pet_plant.get(p.pet_name, SpeciesBuilder.plant_of(p))))
+		if force != "":
+			likely = garden.roster.filter(func(p) -> bool: return p.pet_name == force)
+		if likely.is_empty() or (force == "" and OS.get_environment("HEDGEPETS_CONTRABAND") == "" and randf() > CONTRABAND_CHANCE):
+			return
+		var who: CharacterArtProfile = likely[0]
+		for p: CharacterArtProfile in likely:                 # Clover first, if she's here
+			if p.pet_name == "Clover":
+				who = p
+		contraband = {"name": who.pet_name, "stage": 1, "next_at": now + CONTRABAND_STEP}
+		Telemetry.event("contraband", {"stage": 1, "pet": who.pet_name})
+		toast("Hmm. %s's leaves look different." % who.pet_name)
+		return
+	var name: String = contraband["name"]
+	var stage: int = contraband["stage"]
+	if stage >= 3 or (now < float(contraband["next_at"]) and force == ""):
+		return
+	contraband["stage"] = stage + 1
+	contraband["next_at"] = now + CONTRABAND_STEP
+	Telemetry.event("contraband", {"stage": stage + 1, "pet": name})
+	if stage == 1:
+		toast("%s smells... really strong today." % name)
+	else:
+		pet_plant[name] = "cannabis"
+		var node := node_by_name(name)
+		if node != null:
+			node.set_plant("cannabis")
+		var seen: Array = discovered.get(name, [])
+		if not seen.has("cannabis"):
+			seen.append("cannabis")
+			discovered[name] = seen
+		toast("📖 Your journal has quietly identified the volunteer growth on %s: Cannabis sativa. Oh no." % name)
+
+
+## Whether this pet is the contraband (made of cannabis, not settled).
+func is_contraband(name: String) -> bool:
+	return contraband.get("name", "") == name and int(contraband.get("stage", 0)) == 3
+
+
 ## Everything planted grows: slowly on its own (rain, dew), three times as fast while watered. Wet soil looks dark.
 const DRY_GROWTH := 0.35
 
@@ -432,6 +490,10 @@ var gifts: Array = []               # {at: Vector3, node: Label3D, value, age}
 func favourite(node: HedgePetNode) -> Dictionary:
 	var p: CharacterArtProfile = node.profile
 	var options: Array = []
+	if is_contraband(p.pet_name):                        # it wants sun: right out front, by the street gate
+		var g: Vector3 = garden.GATES["houses"]["inside"]
+		for k in range(10):
+			options.append({"at": g + Vector3(randf_range(-1.6, 1.6), 0, randf_range(-1.2, 0.2)), "radius": 0.6, "emote": "☀️"})
 	for step in ["notice", "visit", "resident"]:
 		for key: String in p.wants[step]:
 			if WANT_THINGS.has(key):
@@ -621,17 +683,7 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 			if pet == null:
 				toast("Tap a pet to regraft it in %s %s (🪙 %d)." % [SEEDS[seed_choice]["icon"], seed_choice, SEEDS[seed_choice]["price"]])
 				return true
-			var price: int = SEEDS[seed_choice]["price"]
-			if SpeciesBuilder.plant_of(pet.profile) == seed_choice:
-				toast("%s is already %s." % [pet.profile.pet_name, seed_choice])
-			elif coins < price:
-				toast("Regrafting in %s costs 🪙 %d." % [seed_choice, price])
-			else:
-				coins -= price
-				pet_plant[pet.profile.pet_name] = seed_choice
-				pet.set_plant(seed_choice)
-				toast("✂️ %s is growing in %s now." % [pet.profile.pet_name, seed_choice])
-				_refresh()
+			regraft(pet)
 			return true
 		"build":
 			var item: Dictionary = BUILDS[build_choice]
@@ -761,6 +813,25 @@ func _shovel(p2: Vector2) -> bool:
 	add_dirt(spot, side)
 	_burst_dirt(spot)
 	return true
+
+
+## ✂️ on a pet: regrow it in the chosen seed's plant (its price). The contraband, regrafted, settles down.
+func regraft(pet: HedgePetNode) -> void:
+	var price: int = SEEDS[seed_choice]["price"]
+	if SpeciesBuilder.plant_of(pet.profile) == seed_choice:
+		toast("%s is already %s." % [pet.profile.pet_name, seed_choice])
+	elif coins < price:
+		toast("Regrafting in %s costs 🪙 %d." % [seed_choice, price])
+	else:
+		coins -= price
+		pet_plant[pet.profile.pet_name] = seed_choice
+		pet.set_plant(seed_choice)
+		if is_contraband(pet.profile.pet_name):     # regrafted: it settles down
+			contraband["stage"] = 4
+			Telemetry.event("contraband", {"stage": 4, "pet": pet.profile.pet_name})
+		Telemetry.event("regraft", {"pet": pet.profile.pet_name, "plant": seed_choice})
+		toast("✂️ %s is growing in %s now." % [pet.profile.pet_name, seed_choice])
+		_refresh()
 
 
 func _place(kind: String, p2: Vector2, yaw: float, animate := true) -> void:
@@ -1479,6 +1550,8 @@ func _fill_journal() -> void:
 		var seen: Array = discovered.get(p.pet_name, [])
 		var vs: Array = seen.map(func(v) -> String: return SpeciesBuilder.variant_name(p, v))
 		var seen_as := ("\n[color=#7a6a50]seen as %s[/color]" % ", ".join(vs)) if vs.size() > 1 else ""
+		if is_contraband(p.pet_name):
+			hint = "It wants sun. Lots of sun. Preferably where nobody can see it."
 		lines += "[b]%s[/b] the %s - %s\n%s%s\n\n" % [p.pet_name, SpeciesBuilder.variant_name(p, pet_plant.get(p.pet_name, "")), label, hint, seen_as]
 	# rumours: a few of the ones you haven't met, the nearest to noticing first
 	lines += "[b]Around the neighbourhood[/b]\n\n"
@@ -1674,7 +1747,7 @@ func save() -> void:
 		"flowers": pet_flowers,
 		"last_visit": Time.get_unix_time_from_system(),
 		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
-		"following": following, "carried": carried, "nursery": nursery, "keep_seeds": keep_seeds, "woods_finds": woods_finds,
+		"following": following, "carried": carried, "nursery": nursery, "keep_seeds": keep_seeds, "woods_finds": woods_finds, "contraband": contraband,
 		"dirt": dirt_piles.map(func(d) -> Array: return [d["at"].x, d["at"].y, d["loads"]]), "shovelful": shovelful,
 		"barrow": {"x": barrow["node"].position.x, "z": barrow["node"].position.z, "load": int(barrow.get("load", 0))} if barrow.has("node") else {},
 		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["node"].position.x, "z": b["node"].position.z, "yaw": b["node"].rotation_degrees.y})}
@@ -1793,6 +1866,8 @@ func _load() -> void:
 			dirt_piles.append(pile)
 			_dirt_look(pile)
 	shovelful = bool(data.get("shovelful", false))
+	if data.get("contraband", {}) is Dictionary:
+		contraband = data.get("contraband", {})
 	var bw = data.get("barrow", {})
 	if bw is Dictionary and bw.has("x") and barrow.has("node"):
 		barrow["node"].position = Vector3(float(bw["x"]), 0, float(bw["z"]))
