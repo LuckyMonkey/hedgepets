@@ -138,6 +138,14 @@ func _run() -> void:
 	if woods._at != "nursery":
 		return _fail("didn't arrive at the nursery (at %s)" % woods._at)
 	print("woods: mossy fork -> the nursery")
+	# nothing solid stands on a trail (the camera walks the trails: it would go straight through)
+	for n in woods.get_children():
+		var clear: float = {"Lantern": 1.8, "Sign": 0.95, "OldOak": 4.0, "TrailBoard": 1.5, "RidgeBench": 1.5}.get(String(n.name).get_slice("@", 0), 0.0)
+		if clear > 0.0:
+			var t: Vector2 = woods._nearest_trail(Vector2(n.position.x, n.position.z))
+			if t != Vector2.INF and t.distance_to(Vector2(n.position.x, n.position.z)) < clear - 0.05:
+				return _fail("%s stands %.2f m from a trail (needs %.1f)" % [n.name, t.distance_to(Vector2(n.position.x, n.position.z)), clear])
+	print("woods: lanterns, signs, the oak, the board and the bench all clear of the trails")
 	# let the bucket's pet out here
 	woods.let_out()
 	if game.carried != "" or not woods.followers.has(nb) or not game.following.has(b.pet_name):

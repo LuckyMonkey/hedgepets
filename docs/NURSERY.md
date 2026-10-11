@@ -88,6 +88,38 @@ out past the ridge, a blue haze between the trunks, canopy shadows, and about 40
   the garden's `loading_card.gd`). The woods are in the bake (`tools/bake_cache.gd`: `woods.build_now()`), so with the
   cache they build in about 0.5 s on desktop (9.9 s without).
 
+## The land beyond (3D skybox, `distant_land.gd`)
+
+A Source-engine-style sky_camera: the land beyond the woods is a **1:16 miniature** in its own `SubViewport` (its
+own World3D, its own camera, its own sky, sun, fog and haze). Each frame its camera copies the woods camera's turn
+and field of view, at the woods camera's position ÷ 16, so walking gives real parallax. The near hills slide; the far
+mountains barely move.
+
+- **Compositing:** the woods' sky is `shaders/distant_sky.gdshader`. It projects each sky direction through the
+  matched camera and samples the miniature's picture, so the miniature is drawn behind everything and the two depth
+  buffers never meet.
+  - A canvas background (`BG_CANVAS`) was tried first, but in the Compatibility renderer it drew over the 3D.
+  - Sky `SCREEN_UV` isn't the screen in that renderer either.
+- **Landmarks** (`PEAKS`, sky units = metres ÷ 16):
+  - **The mountain:** a granite dome with a bare summit, out past the ridge. You see it from the ridge, and through
+    the trees elsewhere.
+  - **The twin peaks** to the north, and **the long ridge** to the west with a fire tower.
+  - **Low hills** to the south, and a blue far range all round.
+- **The ridge's valley:** a lake with an island, patchwork farm fields, and a white village with a church steeple
+  and a red barn.
+- **Forest:** about 5,000 pines and autumn crowns, in two multimeshes. Clouds drift.
+- **Below the woods:** everything near the middle sits low, so the woods' own ground is always drawn over it.
+- **Cost:** rendered at 60% of the screen (`RES`), only while you're in the woods (`show_land`). No shadows,
+  alpha-blended clouds only. If phones struggle, lower `RES` first.
+- **Not done:** the runbook's separate `.tscn` (it's built in code, like the rest of the woods), and an iPhone
+  FPS/memory measurement.
+
+## Nothing stands on a trail
+
+Lanterns, signs, the oak, the board, the bench, clearing logs, rocks and boulders are all placed through
+`_off_trail(p, clearance)`, which pushes a spot off every trail by the thing's size. The camera walks the trails, so
+anything on one is walked through. `woods_check` fails if one is too close.
+
 ## Detail
 
 - **Trails:** a pale worn middle, loose darker soil to the sides, and a wandering edge. Pebbles, fallen autumn leaves,

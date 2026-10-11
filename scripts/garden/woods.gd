@@ -12,7 +12,7 @@ extends Elsewhere
 ##
 ## Clearings (NODES) and the trails between them (EDGES): the trailhead by the creek, the mossy fork (the hub, mossy
 ## boulders), the fern hollow down low (ferns), the ridge up high (an overlook: the land falls away to a misty valley,
-## far hills, the morning sun), the creek crossing (a real creek in its channel, stepping stones where the
+## far hills: distant_land.gd), the creek crossing (a real creek in its channel, stepping stones where the
 ## trails cross it), the old oak (one huge tree alone in its glade), and the nursery (nursery.gd). Dark, but kind:
 ## lanterns at every clearing, sunbeams, motes in the light. Never spooky.
 ##
@@ -103,6 +103,7 @@ var _finds: Array = []                # {id, kind, at (node id), node: Node3D, t
 var _basket_label: Label
 var nursery: Node3D                   # nursery.gd
 var campfire: Node3D                  # fire_pit.gd, in fern hollow
+var land: Node                        # distant_land.gd: the miniature land beyond the woods
 var basket: Dictionary:
 	get:
 		return garden.game.woods_finds["basket"]
@@ -302,19 +303,9 @@ func _build_places() -> void:
 func _build_sky() -> void:
 	var rng := _brng
 	var to_sun := TO_SUN.normalized()
-	var disc := MeshInstance3D.new()                      # the sun, seen from the ridge
-	var ms := SphereMesh.new()
-	ms.radius = 6.0
-	ms.height = 12.0
-	disc.mesh = ms
-	var dm := StandardMaterial3D.new()
-	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	dm.albedo_color = Color("fff6dc")
-	dm.disable_fog = true
-	disc.material_override = dm
-	disc.position = node_pos("ridge") + to_sun * 260.0
-	add_child(disc)
-	_far_valley(rng)
+	land = preload("res://scripts/garden/distant_land.gd").new()   # the land beyond: a 1:16 miniature (3D skybox)
+	add_child(land)
+	land.setup(self, to_sun)
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color("ffe4b8")
 	sun.light_energy = 1.15
@@ -322,16 +313,10 @@ func _build_sky() -> void:
 	sun.directional_shadow_max_distance = 40.0
 	sun.basis = Basis.looking_at(-to_sun, Vector3.UP)
 	add_child(sun)
-	var sky := ProceduralSkyMaterial.new()
-	sky.sky_top_color = Color("5a86b4")
-	sky.sky_horizon_color = Color("c4d4dc")
-	sky.ground_bottom_color = Color("24342c")
-	sky.ground_horizon_color = Color("6a8494")
-	sky.sun_angle_max = 8.0
 	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
-	env.sky = Sky.new()
-	env.sky.sky_material = sky
+	env.background_mode = Environment.BG_SKY                # behind everything: the distant land's picture
+	env.sky = land.sky_for_woods()
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color("38506a")                 # the shade is blue
 	env.ambient_light_energy = 0.95
@@ -425,6 +410,33 @@ func _index_trails() -> void:
 			if not _cells.has(c):
 				_cells[c] = PackedVector2Array()
 			(_cells[c] as PackedVector2Array).append(Vector2(pts[i].x, pts[i].z))
+
+
+## The nearest trail point to p (within 6 m), or INF.
+func _nearest_trail(p: Vector2) -> Vector2:
+	var best := Vector2.INF
+	var c0 := Vector2i(floori(p.x / CELL), floori(p.y / CELL))
+	for dz in range(-3, 4):
+		for dx in range(-3, 4):
+			var pts = _cells.get(c0 + Vector2i(dx, dz))
+			if pts == null:
+				continue
+			for q: Vector2 in pts:
+				if best == Vector2.INF or q.distance_squared_to(p) < best.distance_squared_to(p):
+					best = q
+	return best
+
+
+## Push a solid thing's spot off the trails until it's at least `clear` from every one (walking never goes through it).
+func _off_trail(p: Vector3, clear: float) -> Vector3:
+	var q := Vector2(p.x, p.z)
+	for k in range(8):
+		var t := _nearest_trail(q)
+		if t == Vector2.INF or t.distance_to(q) >= clear:
+			break
+		var away := (q - t).normalized() if q.distance_to(t) > 0.01 else Vector2.RIGHT
+		q = t + away * (clear + 0.1)
+	return Vector3(q.x, height(q.x, q.y), q.y)
 
 
 func _near_trail(p: Vector2, margin: float) -> bool:
@@ -867,13 +879,14 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 		var a := rng.randf() * TAU
 		if id == "nursery":                              # it has its own lamps and things (nursery.gd)
 			continue
-		var spot := _clear_spot(c, 3.0, rng)
+		var spot := _clear_spot(c, 3.2, rng)
 		if id == "ridge":                                # behind you, not in the view
 			spot = c - Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 3.0 + Vector3(VIEW_DIR.orthogonal().x, 0, VIEW_DIR.orthogonal().y) * 1.5
 			spot.y = height(spot.x, spot.z)
 		elif id == "oak":
 			spot = c + (c - Vector3(_oak_at().x, c.y, _oak_at().y)).normalized() * 2.5
 			spot.y = height(spot.x, spot.z)
+		spot = _off_trail(spot, 1.9)
 		GardenProps.lantern(self, spot, rad_to_deg(a))
 		var light := OmniLight3D.new()
 		light.light_color = Color("ffbe72")
@@ -882,9 +895,9 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 		light.position = spot + Vector3(0, 1.4, 0)
 		add_child(light)
 		for k in range(3):
-			var r := _clear_spot(c, rng.randf_range(4.0, 6.5), rng)
+			var r := _off_trail(_clear_spot(c, rng.randf_range(4.0, 6.5), rng), 1.6)
 			GardenProps.rock(self, r + Vector3(0, -0.1, 0), snappedf(rng.randf_range(0.5, 1.1), 0.1), rng)
-		var log := _clear_spot(c, rng.randf_range(4.0, 6.0), rng)
+		var log := _off_trail(_clear_spot(c, rng.randf_range(4.0, 6.0), rng), 2.2)
 		GardenProps.part(self, GardenProps.cyl(0.28, 0.32, rng.randf_range(2.4, 3.6), 9), GardenProps.mat("woodslog", Color("4a3a2a")), log + Vector3(0, 0.25, 0), Vector3(90, rng.randf_range(0, 180), 0), 0.012)
 		for k in range(10):
 			var f := MeshInstance3D.new()
@@ -937,8 +950,7 @@ func _brambles(at: Vector3, rng: RandomNumberGenerator) -> void:
 func _sign(from: String, dir: Vector3, text: String) -> Label3D:
 	var c := node_pos(from)
 	var right := dir.cross(Vector3.UP).normalized()
-	var at := c + dir * 4.2 - right * 1.25
-	at.y = height(at.x, at.z)
+	var at := _off_trail(c + dir * 4.2 - right * 1.25, 1.0)
 	var holder := Node3D.new()
 	holder.name = "Sign"
 	add_child(holder)
@@ -1016,8 +1028,8 @@ func _chevrons(from: String, way: Dictionary) -> Dictionary:
 ## The old oak: one enormous tree alone in its glade - a flared trunk with roots over the ground, a hollow, great
 ## limbs going out sideways, a crown wider than the clearing. A lantern hangs from it.
 func _old_oak(rng: RandomNumberGenerator) -> void:
-	var p := _oak_at()
-	var at := Vector3(p.x, height(p.x, p.y) - 0.2, p.y)
+	var at := _off_trail(Vector3(_oak_at().x, 0, _oak_at().y), 4.2) - Vector3(0, 0.2, 0)   # the trunk, roots and all, clear of every trail
+	var p := Vector2(at.x, at.z)
 	var bark := GardenProps.mat("oldoak", Color("4a3c30"))
 	var r := GardenProps.root(self, "OldOak", at, rng.randf() * 360.0)
 	GardenProps.part(r, GardenProps.cyl(1.15, 1.9, 7.5, 16), bark, Vector3(0, 3.75, 0), Vector3(0, 0, 3), 0.025)
@@ -1105,8 +1117,8 @@ func _ridge(rng: RandomNumberGenerator) -> void:
 	for k in range(7):
 		var p := c + VIEW_DIR * rng.randf_range(4.0, 6.0) + side * (k - 3) * 1.6
 		GardenProps.part(self, GardenProps.blob(Vector3(1.0, 0.35, 0.8) * snappedf(rng.randf_range(0.8, 1.3), 0.1), {"exponent": 2.6, "flat_bottom": 0.5}), lichen, Vector3(p.x, height(p.x, p.y) - 0.1, p.y), Vector3(rng.randf_range(-8, 8), rng.randf_range(0, 360), 0), 0.012)
-	var bench_at := c + VIEW_DIR * 1.2 + side * 2.4
-	var bench := GardenProps.root(self, "RidgeBench", Vector3(bench_at.x, height(bench_at.x, bench_at.y), bench_at.y), rad_to_deg(atan2(VIEW_DIR.x, VIEW_DIR.y)))
+	var bench3 := _off_trail(Vector3(c.x, 0, c.y) + Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 1.2 + Vector3(side.x, 0, side.y) * 2.4, 1.6)
+	var bench := GardenProps.root(self, "RidgeBench", bench3, rad_to_deg(atan2(VIEW_DIR.x, VIEW_DIR.y)))
 	var grey := GardenProps.mat("greywood", Color("6e665a"))
 	GardenProps.part(bench, GardenProps.box(Vector3(1.6, 0.06, 0.4)), grey, Vector3(0, 0.45, 0), Vector3.ZERO, 0.008)
 	GardenProps.part(bench, GardenProps.box(Vector3(1.6, 0.3, 0.05)), grey, Vector3(0, 0.72, -0.2), Vector3(-10, 0, 0), 0.008)
@@ -1117,50 +1129,6 @@ func _ridge(rng: RandomNumberGenerator) -> void:
 	for k in range(5):
 		var w := 0.42 - k * 0.07
 		GardenProps.part(self, GardenProps.blob(Vector3(w, 0.11, w * 0.85), "pebble"), lichen, Vector3(cairn.x, cy + 0.1 + k * 0.19, cairn.y), Vector3(0, rng.randf_range(0, 360), 0), 0.006)
-
-
-## What you see from the ridge, past the end of the woods: the valley floor, low hills one behind another, a few porch
-## lights.
-func _far_valley(rng: RandomNumberGenerator) -> void:
-	var r := node_pos("ridge")
-	var base := r.y - 20.0
-	var floor := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(1400, 1400)
-	floor.mesh = plane
-	floor.material_override = GardenProps.mat("valleyfloor", Color("2a3a2c"))
-	floor.position = Vector3(r.x, base, r.z)
-	add_child(floor)
-	var heading := atan2(VIEW_DIR.y, VIEW_DIR.x)
-	for k in range(14):                                   # hills one behind another, paler with distance (no fog: by hand)
-		var far := float(k) / 13.0
-		var a := heading + rng.randf_range(-1.0, 1.0)
-		var d := lerpf(80.0, 360.0, far) + rng.randf_range(-15.0, 15.0)
-		var size := lerpf(40.0, 120.0, far) * rng.randf_range(0.8, 1.2)
-		var m := StandardMaterial3D.new()
-		m.albedo_color = Color("2c4034").lerp(Color("9cb0bc"), far * 0.85)   # paler and bluer with distance
-		m.roughness = 1.0
-		m.disable_fog = true
-		var h := MeshInstance3D.new()
-		h.mesh = GardenProps.blob(Vector3(size, size * rng.randf_range(0.3, 0.45), size * 0.7), {"exponent": 2.0}, 10, 18)
-		h.material_override = m
-		h.position = Vector3(r.x + cos(a) * d, base - size * 0.12, r.z + sin(a) * d)
-		h.rotation.y = rng.randf() * TAU
-		add_child(h)
-	var mist := StandardMaterial3D.new()                  # mist lying in the valley
-	mist.albedo_color = Color(0.62, 0.68, 0.72, 0.22)
-	mist.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mist.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mist.disable_fog = true
-	for k in range(3):
-		var sheet := MeshInstance3D.new()
-		var pm := PlaneMesh.new()
-		pm.size = Vector2(900, 900)
-		sheet.mesh = pm
-		sheet.material_override = mist
-		sheet.position = Vector3(r.x, base + 3.0 + k * 2.5, r.z) + Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 470.0
-		sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(sheet)
 
 
 ## Where the sun gets through: a slanting beam (two crossed cards, the garden's light-shaft shader, stronger). A couple near most clearings (off to the side, never in your face), more along
@@ -1260,7 +1228,7 @@ func _mossy_fork(rng: RandomNumberGenerator) -> void:
 	var c := node_pos("fork")
 	var moss := GardenProps.mat("forkmoss", Color("4e6e30"))
 	for k in range(6):
-		var p := _clear_spot(c, rng.randf_range(3.8, 6.0), rng)
+		var p := _off_trail(_clear_spot(c, rng.randf_range(3.8, 6.0), rng), 1.8)
 		var size := snappedf(rng.randf_range(0.7, 1.4), 0.1)
 		GardenProps.rock(self, p - Vector3(0, 0.2, 0), size, rng)
 		GardenProps.part(self, GardenProps.blob(Vector3(size * 0.9, size * 0.28, size * 0.7), {"exponent": 2.2}), moss, p + Vector3(0, size * 0.42, 0), Vector3(0, rng.randf_range(0, 360), 0), 0.006)
@@ -1347,8 +1315,7 @@ func _cellar_hole(rng: RandomNumberGenerator) -> void:
 ## The trailhead: a little roofed board where a map would go.
 func _trailhead_board() -> void:
 	var c := node_pos("trailhead")
-	var at := c + Vector3(2.6, 0, 1.2)
-	at.y = height(at.x, at.z)
+	var at := _off_trail(c + Vector3(2.6, 0, 1.2), 1.6)
 	var r := GardenProps.root(self, "TrailBoard", at, -30.0)
 	var wood := GardenProps.mat("boardwood", Color("6a5038"))
 	for sx: float in [-0.6, 0.6]:
@@ -1637,6 +1604,7 @@ func _arrive() -> void:
 	_wild_begin()
 	_refresh_finds()
 	Telemetry.event("woods", {"followers": followers.size(), "carried": _carried != null})
+	land.show_land(true)
 	show_basket()
 	_yaw = _heading_of(_way_to("fork")["dir"])
 	_goal_yaw = _yaw
@@ -1649,6 +1617,7 @@ func _arrive() -> void:
 
 func _depart() -> void:
 	_walking = {}
+	land.show_land(false)
 	_wild.clear()                                        # (give_back puts them back where they were: away)
 	nursery.depart()
 	for node: HedgePetNode in followers + ([_carried] if _carried != null else []):
@@ -1835,6 +1804,7 @@ func _process(delta: float) -> void:
 				var a := (0.7 + 0.25 * sin(_t * 4.0)) if (id == _at and way == faced) else 0.0
 				m.albedo_color.a = Motion.approach(m.albedo_color.a, a, 6.0, delta)
 	_wild_tick(delta)
+	land.follow(cam, cam.position, delta)
 	for h: Node3D in _willows_sway:                      # the willows' strands, swaying
 		var ph: float = h.get_meta("phase")
 		h.rotation = Vector3(sin(_t * 0.6 + ph) * 0.035, 0, cos(_t * 0.45 + ph * 1.3) * 0.035)
