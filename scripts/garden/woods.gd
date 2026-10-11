@@ -405,7 +405,7 @@ func _index_trails() -> void:
 	_cells.clear()
 	for e in _paths:
 		var pts: PackedVector3Array = e["pts"]
-		for i in range(0, pts.size(), 2):
+		for i in range(pts.size()):
 			var c := Vector2i(floori(pts[i].x / CELL), floori(pts[i].z / CELL))
 			if not _cells.has(c):
 				_cells[c] = PackedVector2Array()
@@ -425,6 +425,26 @@ func _nearest_trail(p: Vector2) -> Vector2:
 				if best == Vector2.INF or q.distance_squared_to(p) < best.distance_squared_to(p):
 					best = q
 	return best
+
+
+## The direction from a clearing's middle that's furthest from all its trails (the middle of the widest gap); at the
+## ridge, never toward the view.
+func _gap_dir(id: String) -> Vector3:
+	var angles: Array = []
+	for way: Dictionary in _labels[id]:
+		angles.append(atan2(way["dir"].z, way["dir"].x))
+	if id == "ridge":
+		angles.append(atan2(VIEW_DIR.y, VIEW_DIR.x))
+	angles.sort()
+	var best := 0.0
+	var best_gap := -1.0
+	for i in angles.size():
+		var a: float = angles[i]
+		var b: float = angles[(i + 1) % angles.size()] + (TAU if i == angles.size() - 1 else 0.0)
+		if b - a > best_gap:
+			best_gap = b - a
+			best = (a + b) * 0.5
+	return Vector3(cos(best), 0, sin(best))
 
 
 ## Push a solid thing's spot off the trails until it's at least `clear` from every one (walking never goes through it).
@@ -557,7 +577,7 @@ func _trail_litter(rng: RandomNumberGenerator) -> void:
 				leaves.append([Transform3D(Basis.from_euler(Vector3(rng.randf_range(-0.2, 0.2), rng.randf() * TAU, rng.randf_range(-0.2, 0.2))).scaled(Vector3(lz, 0.006, lz * 1.4)), Vector3(p.x, y + 0.005, p.z)), autumn.pick_random()])
 			if rng.randf() < 0.07:                             # a root across the path
 				var yaw := atan2(side.x, side.z)
-				roots.append([Transform3D(Basis.from_euler(Vector3(0, yaw, PI * 0.5)).scaled(Vector3(0.05, 1.9, 0.05)), pts[i] + Vector3(0, 0.07, 0)), Color("4a3a2a")])
+				roots.append([Transform3D(Basis.from_euler(Vector3(0, yaw, PI * 0.5)) * Basis.from_scale(Vector3(0.05, 1.9, 0.05)), pts[i] + Vector3(0, 0.05, 0)), Color("4a3a2a")])   # lying across (scaled in its own space, then laid down)
 	var pebble := SphereMesh.new()
 	pebble.radius = 1.0
 	pebble.height = 2.0
@@ -579,58 +599,18 @@ func _trail_litter(rng: RandomNumberGenerator) -> void:
 	_multimesh(root, roots)
 
 
+## The trees (woods_trees.gd): oak, maple, birch and white pine, real trunks and limbs under leafy crowns; with
+## leaves near the trails, dark crown masses further off. Never within 2.8 m of a trail.
 func _trees(rng: RandomNumberGenerator) -> void:
-	var trunks: Array = []
-	var crowns: Array = []
-	var cones: Array = []
+	var maker = preload("res://scripts/garden/woods_trees.gd").new(self)
 	for k in range(900):
 		var p := Vector2(rng.randf_range(-58, 58), rng.randf_range(-108, 16))
-		if _near_trail(p, 2.6) or _keep_open(p, rng):
+		if _near_trail(p, 2.8) or _keep_open(p, rng):
 			continue
-		var y := height(p.x, p.y)
-		var tall := rng.randf_range(8.0, 17.0)
-		var girth := rng.randf_range(0.8, 2.0)
-		trunks.append([Transform3D(Basis().scaled(Vector3(girth, tall, girth)), Vector3(p.x, y - 0.4 + tall * 0.5, p.y)), Color("3a2c22").lerp(Color("4a3e34"), rng.randf())])
-		if rng.randf() < 0.45:                           # a pine: three narrowing tiers up a tall trunk
-			for c in range(3):
-				var s := rng.randf_range(1.9, 2.5) * (1.0 - c * 0.25)
-				cones.append([Transform3D(Basis().scaled(Vector3(s, s * 2.4, s)), Vector3(p.x, y + tall * (0.42 + c * 0.2) + s * 1.2, p.y)), Color("23402c").lerp(Color("2e4a2a"), rng.randf())])
-		elif _leafy < LEAFY_MAX and _near_trail(p, 11.0):    # near the trails: real leaves, like the hedgepets'
-			_leafy += 1
-			for c in range(rng.randi_range(2, 3)):
-				var s := rng.randf_range(1.1, 1.7)
-				var off := Vector3(rng.randf_range(-1.5, 1.5), rng.randf_range(-1.0, 1.5), rng.randf_range(-1.5, 1.5))
-				var crown: Node3D = _crown_template(rng.randi_range(0, CROWNS.size() - 1)).duplicate()
-				crown.visible = true
-				crown.position = Vector3(p.x, y + tall, p.y) + off
-				crown.scale = Vector3(s, s * 0.85, s)
-				crown.rotation.y = rng.randf() * TAU
-				add_child(crown)
-		else:
-			for c in range(rng.randi_range(2, 3)):
-				var s := rng.randf_range(2.6, 4.4)
-				var off := Vector3(rng.randf_range(-1.5, 1.5), rng.randf_range(-1.0, 1.5), rng.randf_range(-1.5, 1.5))
-				crowns.append([Transform3D(Basis().scaled(Vector3(s, s * 0.8, s)), Vector3(p.x, y + tall, p.y) + off), Color("2e4424").lerp(Color("5a4a22"), rng.randf() * 0.5)])
-	var trunk := CylinderMesh.new()
-	trunk.top_radius = 0.16
-	trunk.bottom_radius = 0.26
-	trunk.height = 1.0
-	trunk.radial_segments = 8
-	trunk.rings = 1
-	var crown := SphereMesh.new()
-	crown.radius = 1.0
-	crown.height = 2.0
-	crown.radial_segments = 10
-	crown.rings = 6
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.0
-	cone.bottom_radius = 1.0
-	cone.height = 1.0
-	cone.radial_segments = 9
-	cone.rings = 1
-	_multimesh(trunk, trunks)
-	_multimesh(crown, crowns)
-	_multimesh(cone, cones)
+		var roll := rng.randf()
+		var kind := "pine" if roll < 0.35 else ("oak" if roll < 0.6 else ("maple" if roll < 0.85 else "birch"))
+		maker.tree(kind, Vector3(p.x, height(p.x, p.y), p.y), rng, _near_trail(p, maker.LEAFY_REACH))
+	maker.finish()
 	_willows(rng)
 
 
@@ -746,8 +726,8 @@ func _forest_floor(rng: RandomNumberGenerator) -> void:
 			var r := rng.randf_range(0.18, 0.32)
 			var yaw := rng.randf() * TAU
 			var b := Basis.from_euler(Vector3(0, yaw, PI * 0.5))
-			logs.append([Transform3D(b.scaled(Vector3(r, len, r)), Vector3(p.x, y + r * 0.7, p.y)), Color("4a3a2c").lerp(Color("5a4a38"), rng.randf())])
-			mossy.append([Transform3D(Basis.from_euler(Vector3(0, yaw + PI * 0.5, 0)).scaled(Vector3(r * 1.1, r * 0.45, len * 0.35)), Vector3(p.x, y + r * 1.5, p.y)), Color("4e6e30").lerp(Color("6a7a34"), rng.randf())])
+			logs.append([Transform3D(b * Basis.from_scale(Vector3(r, len, r)), Vector3(p.x, y + r * 0.7, p.y)), Color("4a3a2c").lerp(Color("5a4a38"), rng.randf())])   # lying down (not stood on end)
+			mossy.append([Transform3D(Basis.from_euler(Vector3(0, yaw + PI * 0.5, 0)) * Basis.from_scale(Vector3(r * 1.1, r * 0.45, len * 0.35)), Vector3(p.x, y + r * 1.5, p.y)), Color("4e6e30").lerp(Color("6a7a34"), rng.randf())])
 		elif kind < 0.4:
 			var r := rng.randf_range(0.25, 0.45)
 			var h := rng.randf_range(0.25, 0.6)
@@ -879,14 +859,7 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 		var a := rng.randf() * TAU
 		if id == "nursery":                              # it has its own lamps and things (nursery.gd)
 			continue
-		var spot := _clear_spot(c, 3.2, rng)
-		if id == "ridge":                                # behind you, not in the view
-			spot = c - Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 3.0 + Vector3(VIEW_DIR.orthogonal().x, 0, VIEW_DIR.orthogonal().y) * 1.5
-			spot.y = height(spot.x, spot.z)
-		elif id == "oak":
-			spot = c + (c - Vector3(_oak_at().x, c.y, _oak_at().y)).normalized() * 2.5
-			spot.y = height(spot.x, spot.z)
-		spot = _off_trail(spot, 1.9)
+		var spot := _off_trail(c + _gap_dir(id) * 4.0, 2.4)   # in the widest gap between the trails (never on one)
 		GardenProps.lantern(self, spot, rad_to_deg(a))
 		var light := OmniLight3D.new()
 		light.light_color = Color("ffbe72")
@@ -1095,7 +1068,7 @@ func _creek(rng: RandomNumberGenerator) -> void:
 					GardenProps.rock(self, Vector3(b.x, height(b.x, b.y) - 0.15, b.y), snappedf(rng.randf_range(0.35, 0.7), 0.1), rng)
 			elif rng.randf() < 0.3:
 				var b := _creek_point(i + rng.randf_range(-1, 1)) + side * sgn * rng.randf_range(1.6, 2.2)
-				if not _near_trail(b, 1.4):
+				if not _near_trail(b, 2.0):
 					GardenProps.cattails(self, Vector3(b.x, height(b.x, b.y), b.y), rng)
 	var stone := GardenProps.mat("stepstone0", Color("7a7a72"))
 	for e in _paths:                                      # stepping stones where a trail crosses
@@ -1148,7 +1121,7 @@ func _sunbeams(rng: RandomNumberGenerator, to_sun: Vector3) -> void:
 				spots.append(Vector2(pts[i].x, pts[i].z) + Vector2(rng.randf_range(-2.0, 2.0), rng.randf_range(-2.0, 2.0)))
 	var side := to_sun.cross(Vector3.FORWARD if absf(to_sun.z) < 0.9 else Vector3.RIGHT).normalized()
 	for p: Vector2 in spots:
-		var at := Vector3(p.x, height(p.x, p.y), p.y)
+		var at := _off_trail(Vector3(p.x, 0, p.y), 2.5)          # never standing on a trail
 		var beam := Node3D.new()
 		beam.name = "Sunbeam"
 		add_child(beam)
@@ -1268,7 +1241,7 @@ func _pond(rng: RandomNumberGenerator) -> void:
 			GardenProps.part(self, GardenProps.blob(Vector3(0.09, 0.06, 0.09), "pebble"), GardenProps.mat("lily", Color("f2ece4")), Vector3(q.x, y + 0.08, q.y), Vector3.ZERO, 0.0)
 	for k in range(10):
 		var q := POND_AT + Vector2.from_angle(rng.randf() * TAU) * (POND_R + rng.randf_range(0.2, 1.0))
-		if not _near_trail(q, 1.2):
+		if not _near_trail(q, 2.0):
 			GardenProps.cattails(self, Vector3(q.x, height(q.x, q.y), q.y), rng)
 	for k in range(4):                                      # stumps, gnawed to a point
 		var q := POND_AT + Vector2.from_angle(rng.randf() * TAU) * (POND_R + rng.randf_range(1.5, 3.0))

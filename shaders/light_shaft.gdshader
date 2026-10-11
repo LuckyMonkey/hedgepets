@@ -19,5 +19,7 @@ void fragment() {
 	// plain transparency (the additive blend didn't hold its strength in the Compatibility renderer): a warm,
 	// see-through glow whose opacity is exactly what's computed here
 	ALBEDO = colour;
-	ALPHA = clamp(strength * 15.0 * across * along * breathe * streaks * smoothstep(0.1, 0.5, facing), 0.0, 0.35);
+	// up close it fades away: you never walk into a column of light (in the woods the camera passes right by them)
+	float near = smoothstep(2.0, 6.0, length(VERTEX));
+	ALPHA = clamp(strength * 15.0 * across * along * breathe * streaks * smoothstep(0.1, 0.5, facing) * near, 0.0, 0.35);
 }
