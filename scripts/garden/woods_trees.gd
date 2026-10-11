@@ -12,9 +12,9 @@ extends RefCounted
 ## dozen draws however many trees, and every patch is stored in the bake (BakeCache).
 
 const PATCH := 24.0
-const LEAFY_REACH := 16.0                      # trees nearer a trail than this get leaves
-const DENSITY := 0.38                          # of the full cluster's leaves (bigger leaves cover the gaps)
-const LEAF_SIZE := 1.15
+const LEAFY_REACH := 7.5                       # trees nearer a trail than this get leaves (the ones you walk past)
+const DENSITY := 0.2                           # of the full cluster's leaves (bigger leaves cover the gaps): a phone budget
+const LEAF_SIZE := 1.5
 const KINDS := {
 	"oak": {"sheet": "hedgeoak", "palettes": ["autumn", "green"], "bark": Color("4a3c30"), "build": "broad"},
 	"maple": {"sheet": "hedgemaple", "palettes": ["crimson", "autumn"], "bark": Color("54463a"), "build": "broad"},
@@ -54,7 +54,7 @@ func _patch(p: Vector2) -> Dictionary:
 	if not _patches.has(key):
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees3", key])) != null}
+		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees4", key])) != null}
 	return _patches[key]
 
 
@@ -110,6 +110,7 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool) 
 		leafy += 1
 	_limbs_plan = []
 	_clusters_plan = []
+	_cones_plan = []
 	match k["build"]:
 		"broad":
 			var fork := p + (Vector3.UP * 3.2 + lean * 2.0) * s
@@ -145,7 +146,11 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool) 
 				var at := p.lerp(top, f)
 				var w := lerpf(1.25, 0.45, f)
 				var off := Vector3(rng.randf_range(-0.3, 0.3), 0, rng.randf_range(-0.3, 0.3)) * s
-				_plan_cluster(_cluster(kind, pal, t % 3), at + off, Vector3(w, w * 0.9, w) * s, rng.randf() * TAU, leaves)
+				var c := _cluster(kind, pal, t % 3)
+				if leaves:
+					_plan_cluster(c, at + off, Vector3(w, w * 0.9, w) * s, rng.randf() * TAU, leaves)
+				else:                                     # far off: a drooping tier of needles (a cone), no leaf cards
+					_cones_plan.append([at + off - Vector3(0, 0.6, 0) * s, w * 2.0 * s, 1.9 * w * s, Color("22382a").lerp(Color("2c4630"), rng.randf())])
 	# never in your way: nothing of it near the camera's path along any trail (its eye height, all the way)
 	for l: Array in _limbs_plan:
 		for f: float in [0.0, 0.5, 1.0]:
@@ -156,8 +161,14 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool) 
 		if not woods.eye_clear(c[1], 1.6 * (c[2] as Vector3).x + 0.4):
 			_count_rejected(leaves)
 			return
+	for c: Array in _cones_plan:
+		if not woods.eye_clear((c[0] as Vector3) + Vector3(0, c[2] * 0.3, 0), c[1] + 0.3):
+			_count_rejected(leaves)
+			return
 	if pt["cached"]:                                  # this patch is in the bake: planned (same numbers drawn), not built
 		return
+	for c: Array in _cones_plan:
+		_cone(st, c[0], c[1], c[2], c[3])
 	for l: Array in _limbs_plan:
 		_limb(st, l[0], l[1], l[2], l[3], l[4])
 	for c: Array in _clusters_plan:
@@ -165,6 +176,24 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool) 
 
 
 var _limbs_plan: Array = []
+var _cones_plan: Array = []                        # [base centre, radius, height, colour]
+
+
+## A cone of needles (base at b), into the patch's trunk mesh: a far pine's tier.
+func _cone(st: SurfaceTool, b: Vector3, r: float, h: float, c: Color) -> void:
+	var n := 9
+	var tip := b + Vector3(0, h, 0)
+	for i in range(n):
+		var a0 := i * TAU / n
+		var a1 := (i + 1) * TAU / n
+		var p0 := b + Vector3(cos(a0), -0.12, sin(a0)) * r
+		var p1 := b + Vector3(cos(a1), -0.12, sin(a1)) * r
+		for v: Vector3 in [p0, tip, p1]:
+			st.set_color(c.lightened(0.06 * sin(a0 * 3.0)))
+			st.add_vertex(v)
+		for v: Vector3 in [p0, p1, b + Vector3(0, -0.12 * r, 0)]:
+			st.set_color(c.darkened(0.3))
+			st.add_vertex(v)
 var _clusters_plan: Array = []
 var rejected := 0
 
@@ -188,7 +217,7 @@ func finish() -> void:
 	var leaf_mats := {}
 	for key: Vector2i in _patches:
 		var pt: Dictionary = _patches[key]
-		var ck := BakeCache.key(["woodstrees3", key])
+		var ck := BakeCache.key(["woodstrees4", key])
 		var cached = BakeCache.fetch(ck)
 		var made: Array
 		if cached != null:

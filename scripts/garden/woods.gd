@@ -600,7 +600,8 @@ func _trail_litter(rng: RandomNumberGenerator) -> void:
 				leaves.append([Transform3D(Basis.from_euler(Vector3(rng.randf_range(-0.2, 0.2), rng.randf() * TAU, rng.randf_range(-0.2, 0.2))).scaled(Vector3(lz, 0.006, lz * 1.4)), Vector3(p.x, y + 0.005, p.z)), autumn.pick_random()])
 			if rng.randf() < 0.07:                             # a root across the path
 				var yaw := atan2(side.x, side.z)
-				roots.append([Transform3D(Basis.from_euler(Vector3(0, yaw, PI * 0.5)) * Basis.from_scale(Vector3(0.05, 1.9, 0.05)), pts[i] + Vector3(0, 0.05, 0)), Color("4a3a2a")])   # lying across (scaled in its own space, then laid down)
+				var across := Basis(d * 0.04, side.normalized() * 1.6, d.cross(side).normalized() * 0.04)   # long axis across the path
+				roots.append([Transform3D(across, pts[i] + Vector3(0, 0.03, 0)), Color("5a4632")])
 	var pebble := SphereMesh.new()
 	pebble.radius = 1.0
 	pebble.height = 2.0
