@@ -398,18 +398,22 @@ func _trail(a: Vector3, b: Vector3, rng: RandomNumberGenerator) -> PackedVector3
 
 const CELL := 2.0
 var _cells := {}                      # Vector2i -> PackedVector2Array of trail points in that cell
+var _cells3 := {}                     # the same, with their heights (the camera walks them)
 
 
 ## Trail points by 2 m cell, so "is this near a trail" looks at a few cells, not every point of every trail.
 func _index_trails() -> void:
 	_cells.clear()
+	_cells3.clear()
 	for e in _paths:
 		var pts: PackedVector3Array = e["pts"]
 		for i in range(pts.size()):
 			var c := Vector2i(floori(pts[i].x / CELL), floori(pts[i].z / CELL))
 			if not _cells.has(c):
 				_cells[c] = PackedVector2Array()
+				_cells3[c] = PackedVector3Array()
 			(_cells[c] as PackedVector2Array).append(Vector2(pts[i].x, pts[i].z))
+			(_cells3[c] as PackedVector3Array).append(pts[i])
 
 
 ## The nearest trail point to p (within 6 m), or INF.
@@ -457,6 +461,25 @@ func _off_trail(p: Vector3, clear: float) -> Vector3:
 		var away := (q - t).normalized() if q.distance_to(t) > 0.01 else Vector2.RIGHT
 		q = t + away * (clear + 0.1)
 	return Vector3(q.x, height(q.x, q.y), q.y)
+
+
+## Whether a solid ball (centre, radius) keeps clear of the camera walking any trail: its eye from knee height to
+## just over its head, all the way along.
+func eye_clear(c: Vector3, r: float) -> bool:
+	var reach := ceili((r + 1.0) / CELL)
+	var c0 := Vector2i(floori(c.x / CELL), floori(c.z / CELL))
+	for dz in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			var pts = _cells3.get(c0 + Vector2i(dx, dz))
+			if pts == null:
+				continue
+			for q: Vector3 in pts:
+				var lo := q.y + 0.3
+				var hi := q.y + EYE + 0.5
+				var nearest := Vector3(q.x, clampf(c.y, lo, hi), q.z)
+				if nearest.distance_to(c) < r:
+					return false
+	return true
 
 
 func _near_trail(p: Vector2, margin: float) -> bool:
@@ -611,6 +634,7 @@ func _trees(rng: RandomNumberGenerator) -> void:
 		var kind := "pine" if roll < 0.35 else ("oak" if roll < 0.6 else ("maple" if roll < 0.85 else "birch"))
 		maker.tree(kind, Vector3(p.x, height(p.x, p.y), p.y), rng, _near_trail(p, maker.LEAFY_REACH))
 	maker.finish()
+	set_meta("trees_rejected", maker.rejected)
 	_willows(rng)
 
 
@@ -661,10 +685,10 @@ func _willows(rng: RandomNumberGenerator) -> void:
 	strand.radial_segments = 4
 	strand.rings = 1
 	for p: Vector2 in spots:
-		if _near_trail(p, 2.2):
-			continue
 		var y := height(p.x, p.y)
 		var tall := rng.randf_range(5.5, 7.0)
+		if _near_trail(p, 4.4) or not eye_clear(Vector3(p.x, y + 2.0, p.y), 3.2):   # the curtain hangs ~2.6 m out
+			continue
 		var lean := Vector3(rng.randf_range(-0.12, 0.12), 0, rng.randf_range(-0.12, 0.12))
 		GardenProps.part(self, GardenProps.cyl(0.22, 0.38, tall, 9), GardenProps.mat("willowbark", Color("5a4c3a")), Vector3(p.x, y + tall * 0.5 - 0.2, p.y), Vector3(rad_to_deg(lean.z), 0, rad_to_deg(-lean.x)), 0.012)
 		var top := Vector3(p.x, y + tall, p.y) + lean * tall
@@ -723,6 +747,8 @@ func _forest_floor(rng: RandomNumberGenerator) -> void:
 		var kind := rng.randf()
 		if kind < 0.22:
 			var len := rng.randf_range(2.0, 4.5)
+			if _near_trail(p, 1.6 + len * 0.5):          # a log is long: all of it off the trail
+				continue
 			var r := rng.randf_range(0.18, 0.32)
 			var yaw := rng.randf() * TAU
 			var b := Basis.from_euler(Vector3(0, yaw, PI * 0.5))
@@ -813,6 +839,8 @@ func _undergrowth(rng: RandomNumberGenerator) -> void:
 			for k in range(5):
 				var off := Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)).normalized() * rng.randf_range(1.0, 3.5)
 				var p := Vector2(pts[i].x, pts[i].z) + off
+				if _near_trail(p, 1.35):                     # beside the path, not on it (you'd walk through it)
+					continue
 				var s := rng.randf_range(0.6, 1.1)
 				var b := Basis.from_euler(Vector3(0, rng.randf_range(0, TAU), 0)).scaled(Vector3(s * 1.3, s * rng.randf_range(0.9, 1.3), s * 1.3))
 				var o := Vector3(p.x, height(p.x, p.y) - 0.05, p.y)
@@ -822,7 +850,7 @@ func _undergrowth(rng: RandomNumberGenerator) -> void:
 	var hollow: Vector2 = NODES["hollow"]["at"]
 	for k in range(260):                                  # fern hollow: ferns everywhere but the path
 		var p := hollow + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(3.0, 13.0)
-		if _near_trail(p, 1.2) and p.distance_to(hollow) > 3.0 and rng.randf() < 0.7:
+		if _near_trail(p, 1.35):
 			continue
 		var s := rng.randf_range(0.9, 1.6)
 		var b := Basis.from_euler(Vector3(0, rng.randf_range(0, TAU), 0)).scaled(Vector3(s * 1.5, s * rng.randf_range(1.0, 1.4), s * 1.5))
@@ -1269,14 +1297,12 @@ func _cellar_hole(rng: RandomNumberGenerator) -> void:
 	var chimney := c + Vector3(-1.6, 0, -1.4)
 	chimney.y = height(chimney.x, chimney.z)
 	GardenProps.part(self, GardenProps.box(Vector3(0.9, 1.3, 0.9)), stone, chimney + Vector3(0, 0.3, 0), Vector3(0, 8, 0), 0.012)
-	var lilac := c + Vector3(-4.6, 0, -1.6)
-	lilac.y = height(lilac.x, lilac.z)
+	var lilac := _off_trail(c + Vector3(-4.6, 0, -1.6), 3.2)
 	GardenProps.part(self, GardenProps.blob(Vector3(1.6, 1.4, 1.5), {"exponent": 2.0}), GardenProps.mat("lilacleaf", Color("3a5030")), lilac + Vector3(0, 1.3, 0), Vector3.ZERO, 0.01)
 	for k in range(9):
 		var q := lilac + Vector3(rng.randf_range(-1.3, 1.3), rng.randf_range(1.5, 2.4), rng.randf_range(-1.2, 1.2))
 		GardenProps.part(self, GardenProps.blob(Vector3(0.14, 0.22, 0.14), "pebble"), GardenProps.mat("lilacbloom", Color("a98ac8")), q, Vector3.ZERO, 0.0)
-	var apple := c + Vector3(-2.4, 0, 5.0)
-	apple.y = height(apple.x, apple.z)
+	var apple := _off_trail(c + Vector3(-2.4, 0, 5.0), 3.6)
 	var bark := GardenProps.mat("applebark", Color("4a3c30"))
 	GardenProps.part(self, GardenProps.cyl(0.18, 0.28, 2.4, 9), bark, apple + Vector3(0, 1.2, 0), Vector3(0, 0, 8), 0.01)
 	GardenProps.part(self, GardenProps.blob(Vector3(2.2, 1.4, 2.0), {"exponent": 2.0}), GardenProps.mat("applecrown", Color("3a4c28")), apple + Vector3(0.3, 3.0, 0), Vector3.ZERO, 0.0)

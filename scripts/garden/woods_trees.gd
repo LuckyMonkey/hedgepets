@@ -54,7 +54,7 @@ func _patch(p: Vector2) -> Dictionary:
 	if not _patches.has(key):
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees2", key])) != null}
+		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees3", key])) != null}
 	return _patches[key]
 
 
@@ -108,44 +108,79 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool) 
 	var leaves := leafy_ok
 	if leaves:
 		leafy += 1
-	if pt["cached"]:                                  # this patch is in the bake: nothing to build
-		return
+	_limbs_plan = []
+	_clusters_plan = []
 	match k["build"]:
 		"broad":
 			var fork := p + (Vector3.UP * 3.2 + lean * 2.0) * s
-			_limb(st, p - Vector3(0, 0.3, 0), fork, 0.36 * s, 0.24 * s, bark)
+			_plan_limb(p - Vector3(0, 0.3, 0), fork, 0.36 * s, 0.24 * s, bark)
 			var top := fork + (Vector3.UP * 3.5 + lean) * s
-			_limb(st, fork, top, 0.24 * s, 0.1 * s, bark)
+			_plan_limb(fork, top, 0.24 * s, 0.1 * s, bark)
 			for b in range(rng.randi_range(3, 4)):
 				var a := yaw + b * TAU / 4.0 + rng.randf_range(-0.4, 0.4)
 				var out := Vector3(cos(a), 0, sin(a))
 				var from := fork + Vector3.UP * rng.randf_range(0.0, 1.4) * s
 				var tip := from + (out * rng.randf_range(2.0, 2.8) + Vector3.UP * rng.randf_range(1.2, 2.2)) * s
-				_limb(st, from, tip, 0.15 * s, 0.06 * s, bark)
-				_add_cluster(pt, _cluster(kind, pal, rng.randi_range(0, 2)), tip + Vector3.UP * 0.3 * s, Vector3.ONE * rng.randf_range(0.9, 1.25) * s, rng.randf() * TAU, leaves)
-			_add_cluster(pt, _cluster(kind, pal, rng.randi_range(0, 2)), top + Vector3.UP * 0.4 * s, Vector3.ONE * rng.randf_range(1.1, 1.4) * s, rng.randf() * TAU, leaves)
-			_add_cluster(pt, _cluster(kind, pal, rng.randi_range(0, 2)), fork + Vector3.UP * 2.2 * s, Vector3.ONE * 1.2 * s, rng.randf() * TAU, leaves)
+				_plan_limb(from, tip, 0.15 * s, 0.06 * s, bark)
+				_plan_cluster(_cluster(kind, pal, rng.randi_range(0, 2)), tip + Vector3.UP * 0.3 * s, Vector3.ONE * rng.randf_range(0.9, 1.25) * s, rng.randf() * TAU, leaves)
+			_plan_cluster(_cluster(kind, pal, rng.randi_range(0, 2)), top + Vector3.UP * 0.4 * s, Vector3.ONE * rng.randf_range(1.1, 1.4) * s, rng.randf() * TAU, leaves)
+			_plan_cluster(_cluster(kind, pal, rng.randi_range(0, 2)), fork + Vector3.UP * 2.2 * s, Vector3.ONE * 1.2 * s, rng.randf() * TAU, leaves)
 		"slim":
 			var top := p + (Vector3.UP * 9.0 + lean * 4.0) * s
-			_limb(st, p - Vector3(0, 0.3, 0), top, 0.17 * s, 0.06 * s, bark)
+			_plan_limb(p - Vector3(0, 0.3, 0), top, 0.17 * s, 0.06 * s, bark)
 			for b in range(4):
 				var y := lerpf(0.42, 0.95, b / 3.0)
 				var at := p.lerp(top, y)
 				var a := yaw + b * 2.3
 				var off := Vector3(cos(a), 0, sin(a)) * 0.7 * s
-				_limb(st, at - off * 0.2, at + off, 0.05 * s, 0.03 * s, bark)
-				_add_cluster(pt, _cluster(kind, pal, b % 3), at + off, Vector3.ONE * rng.randf_range(0.6, 0.8) * s, rng.randf() * TAU, leaves)
+				_plan_limb(at - off * 0.2, at + off, 0.05 * s, 0.03 * s, bark)
+				_plan_cluster(_cluster(kind, pal, b % 3), at + off, Vector3.ONE * rng.randf_range(0.6, 0.8) * s, rng.randf() * TAU, leaves)
 		"pine":
 			var tall := rng.randf_range(12.0, 16.0)
 			var top := p + (Vector3.UP * tall + lean * 3.0) * s
-			_limb(st, p - Vector3(0, 0.3, 0), top, 0.3 * s, 0.05 * s, bark)
+			_plan_limb(p - Vector3(0, 0.3, 0), top, 0.3 * s, 0.05 * s, bark)
 			var tiers := 6
 			for t in range(tiers):
 				var f := lerpf(0.3, 0.98, float(t) / (tiers - 1))
 				var at := p.lerp(top, f)
 				var w := lerpf(1.25, 0.45, f)
 				var off := Vector3(rng.randf_range(-0.3, 0.3), 0, rng.randf_range(-0.3, 0.3)) * s
-				_add_cluster(pt, _cluster(kind, pal, t % 3), at + off, Vector3(w, w * 0.9, w) * s, rng.randf() * TAU, leaves)
+				_plan_cluster(_cluster(kind, pal, t % 3), at + off, Vector3(w, w * 0.9, w) * s, rng.randf() * TAU, leaves)
+	# never in your way: nothing of it near the camera's path along any trail (its eye height, all the way)
+	for l: Array in _limbs_plan:
+		for f: float in [0.0, 0.5, 1.0]:
+			if not woods.eye_clear((l[0] as Vector3).lerp(l[1], f), lerpf(l[2], l[3], f) + 0.6):
+				_count_rejected(leaves)
+				return
+	for c: Array in _clusters_plan:
+		if not woods.eye_clear(c[1], 1.6 * (c[2] as Vector3).x + 0.4):
+			_count_rejected(leaves)
+			return
+	if pt["cached"]:                                  # this patch is in the bake: planned (same numbers drawn), not built
+		return
+	for l: Array in _limbs_plan:
+		_limb(st, l[0], l[1], l[2], l[3], l[4])
+	for c: Array in _clusters_plan:
+		_add_cluster(pt, c[0], c[1], c[2], c[3], c[4])
+
+
+var _limbs_plan: Array = []
+var _clusters_plan: Array = []
+var rejected := 0
+
+
+func _plan_limb(a: Vector3, b: Vector3, ra: float, rb: float, c: Color) -> void:
+	_limbs_plan.append([a, b, ra, rb, c])
+
+
+func _plan_cluster(c: Dictionary, at: Vector3, sc: Vector3, yaw: float, with_leaves: bool) -> void:
+	_clusters_plan.append([c, at, sc, yaw, with_leaves])
+
+
+func _count_rejected(was_leafy: bool) -> void:
+	rejected += 1
+	if was_leafy:
+		leafy -= 1
 
 
 ## Turn every patch into its meshes (from the bake when it has them) and put them in the woods.
@@ -153,7 +188,7 @@ func finish() -> void:
 	var leaf_mats := {}
 	for key: Vector2i in _patches:
 		var pt: Dictionary = _patches[key]
-		var ck := BakeCache.key(["woodstrees2", key])
+		var ck := BakeCache.key(["woodstrees3", key])
 		var cached = BakeCache.fetch(ck)
 		var made: Array
 		if cached != null:

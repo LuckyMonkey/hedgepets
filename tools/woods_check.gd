@@ -146,6 +146,7 @@ func _run() -> void:
 			if t != Vector2.INF and t.distance_to(Vector2(n.position.x, n.position.z)) < clear - 0.05:
 				return _fail("%s stands %.2f m from a trail (needs %.1f)" % [n.name, t.distance_to(Vector2(n.position.x, n.position.z)), clear])
 	print("woods: lanterns, signs, sunbeams, the oak, the board and the bench all clear of the trails")
+	print("woods: trees left out for being in the way of the walk: %d" % woods.get_meta("trees_rejected", -1))
 	# let the bucket's pet out here
 	woods.let_out()
 	if game.carried != "" or not woods.followers.has(nb) or not game.following.has(b.pet_name):
