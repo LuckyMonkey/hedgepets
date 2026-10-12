@@ -22,6 +22,7 @@ extends RefCounted
 const PALETTES := {
 	"green": ["2f4a2a", "4a6b36", "6e8c42", "889a44", "72886a", "b9c58a", "34502a"],
 	"spring": ["2e5a2a", "4a8a3a", "6eae4a", "9cc25a", "7a9e6a", "c8e08e", "345a2c"],
+	"cardinal": ["8a1a18", "b02420", "d0302a", "e25a40", "a83c34", "f29a84", "5e1412"],
 	"hemp": ["2a5420", "468a2e", "68ae3c", "92c84e", "70a05a", "c6e486", "2a4c20"],
 	"autumn": ["6b3d1f", "9a5426", "b8702e", "c9923c", "8a6a3a", "e0b25a", "5a3418"],
 	"crimson": ["6a2420", "9a3428", "c0482e", "d07038", "8a4a3a", "e89a5a", "5a2018"],
@@ -488,13 +489,20 @@ static func plantify(p: CharacterArtProfile) -> CharacterArtProfile:
 	p.eye_size *= 1.15
 	p.leaf_size *= 1.3
 	p.leaves_per_cluster = fullness(plant_of(p))
-	p.coverage = 0.8
+	p.coverage = 0.95                                     # leaves all over: the bare core barely shows
 	p.interior_ink = 0.6
 	p.silhouette_ink = 1.0
 	p.ink_color = Color("1c2213")
-	p.inner_mass = p.inner_mass.darkened(0.18)          # the gaps between leaves read as shadow, not as skin
+	# the gaps between leaves read as shadow in the plant's own colour (a cardinal's are deep red), not black
+	p.inner_mass = p.inner_mass.lerp(p.palette.get("muted_ivy", p.inner_mass), 0.4).darkened(0.12)
 	# vines only on pets big enough to carry them (on a chickadee they'd be spider legs)
 	var body_r: Vector3 = R["BODY"]["radii"]
+	# small pets get proportionally more leaves (otherwise a cardinal is a dark lump with a few leaves stuck on)
+	var fuller := clampf(pow(0.9 / maxf(body_r.x, 0.2), 1.3), 1.0, 2.4)
+	if fuller > 1.0:
+		for name in R:
+			if R[name].get("foliage", false):
+				R[name]["density"] = float(R[name].get("density", 1.0)) * fuller
 	p.tendrils = 3 if body_r.x >= 0.9 else (1 if body_r.x >= 0.6 else 0)
 	return p
 

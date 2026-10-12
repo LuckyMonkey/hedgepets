@@ -552,7 +552,7 @@
   "species": "northern cardinal",
   "plan": "bird",
   "plant": "maple",
-  "palette": "crimson",
+  "palette": "cardinal",
   "wants": {
    "notice": {
     "feeder": 1

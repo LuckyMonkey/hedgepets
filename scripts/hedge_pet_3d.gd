@@ -57,7 +57,7 @@ func _load_pet(index: int) -> void:
 	else:
 		pet_node.become(p)                     # squash, swap, the new pet's leaves grow in (Motion)
 	name_tag.text = p.pet_name
-	_show_plant()
+	_show_plant(SpeciesBuilder.plant_of(p))                # (the node is still the old pet for a moment)
 	note.text = "a %s · adopted %s · tap, drag to turn" % [p.species, p.adopted]
 	_yaw = 0.0
 	_yaw_velocity = 0.0
@@ -171,9 +171,10 @@ func set_view(view: String) -> void:
 func _place_camera() -> void:
 	if profile == null or camera == null:
 		return
-	var target: Vector3 = profile.frame_target
+	var framed: CharacterArtProfile = PETS[pet_index] if pet_index < PETS.size() else profile   # the pet coming in
+	var target: Vector3 = framed.frame_target
 	var dir := Vector3(0.42, 0.46, 0.8)         # three-quarter from the side: the face, the flank, the tail behind
-	var distance: float = profile.frame_distance
+	var distance: float = framed.frame_distance
 	match _view:
 		"FRONT":
 			dir = Vector3(1.0, 0.35, 0.0)

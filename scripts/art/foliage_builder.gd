@@ -97,8 +97,8 @@ static func _build_live(profile: CharacterArtProfile, region_name: String, head_
 			var t2 := cn.cross(t1).normalized()
 			var d := (cd + (t1 * offset.x + t2 * offset.y) * profile.cluster_spread).normalized()
 			var p := HedgeAnatomy.shape_point(region, c, d)
-			if not is_head and p.y < 0.2 and region_name == "BODY":
-				continue                                         # nothing touches the ground
+			if not is_head and p.y < minf(0.2, c.y - r.y * 0.55) and region_name == "BODY":
+				continue                                         # nothing touches the ground (small pets: only the very bottom)
 			var n := HedgeAnatomy.shape_normal(region, c, p)
 			var head_local := p if is_head else (p - head_center)
 			var protect := HedgeAnatomy.protection(profile, head_local)

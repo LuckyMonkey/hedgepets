@@ -73,13 +73,30 @@ func set_plant(plant: String, animate := true) -> void:
 		_regrow(plant)
 		return
 	_leaf_burst()
-	var rest := scale
+	var rest := _true_scale()
 	var t := Motion.shed_leaves(self)
 	t.tween_callback(func() -> void:
 		Motion.swap(self, rest, func() -> void:
+			if _becoming != null:                        # a switch to another pet was still on its way: finish it
+				var level := detail
+				setup(_becoming)
+				set_detail(level, true)
+				_becoming = null
 			_regrow(plant)
 			leaf_growth = 0.0
 			Motion.grow_leaves(self)))
+
+
+var _rest_scale := Vector3.ZERO
+var _becoming: CharacterArtProfile = null      # a pet switch not yet done (a regraft started meanwhile finishes it)
+
+
+## The pet's real size, not wherever a squash happens to have it right now: a second regraft or switch started
+## mid-squash used to take the squashed size as the new normal, and the pet stayed flat.
+func _true_scale() -> Vector3:
+	if _rest_scale == Vector3.ZERO or not Motion.busy(self, "scale"):
+		_rest_scale = scale
+	return _rest_scale
 
 
 ## Restart as `profile` (another pet: the viewer's ‹ ›) with the same transition as a regraft.
@@ -87,11 +104,13 @@ func become(p: CharacterArtProfile) -> void:
 	if Motion.speed <= 0.0 or not is_inside_tree():
 		setup(p)
 		return
-	var rest := scale
+	var rest := _true_scale()
+	_becoming = p
 	var t := Motion.shed_leaves(self)
 	t.tween_callback(func() -> void:
 		Motion.swap(self, rest, func() -> void:
 			var level := detail
+			_becoming = null
 			setup(p)
 			set_detail(level, true)
 			leaf_growth = 0.0
