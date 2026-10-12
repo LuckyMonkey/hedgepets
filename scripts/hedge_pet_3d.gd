@@ -86,9 +86,21 @@ func next_plant() -> void:
 	Motion.pulse(plant_button, 1.08)
 
 
+var plant_pick: OptionButton
+
+
+func _plant_words(plant: String) -> String:
+	return SpeciesBuilder.PLANT_NAMES.get(plant, plant).capitalize() + " (%s)" % SpeciesBuilder.PREFIX.get(plant, plant)
+
+
 func _show_plant(plant := "") -> void:
 	if plant_button != null and profile != null:
-		plant_button.text = "🍃 made of %s" % (plant if plant != "" else SpeciesBuilder.plant_of(profile))
+		var now := plant if plant != "" else SpeciesBuilder.plant_of(profile)
+		plant_button.text = "🍃 made of %s" % now
+		if plant_pick != null:
+			for i in plant_pick.item_count:
+				if plant_pick.get_item_metadata(i) == now:
+					plant_pick.select(i)
 
 
 func rebuild_foliage() -> void:
@@ -219,6 +231,21 @@ func _build_ui() -> void:
 	plant_button.tooltip_text = "Grow this pet in another plant (F)"
 	plant_button.pressed.connect(next_plant)
 	layer.add_child(plant_button)
+	# pick the plant (every ivy and leaf style) from a list
+	plant_pick = OptionButton.new()
+	plant_pick.add_theme_font_size_override("font_size", 30)
+	plant_pick.get_popup().add_theme_font_size_override("font_size", 34)
+	plant_pick.position = Vector2(290, 1710)
+	plant_pick.size = Vector2(500, 76)
+	plant_pick.tooltip_text = "Grow this pet in..."
+	for plant: String in SpeciesBuilder.PLANTS:
+		plant_pick.add_item("🍃 " + _plant_words(plant))
+		plant_pick.set_item_metadata(plant_pick.item_count - 1, plant)
+	plant_pick.item_selected.connect(func(i: int) -> void:
+		var plant: String = plant_pick.get_item_metadata(i)
+		pet_node.set_plant(plant)
+		_show_plant(plant))
+	layer.add_child(plant_pick)
 	for side in [-1, 1]:
 		var b := Button.new()
 		b.text = "‹" if side < 0 else "›"
