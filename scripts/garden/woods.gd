@@ -47,6 +47,10 @@ const CREEK_AT := Vector2(-23.8, -60.5)
 const CREEK_DIR := Vector2(-0.643, 0.766)
 ## From the ridge, the way the land falls away (east-northeast, toward the moon).
 const VIEW_DIR := Vector2(0.89, -0.456)
+## The two forest vistas: from the old oak the land falls away north over a sea of treetops; from the mossy fork you
+## look north-north-west through thinning trunks into miles more forest (distant_land.gd carries both on).
+const OAK_VIEW := Vector2(-0.148, -0.989)
+const FORK_VIEW := Vector2(-0.33, -0.944)
 ## Toward the sun: low in the morning sky, out past the ridge.
 const TO_SUN := Vector3(0.55, 0.5, -0.32)
 ## Things to find, and what each is. what: litter (a coin, gone for good), junk (a few tugs, more coins, gone for good),
@@ -159,6 +163,17 @@ func height(x: float, z: float) -> float:
 		var level := _base(n["at"]) + float(n["lift"])
 		var flat := float(n.get("flat", 2.5))
 		v = lerpf(v, level, smoothstep(flat + 4.5, flat, d))   # a flat-ish clearing to stand in
+	var ov := Vector2(x, z) - (NODES["oak"]["at"] as Vector2)   # past the old oak: down into the treetops
+	var os := ov.dot(OAK_VIEW)
+	if os > 5.0:
+		var olat := ov.dot(OAK_VIEW.orthogonal())
+		v -= 24.0 * smoothstep(5.0, 30.0, os) * exp(-olat * olat / (2.0 * 26.0 * 26.0))
+	var fv := Vector2(x, z) - (NODES["fork"]["at"] as Vector2)  # the fork's long view into the woods runs level...
+	var fs := fv.dot(FORK_VIEW)
+	if fs > 4.0:                                          # ...level: you look into the woods, not over them
+		var flat := fv.dot(FORK_VIEW.orthogonal())
+		var level := _base(NODES["fork"]["at"]) + float(NODES["fork"]["lift"])
+		v = lerpf(v, level + (fs - 4.0) * 0.04, smoothstep(4.0, 14.0, fs) * exp(-flat * flat / (2.0 * 16.0 * 16.0)))
 	var rv := Vector2(x, z) - (NODES["ridge"]["at"] as Vector2)
 	var s := rv.dot(VIEW_DIR)
 	if s > 3.0:                                          # past the ridge's edge the land falls away
@@ -323,7 +338,7 @@ func _build_sky() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	env.fog_enabled = true
 	env.fog_light_color = Color("47637a")                     # and the distance is a blue haze
-	env.fog_density = 0.016
+	env.fog_density = 0.0055                                  # matched by the distant land's baked haze at the edge
 	env.fog_sky_affect = 0.0
 	env.fog_height = ORIGIN.y + node_pos("ridge").y - 9.0       # mist lies in the low ground; the ridge is above it
 	env.fog_height_density = 0.06
@@ -439,6 +454,10 @@ func _gap_dir(id: String) -> Vector3:
 		angles.append(atan2(way["dir"].z, way["dir"].x))
 	if id == "ridge":
 		angles.append(atan2(VIEW_DIR.y, VIEW_DIR.x))
+	elif id == "oak":
+		angles.append(atan2(OAK_VIEW.y, OAK_VIEW.x))         # never in the vistas
+	elif id == "fork":
+		angles.append(atan2(FORK_VIEW.y, FORK_VIEW.x))
 	angles.sort()
 	var best := 0.0
 	var best_gap := -1.0
@@ -449,6 +468,20 @@ func _gap_dir(id: String) -> Vector3:
 			best_gap = b - a
 			best = (a + b) * 0.5
 	return Vector3(cos(best), 0, sin(best))
+
+
+## A clearing's rocks and logs stay out of its vista (the ridge's, the oak's, the fork's): swung round to the side.
+func _out_of_view(id: String, c: Vector3, p: Vector3) -> Vector3:
+	var views := {"ridge": VIEW_DIR, "oak": OAK_VIEW, "fork": FORK_VIEW}
+	if not views.has(id):
+		return p
+	var v: Vector2 = views[id]
+	var d := Vector2(p.x - c.x, p.z - c.z)
+	if d.normalized().dot(v) < 0.6:
+		return p
+	var side := v.orthogonal() * signf(d.dot(v.orthogonal()) + 0.001)
+	var q := Vector2(c.x, c.z) + (side * 0.8 - v * 0.6).normalized() * d.length()
+	return _off_trail(Vector3(q.x, 0, q.y), 1.6)
 
 
 ## Push a solid thing's spot off the trails until it's at least `clear` from every one (walking never goes through it).
@@ -806,11 +839,19 @@ func _keep_open(p: Vector2, rng: RandomNumberGenerator) -> bool:
 		return s < 20.0 or rng.randf() < 0.75
 	if p.distance_to(POND_AT) < POND_R + 2.0 or p.distance_to(CELLAR_AT) < 6.5:
 		return true
+	var ov := p - (NODES["oak"]["at"] as Vector2)               # the oak's lookout: nothing right in front of it
+	var os := ov.dot(OAK_VIEW)
+	if os > 2.0 and os < 20.0 and absf(ov.dot(OAK_VIEW.orthogonal())) < 4.0 + os * 0.75:
+		return true
+	var fv := p - (NODES["fork"]["at"] as Vector2)              # the fork's long view: thinned trunks, layer on layer
+	var fs := fv.dot(FORK_VIEW)
+	if fs > 5.0 and absf(fv.dot(FORK_VIEW.orthogonal())) < 3.0 + fs * 0.32:
+		return rng.randf() < 0.72
 	return p.distance_to(_oak_at()) < 13.0
 
 
 func _oak_at() -> Vector2:
-	return (NODES["oak"]["at"] as Vector2) + Vector2(1.0, -7.0)     # north of the clearing, clear of both its trails
+	return (NODES["oak"]["at"] as Vector2) + Vector2(7.5, -3.5)     # beside the view north, framing it; clear of both trails
 
 
 func _multimesh(mesh: Mesh, items: Array) -> void:
@@ -901,9 +942,9 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 		light.position = spot + Vector3(0, 1.4, 0)
 		add_child(light)
 		for k in range(3):
-			var r := _off_trail(_clear_spot(c, rng.randf_range(4.0, 6.5), rng), 1.6)
+			var r := _out_of_view(id, c, _off_trail(_clear_spot(c, rng.randf_range(4.0, 6.5), rng), 1.6))
 			GardenProps.rock(self, r + Vector3(0, -0.1, 0), snappedf(rng.randf_range(0.5, 1.1), 0.1), rng)
-		var log := _off_trail(_clear_spot(c, rng.randf_range(4.0, 6.0), rng), 2.2)
+		var log := _out_of_view(id, c, _off_trail(_clear_spot(c, rng.randf_range(4.0, 6.0), rng), 2.2))
 		GardenProps.part(self, GardenProps.cyl(0.28, 0.32, rng.randf_range(2.4, 3.6), 9), GardenProps.mat("woodslog", Color("4a3a2a")), log + Vector3(0, 0.25, 0), Vector3(90, rng.randf_range(0, 180), 0), 0.012)
 		for k in range(10):
 			var f := MeshInstance3D.new()
@@ -1262,6 +1303,10 @@ func _mossy_fork(rng: RandomNumberGenerator) -> void:
 	var moss := GardenProps.mat("forkmoss", Color("4e6e30"))
 	for k in range(6):
 		var p := _off_trail(_clear_spot(c, rng.randf_range(3.8, 6.0), rng), 1.8)
+		var fv := Vector2(p.x - c.x, p.z - c.z)
+		if fv.normalized().dot(FORK_VIEW) > 0.75:              # out of the long view north
+			p = c + Vector3(-FORK_VIEW.orthogonal().x, 0, -FORK_VIEW.orthogonal().y) * fv.length() * signf(fv.dot(FORK_VIEW.orthogonal()) + 0.001)
+			p = _off_trail(Vector3(p.x, 0, p.z), 1.8)
 		var size := snappedf(rng.randf_range(0.7, 1.4), 0.1)
 		GardenProps.rock(self, p - Vector3(0, 0.2, 0), size, rng)
 		GardenProps.part(self, GardenProps.blob(Vector3(size * 0.9, size * 0.28, size * 0.7), {"exponent": 2.2}), moss, p + Vector3(0, size * 0.42, 0), Vector3(0, rng.randf_range(0, 360), 0), 0.006)

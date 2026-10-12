@@ -42,7 +42,7 @@ func _cluster(kind: String, palette: String, seed: int) -> Dictionary:
 	var k: Dictionary = KINDS[kind]
 	var radii := Vector3(1.6, 1.25, 1.6) if kind != "pine" else Vector3(1.7, 0.7, 1.7)
 	var inner := Color(SpeciesBuilder.PALETTES[palette][6]).darkened(0.15)
-	var h: Node3D = garden._bush(Vector3.ZERO, radii, k["sheet"], SpeciesBuilder.palette_of(palette), inner, LEAF_SIZE, DENSITY, "dome", 0.0, Color(1.0, 0.98, 0.92), 7300 + seed)
+	var h: Node3D = garden._bush(Vector3.ZERO, radii, k["sheet"], SpeciesBuilder.palette_of(palette), inner, LEAF_SIZE, DENSITY, {"exponent": 2.0}, 0.0, Color(1.0, 0.98, 0.92), 7300 + seed)
 	var c := {"mass": (h.get_child(0) as MeshInstance3D).mesh, "leaves": (h.get_child(1) as MultiMeshInstance3D).multimesh, "inner": inner, "sheet": k["sheet"]}
 	h.queue_free()
 	_clusters[key] = c
@@ -54,7 +54,7 @@ func _patch(p: Vector2) -> Dictionary:
 	if not _patches.has(key):
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees6", key])) != null}
+		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees8", key])) != null}
 	return _patches[key]
 
 
@@ -228,7 +228,7 @@ func finish() -> void:
 	var leaf_mats := {}
 	for key: Vector2i in _patches:
 		var pt: Dictionary = _patches[key]
-		var ck := BakeCache.key(["woodstrees6", key])
+		var ck := BakeCache.key(["woodstrees8", key])
 		var cached = BakeCache.fetch(ck)
 		var made: Array
 		if cached != null:

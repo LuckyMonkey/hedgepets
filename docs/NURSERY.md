@@ -133,6 +133,25 @@ mountains barely move.
   from knee height to over its head along every trail). A tree in the way isn't planted. Planning always draws the
   same random numbers whether a patch is baked or not, so the live layout is the checked layout.
 
+## The forest beyond, and its two vistas (`distant_land.gd`, 2026-10-12)
+
+- **Seamless edge:** next to the woods, the miniature's ground is the woods' own ground (`height` blends
+  `woods.height` over 90 m), so nothing steps where the playable world ends.
+- **One haze:** the woods' fog is thin (0.0055). The miniature bakes the same haze into every colour by distance
+  (`haze()`): the woods' blue nearby, paler toward the horizon, capped so the hills still show.
+- **Layers:**
+  - **Near forest** (`_near_forest`): individual trees from the edge to about 700 m, with trunks close in, clustered
+    by noise into pine stands, autumn maple drifts and birch on high ground, plus clearings and snags.
+  - **Middle canopy** (`_dense_forest`): Codex's layer, kept; trunks only near.
+  - **Far horizon:** the old cones and balls, now hazed.
+- **The old oak** (`woods.OAK_VIEW`): the land falls about 24 m to the north. The oak tree stands aside to frame
+  it, nothing grows right in front, and you look out over a sea of treetops to the mountain.
+- **The mossy fork** (`woods.FORK_VIEW`, `_endless_woods`): looking north-north-west, the ground runs level, the
+  playable trees thin, and in the miniature about 4,000 tall old-growth trunks go on under a closed canopy for
+  kilometres. Spacing widens with distance.
+- **Captures:** `tools/capture_forest_vistas.gd` (oak, fork, east, hollow, ridge; also saves each miniature's raw
+  picture).
+
 ## Nothing stands on a trail
 
 Lanterns go in the widest gap between a clearing's trails (`_gap_dir`). Sunbeams stay 2.5 m off and fade within
