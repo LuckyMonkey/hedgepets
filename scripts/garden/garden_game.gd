@@ -141,6 +141,7 @@ func setup(g: Node3D) -> void:
 	grab.grabbable(barrow)                                # its weight and grip, ready to haul
 	for p: CharacterArtProfile in garden.roster:
 		pet_state[p.pet_name] = "resident" if p.starts_resident else "away"
+	WorldOverrides.current().apply(garden)                # the world editor's authored changes, before the player's save
 	_load()
 	for p: CharacterArtProfile in garden.roster:
 		if pet_state[p.pet_name] != "away":

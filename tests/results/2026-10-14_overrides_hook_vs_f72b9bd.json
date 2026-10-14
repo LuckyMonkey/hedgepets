@@ -1,0 +1,142 @@
+{
+  "tolerance": 0,
+  "failed": 0,
+  "images": {
+    "garden_closeup": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "garden_east": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "garden_overview": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "garden_pet": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "garden_to_woods": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_00": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_01": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_02": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_03": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_04": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_05": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_06": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_07": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_08": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_09": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_10": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    },
+    "moving_11": {
+      "exact": true,
+      "diff_pixels": 0,
+      "diff_pixels_over_tol": 0,
+      "max_channel_diff": 0,
+      "mean_abs_diff": 0.0,
+      "ssim": 1.0
+    }
+  }
+}

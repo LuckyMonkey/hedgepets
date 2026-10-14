@@ -1,0 +1,85 @@
+{
+  "hour": 16.5,
+  "seed": 20261014,
+  "size": "Vector2(270, 480)",
+  "views": {
+    "garden_closeup": {
+      "distance": 5.0,
+      "target": "Vector3(-4.6, 0, -3)",
+      "where": "garden",
+      "yaw": 25.0
+    },
+    "garden_east": {
+      "distance": 9.0,
+      "target": "Vector3(5, 0, 0)",
+      "where": "garden",
+      "yaw": 95.0
+    },
+    "garden_overview": {
+      "distance": 12.5,
+      "target": "Vector3(0, 0, -0.8)",
+      "where": "garden",
+      "yaw": 0.0
+    },
+    "garden_pet": {
+      "distance": 4.6,
+      "target": "Vector3(0, 0, -0.8)",
+      "where": "garden",
+      "yaw": 0.0
+    },
+    "garden_to_woods": {
+      "distance": 11.0,
+      "target": "Vector3(2, 0, -6)",
+      "where": "garden",
+      "yaw": 180.0
+    },
+    "moving_00": {
+      "where": "garden orbit",
+      "yaw": -20.0
+    },
+    "moving_01": {
+      "where": "garden orbit",
+      "yaw": -17.0
+    },
+    "moving_02": {
+      "where": "garden orbit",
+      "yaw": -14.0
+    },
+    "moving_03": {
+      "where": "garden orbit",
+      "yaw": -11.0
+    },
+    "moving_04": {
+      "where": "garden orbit",
+      "yaw": -8.0
+    },
+    "moving_05": {
+      "where": "garden orbit",
+      "yaw": -5.0
+    },
+    "moving_06": {
+      "where": "garden orbit",
+      "yaw": -2.0
+    },
+    "moving_07": {
+      "where": "garden orbit",
+      "yaw": 1.0
+    },
+    "moving_08": {
+      "where": "garden orbit",
+      "yaw": 4.0
+    },
+    "moving_09": {
+      "where": "garden orbit",
+      "yaw": 7.0
+    },
+    "moving_10": {
+      "where": "garden orbit",
+      "yaw": 10.0
+    },
+    "moving_11": {
+      "where": "garden orbit",
+      "yaw": 13.0
+    }
+  }
+}
