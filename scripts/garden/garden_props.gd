@@ -282,7 +282,7 @@ static func rock(parent: Node3D, at: Vector3, size: float, rng: RandomNumberGene
 	var r := root(parent, "Rock", at, rng.randf_range(0, 360))
 	var grey := Color("8d8a80").lerp(Color("a39e90"), rng.randf())
 	var shape := int((rng.randf_range(-0.2, 0.2) + 0.2) * 29.9)    # (the draw that once set its taper)
-	part(r, fieldstone((Vector3(size, size * 0.62, size * 0.8) / 0.03).round() * 0.03, shape % 12), mat("rock%d" % int(grey.r * 100), grey), Vector3(0, size * 0.3, 0), Vector3.ZERO, 0.01)
+	part(r, fieldstone_sized((Vector3(size, size * 0.62, size * 0.8) / 0.03).round() * 0.03, shape % 12), mat("rock%d" % int(grey.r * 100), grey), Vector3(0, size * 0.3, 0), Vector3.ZERO, 0.01)
 	return r
 
 
@@ -431,18 +431,45 @@ static func _field_stone(r: Node3D, at: Vector3, radii: Vector3, yaw: float, rng
 	var m := mat("fieldstone%d" % g, Color(FIELD_GREYS[g]))
 	if cap and rng.randf() < 0.45:
 		m = mat("fieldstone_moss%d" % (g % 3), Color(FIELD_GREYS[g]).lerp(Color("6e7a4a"), 0.3))
-	var stone := part(r, fieldstone(q, rng.randi() % 12), m, at,
+	var stone := part(r, fieldstone_sized(q, rng.randi() % 12), m, at,
 		Vector3(rng.randf_range(-7, 7), yaw + rng.randf_range(-12, 12), rng.randf_range(-9, 9)), 0.008)
 	stone.name = "Stone"
 
 
-## An irregular stone: a low-poly ball broken by a few flat cuts (the faces of a split field stone), lumpy, with a
-## flat-ish bottom. 12 shapes; cached like every generated mesh.
-static func fieldstone(radii: Vector3, variant: int) -> ArrayMesh:
-	var k := BakeCache.key(["fieldstone", radii, variant])
-	var cached = BakeCache.fetch(k)
-	if cached != null:
-		return cached
+## An irregular unit stone (radius 1; size it with the node's scale): a low-poly ball broken by a few flat cuts (the
+## faces of a split field stone), lumpy, with a flat-ish bottom. Only 12 shapes exist, shared by every stone and
+## rock: ~100 triangles each, built once per run (a few ms), never stored in the bake.
+static var _fieldstones := {}
+
+
+static var _sized := {}
+
+
+## One of the 12 unit stones stretched to `radii`: its vertex arrays scaled (normals by the inverse), made at runtime
+## in a moment and shared by every stone of that size and shape. Nothing is stored in the bake.
+static func fieldstone_sized(radii: Vector3, variant: int) -> ArrayMesh:
+	var key := [radii, variant]
+	if _sized.has(key):
+		return _sized[key]
+	var arrays := fieldstone(variant).surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var inv := Vector3.ONE / radii.max(Vector3(0.001, 0.001, 0.001))
+	for i in verts.size():
+		verts[i] *= radii
+		norms[i] = (norms[i] * inv).normalized()
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_sized[key] = m
+	return m
+
+
+static func fieldstone(variant: int) -> ArrayMesh:
+	if _fieldstones.has(variant):
+		return _fieldstones[variant]
+	var radii := Vector3.ONE
 	var vr := RandomNumberGenerator.new()
 	vr.seed = 9100 + variant
 	var cuts: Array = []
@@ -450,8 +477,8 @@ static func fieldstone(radii: Vector3, variant: int) -> ArrayMesh:
 	for c in range(vr.randi_range(5, 8)):
 		cuts.append([Vector3(vr.randf_range(-1, 1), vr.randf_range(-0.5, 0.5), vr.randf_range(-1, 1)).normalized(), vr.randf_range(0.5, 0.8)])
 	var bumps := Vector3(vr.randf_range(0, 9), vr.randf_range(0, 9), vr.randf_range(0, 9))
-	const RINGS := 7
-	const SEGS := 11
+	const RINGS := 6
+	const SEGS := 9
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var verts := PackedVector3Array()
@@ -487,7 +514,7 @@ static func fieldstone(radii: Vector3, variant: int) -> ArrayMesh:
 	st.index()
 	st.generate_normals()
 	var mesh := st.commit()
-	BakeCache.store(k, mesh)
+	_fieldstones[variant] = mesh
 	return mesh
 
 

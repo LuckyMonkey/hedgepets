@@ -545,6 +545,7 @@ func _surroundings() -> void:
 func _west_woods(bz: float) -> void:
 	var keep := _rng
 	var crowns := _crowns.size()                          # (their crowns don't drop leaves on the lawn: litter stays as it was)
+	var obstacles_before := obstacles.size()              # (and they're past the creek: no pet or grass tuft goes there)
 	_rng = RandomNumberGenerator.new()
 	_rng.seed = 1914
 	var x0 := _creek_x(bz) - 2.4                              # the bridge's far end
@@ -569,6 +570,7 @@ func _west_woods(bz: float) -> void:
 			_tree(Vector3(p.x, 0, p.y), _rng.randf_range(9.5, 12.5), SpeciesBuilder.palette_of(["autumn", "green", "crimson", "autumn"][i % 4]), ["hedgeoak", "hedgemaple"][i % 2], far)
 	_woods_trail(x0, bz)
 	_crowns.resize(crowns)
+	obstacles.resize(obstacles_before)
 	_rng = keep
 
 
