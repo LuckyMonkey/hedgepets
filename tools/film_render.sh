@@ -12,7 +12,10 @@ cd "$(dirname "$0")/.."
 mkdir -p "$OUT"
 rm -f "$OUT"/frame*.png "$OUT"/frame.wav "$OUT"/film.mp4
 W=${SIZE%x*}; H=${SIZE#*x}
-xvfb-run -a -s "-screen 0 ${W}x${H}x24" godot --path . --audio-driver Dummy --rendering-driver opengl3 \
+# FILM_GPU=1: render on the real GPU (a silent window on $DISPLAY, ~100x faster than the offscreen software path)
+RUN="xvfb-run -a -s \"-screen 0 ${W}x${H}x24\" godot --path . --audio-driver Dummy --rendering-driver opengl3"
+[ -n "$FILM_GPU" ] && RUN="godot --path . --audio-driver Dummy"
+eval $RUN \
   --resolution "$SIZE" --fixed-fps "$FPS" --disable-vsync --write-movie "$OUT/frame.png" \
   res://filmmaker.tscn -- --film="$FILM" --render || true    # Godot may core-dump on quit ("double free"): harmless
 [ -s "$OUT/frame.wav" ] && ls "$OUT"/frame00000001.png >/dev/null || { echo "render failed: no frames"; exit 1; }

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="FilmShot" format=3]
+
+[ext_resource type="Script" path="res://scripts/film/film_shot.gd" id="1_s6gep"]
+
+[resource]
+script = ExtResource("1_s6gep")
+title = "the ridge"
+place = "woods:ridge"
+duration = 4.0
+keys = [{
+"eye": Vector3(-0.8, -0.2, 0.6),
+"fov": 62.0,
+"look": Vector3(8.156163, -0.8, -8.802397),
+"t": 0.0
+}, {
+"eye": Vector3(0.4, 0.1, -0.2),
+"fov": 54.0,
+"look": Vector3(11.172934, -0.6, -4.378442),
+"t": 4.0
+}]

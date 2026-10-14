@@ -6,13 +6,15 @@
 script = ExtResource("1_kle1g")
 title = "beside Gerald"
 keys = [{
-"eye": Vector3(-3.6, 1.1, 0.6),
+"beside": true,
+"eye": Vector3(-3.4, 1.4, 2.2),
 "fov": 38.0,
 "look": Vector3(0, 0.3, -0.8),
 "t": 0.0,
 "track": "Gerald"
 }, {
-"eye": Vector3(-2.4, 1.3, 2.4),
+"beside": true,
+"eye": Vector3(-1.8, 1.5, 3.4),
 "fov": 36.0,
 "look": Vector3(0, 0.3, -0.8),
 "t": 3.0,

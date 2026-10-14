@@ -20,11 +20,20 @@ func _init() -> void:
 	b.title = "beside Gerald"
 	b.duration = 3.0
 	b.keys = [
-		{"t": 0.0, "eye": Vector3(-3.6, 1.1, 0.6), "look": Vector3(0.0, 0.3, -0.8), "fov": 38.0, "track": "Gerald"},
-		{"t": 3.0, "eye": Vector3(-2.4, 1.3, 2.4), "look": Vector3(0.0, 0.3, -0.8), "fov": 36.0, "track": "Gerald"},
+		{"t": 0.0, "eye": Vector3(-3.4, 1.4, 2.2), "look": Vector3(0.0, 0.3, -0.8), "fov": 38.0, "track": "Gerald", "beside": true},
+		{"t": 3.0, "eye": Vector3(-1.8, 1.5, 3.4), "look": Vector3(0.0, 0.3, -0.8), "fov": 36.0, "track": "Gerald", "beside": true},
 	]
 	b.events = [{"t": 0.8, "kind": "emote", "pet": "Gerald", "arg": "💚"}]
-	p.shots = [a, b]
+	var c := FilmShot.new()                              # into the woods: the ridge, the valley, the toy garden far off
+	c.title = "the ridge"
+	c.place = "woods:ridge"
+	c.duration = 4.0
+	var view := Vector3(0.89, 0.0, -0.456)                # the ridge's view (woods.VIEW_DIR)
+	c.keys = [
+		{"t": 0.0, "eye": Vector3(-0.8, -0.2, 0.6), "look": view.rotated(Vector3.UP, 0.35) * 12.0 + Vector3(0, -0.8, 0), "fov": 62.0},
+		{"t": 4.0, "eye": Vector3(0.4, 0.1, -0.2), "look": view.rotated(Vector3.UP, -0.1) * 12.0 + Vector3(0, -0.6, 0), "fov": 54.0},
+	]
+	p.shots = [a, b, c]
 	var err := p.save_to("res://films/demo")
 	print("films/demo: %s (%d frames at %d fps)" % [error_string(err), p.frame_count(), p.fps])
 	quit(0 if err == OK else 1)

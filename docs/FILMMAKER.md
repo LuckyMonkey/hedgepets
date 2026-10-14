@@ -71,7 +71,7 @@ Live screen capture is not used.
   (what the render does), or snapshotting.
 - Transform, visibility, environment and audio tracks aren't built. Only camera and pet events exist.
 - Separate audio stems are a later feature; for now there's a stereo mix.
-- The woods: a film currently starts in the garden. A "place" field per shot (enter the woods) is next.
+- Places: each shot has a `place`, either `garden` or `woods:<place>` (`woods:ridge`, `woods:pines`, ...). In the woods, the keys are offsets from standing there, and the 1:16 land beyond follows the film camera every frame. The demo's third shot is the ridge, with the toy garden on the mountain.
 
 ## Acceptance run (2026-10-14, llvmpipe under xvfb, 540×960 at 30 fps)
 

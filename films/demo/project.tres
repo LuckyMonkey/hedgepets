@@ -1,11 +1,12 @@
 [gd_resource type="Resource" script_class="FilmProject" format=3]
 
-[ext_resource type="Script" path="res://scripts/film/film_project.gd" id="1_va874"]
-[ext_resource type="Script" path="res://scripts/film/film_shot.gd" id="2_h36d0"]
-[ext_resource type="Resource" path="res://films/demo/shot_001.tres" id="3_ren1v"]
-[ext_resource type="Resource" path="res://films/demo/shot_002.tres" id="4_lbbsv"]
+[ext_resource type="Script" path="res://scripts/film/film_project.gd" id="1_h36d0"]
+[ext_resource type="Script" path="res://scripts/film/film_shot.gd" id="2_ren1v"]
+[ext_resource type="Resource" path="res://films/demo/shot_001.tres" id="3_lbbsv"]
+[ext_resource type="Resource" path="res://films/demo/shot_002.tres" id="4_gqh3u"]
+[ext_resource type="Resource" path="res://films/demo/shot_003.tres" id="5_h4ghl"]
 
 [resource]
-script = ExtResource("1_va874")
+script = ExtResource("1_h36d0")
 title = "HedgePets demo"
-shots = Array[ExtResource("2_h36d0")]([ExtResource("3_ren1v"), ExtResource("4_lbbsv")])
+shots = Array[ExtResource("2_ren1v")]([ExtResource("3_lbbsv"), ExtResource("4_gqh3u"), ExtResource("5_h4ghl")])

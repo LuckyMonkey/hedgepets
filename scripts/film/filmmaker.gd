@@ -97,14 +97,54 @@ func _apply_camera() -> void:
 	if free_cam or project.shots.is_empty():
 		return
 	var at := project.shot_at(t)
-	var pose: Dictionary = project.shots[at[0]].camera_at(at[1], pets())
+	var shot: FilmShot = project.shots[at[0]]
+	_go(shot.place)
+	var pose: Dictionary = shot.camera_at(at[1], pets())
 	if pose.is_empty():
 		return
 	var cam: Camera3D = garden.camera
+	var eye: Vector3 = pose["eye"]
+	var look: Vector3 = pose["look"]
+	if _place.begins_with("woods"):                     # offsets from standing at that place in the woods
+		var w: Node3D = garden.woods
+		var base: Vector3 = w.node_pos(_place.get_slice(":", 1)) + Vector3(0, w.EYE, 0)
+		cam = w.cam
+		eye = w.to_global(base + eye)
+		look = w.to_global(base + look)
 	cam.fov = pose["fov"]
-	cam.global_position = pose["eye"]
-	if not (pose["look"] as Vector3).is_equal_approx(pose["eye"]):
-		cam.look_at(pose["look"], Vector3.UP)
+	cam.global_position = eye
+	if not look.is_equal_approx(eye):
+		cam.look_at(look, Vector3.UP)
+	if _place.begins_with("woods"):
+		garden.woods.land.follow(cam, cam.position, 0.0)  # the 1:16 land beyond follows this frame's camera
+
+
+var _place := "garden"
+
+
+## Be where the shot is: the garden, or a place in the woods (built at once, no veil, its HUD hidden).
+func _go(place: String) -> void:
+	if place == _place:
+		return
+	var w: Node3D = garden.woods
+	if place.begins_with("woods"):
+		w.build_now()
+		w.pause_garden(true)
+		w.visible = true
+		w.set_process(true)
+		w._ui.visible = false
+		w._at = place.get_slice(":", 1)
+		w.cam.make_current()
+		w.land.show_land(true)                           # the 1:16 land beyond renders while you're in the woods
+	else:
+		if w.land != null:
+			w.land.show_land(false)
+		w.visible = false
+		w.set_process(false)
+		w.pause_garden(false)
+		garden.game._ui.visible = false
+		garden.camera.make_current()
+	_place = place
 
 
 func _fire_events() -> void:
