@@ -63,3 +63,33 @@ Without the marker files, nothing changes.
 **Shrinking it:** the leaf cards are copies of a few crown templates, one per leafy tree near a trail (up to 110 of
 them). Storing one transform per tree instead of every leaf would cut the file to a few MB, but expanding them at
 load time needs a fast path (a GDExtension or a shader-instanced crown) to stay quick on the web.
+
+## Making the compiled woods cheaper than the code version (measured 2026-10-14, plan)
+
+What the woods' trees are, counted:
+
+- 519 trees with 1,821 limbs and 1,332 pine-needle tiers;
+- **1,535 crown placements** (688 leafy);
+- **15 distinct crown templates**, each an 896-triangle core plus about 275 leaf cards.
+
+Both the code version (the bake cache, about 17 MB compressed) and the compiled file (about 34 MB) store every
+placement **expanded**: 866k vertices of tree patches (about 34 MB raw) and 188,912 leaf cards (about 15 MB raw).
+
+**Store placements instead, and instance them on the GPU:**
+
+| Part | Stored as | Size |
+|---|---|---|
+| 15 crown templates (core mesh + leaves baked into one quad mesh) | meshes | ~0.9 MB |
+| 1,535 crown placements | transform + template id, as MultiMesh instances per patch group | ~80 KB |
+| 1,821 limbs, 1,332 pine tiers | parameters (ends, radii, colour), rebuilt in ~30 ms | ~90 KB |
+| **Trees total** | | **~1.1 MB, against ~49 MB raw / 17 MB compressed now** |
+
+This needs:
+
+- a leaf shader variant that takes each leaf's sway data and colour from the vertex (COLOR / CUSTOM0) instead of
+  per-leaf instance data, since the leaves become one mesh per crown;
+- MultiMeshes grouped per ~48 m patch, so culling still works (about the same draw calls as now);
+- the same change in the code path, so the two can't drift apart.
+
+It would also make the woods lighter at runtime: far less unique geometry in GPU memory, and faster builds whether
+compiled or live. The look stays the same, because the trees already reuse these 15 crowns.
