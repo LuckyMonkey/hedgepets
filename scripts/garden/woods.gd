@@ -33,14 +33,14 @@ const NODES := {
 	"nursery": {"at": Vector2(24, -16), "lift": 0.5, "name": "The nursery", "flat": 9.0, "room": 12.0},
 	"pond": {"at": Vector2(-42, -90), "lift": -3.0, "name": "Beaver pond", "room": 8.0},
 	"cellar": {"at": Vector2(-40, -14), "lift": 1.0, "name": "The cellar hole", "room": 8.0},
-	"pines": {"at": Vector2(38, -24), "lift": 0.5, "name": "The pine flats", "flat": 11.0, "room": 7.0},
+	"pines": {"at": Vector2(36, -6), "lift": 0.5, "name": "The pine flats", "flat": 9.0, "room": 7.0},
 }
 const EDGES := [["trailhead", "fork"], ["fork", "hollow"], ["fork", "ridge"], ["hollow", "creek"], ["ridge", "oak"], ["creek", "oak"], ["fork", "nursery"],
 	["creek", "pond"], ["trailhead", "cellar"], ["cellar", "hollow"],
-	# no dead ends: the nursery goes on through the pine flats to the ridge, the pond on round to the old oak
-	["nursery", "pines"], ["pines", "ridge"], ["pond", "oak"]]
+	# no dead ends: the nursery goes on through the pine flats back round to the trailhead, the pond on to the old oak
+	["nursery", "pines"], ["pines", "trailhead"], ["pond", "oak"]]
 ## The pine flats: level ground under white pines, deep in orange needles.
-const PINES_R := 15.0
+const PINES_R := 11.0                           # the needle bed: the level ground only, not the slopes round it
 ## From the pine flats a long view east-south-east: trunk behind trunk, thinning layer on layer, on into the land
 ## beyond (distant_land.gd carries the white pines on for miles).
 const PINES_VIEW := Vector2(0.96, 0.28)
@@ -200,8 +200,8 @@ func height(x: float, z: float) -> float:
 	var dc := (Vector2(x, z) - CELLAR_AT).abs()                 # the cellar hole: a square pit, stone-lined
 	v -= 1.2 * smoothstep(3.6, 2.8, maxf(dc.x, dc.y))
 	var pf: Dictionary = NODES["pines"]                          # the pine flats stay level whatever the land does round them
-	var plevel := _base(pf["at"]) + float(pf["lift"])
-	v = lerpf(v, plevel, smoothstep(float(pf["flat"]) + 6.0, float(pf["flat"]), Vector2(x, z).distance_to(pf["at"])))
+	var plevel := _base(pf["at"]) + float(pf["lift"])  # (stops short of the nursery: its own ground stays its own)
+	v = lerpf(v, plevel, smoothstep(float(pf["flat"]) + 5.0, float(pf["flat"]), Vector2(x, z).distance_to(pf["at"])))
 	var pv := Vector2(x, z) - (pf["at"] as Vector2)              # and their long view runs level into the pines
 	var ps := pv.dot(PINES_VIEW)
 	if ps > 4.0:
@@ -209,10 +209,36 @@ func height(x: float, z: float) -> float:
 		v = lerpf(v, plevel + (ps - 4.0) * 0.03, smoothstep(4.0, 12.0, ps) * exp(-plat * plat / (2.0 * 12.0 * 12.0)))
 	var bq := Vector2(x, z) - BROOK_AT                          # the garden's creek behind the trailhead: level banks, a channel
 	var bl := absf(bq.dot(HOME_DIR))
-	var reach := smoothstep(26.0, 14.0, absf(bq.dot(HOME_DIR.orthogonal())))
+	var along := bq.dot(HOME_DIR.orthogonal())                   # (it runs off west; east it ends short of the pines' trail)
+	var reach := smoothstep(26.0, 14.0, -along) if along < 0.0 else smoothstep(14.0, 8.0, along)
 	v = lerpf(v, _base(Vector2.ZERO), smoothstep(10.0, 3.0, bl) * reach)
 	v -= 0.85 * smoothstep(2.3, 0.9, bl) * reach
-	return v - _channel(x, z)
+	var ch := _channel(x, z)
+	v -= ch
+	if _carve:                                           # the trail bed: the ground meets the trail, never above it or
+		var t := _trail_near(Vector2(x, z))              # far below (no hill in your face, nothing floating beside it)
+		if t.w < 3.2:                                    # - except in the creek's channel: there you cross on stones
+			v = lerpf(v, t.y - 0.04, smoothstep(3.2, 1.1, t.w) * (1.0 - smoothstep(0.05, 0.5, ch)))
+	return v
+
+
+var _carve := false
+
+
+## The nearest trail point to p: (x, y, z, distance in the ground plane); w = INF when none within ~4 m.
+func _trail_near(p: Vector2) -> Vector4:
+	var best := Vector4(0, 0, 0, INF)
+	var c0 := Vector2i(floori(p.x / CELL), floori(p.y / CELL))
+	for dz in range(-2, 3):
+		for dx in range(-2, 3):
+			var pts = _cells3.get(c0 + Vector2i(dx, dz))
+			if pts == null:
+				continue
+			for q: Vector3 in pts:
+				var d := Vector2(q.x, q.z).distance_to(p)
+				if d < best.w:
+					best = Vector4(q.x, q.y, q.z, d)
+	return best
 
 
 ## How deep the creek's channel is here.
@@ -338,7 +364,7 @@ func _static_step(key: String, f: Callable) -> void:
 	var before := {}
 	for n in get_children():
 		before[n] = true
-	f.call()
+	await f.call()
 	if compiling:
 		var copies: Array = []
 		for n in get_children():
@@ -365,7 +391,7 @@ var _brng: RandomNumberGenerator
 
 func _build() -> void:
 	for step: Array in build_steps():
-		(step[1] as Callable).call()
+		await (step[1] as Callable).call()
 
 
 ## Everything that never moves again - rocks, logs, cattails, stepping stones, the lodge's sticks, lily pads, the
@@ -389,7 +415,7 @@ func _merge_static() -> void:
 	for n in get_children():
 		if not keep.has(n) and n is Node3D and (n as Node3D).visible and _static_meshes_only(n):
 			batch.append(n)
-	set_meta("merged", GardenProps.merge_static(self, batch, 16.0))
+	set_meta("merged", await GardenProps.merge_static(self, batch, 16.0))
 	set_meta("merged_from", batch.size())
 
 
@@ -441,32 +467,40 @@ func _build_trails() -> void:
 		_paths.append({"a": st["from"], "b": sid, "pts": pts, "stub": true})
 		_labels[st["from"]].append({"to": sid, "dir": _dir_of(pts), "name": "%s (overgrown)" % st["name"], "stub": true})
 		_brambles(pts[pts.size() - 1], rng)
+	_smooth_trails()
 	_index_trails()
+	_densify_trails()
+	_carve = true                                        # from here on the ground is shaped to the trails
 
 
 func _build_land() -> void:
-	_ground(_brng)
+	await _ground(_brng)
 	for e in _paths:
+		await Slicer.tick(self)
 		_ribbon(e["pts"], e.get("stub", false))
+	await Slicer.tick(self)
 	_home_way()
-	_trail_litter(_brng)
+	await _trail_litter(_brng)
 
 
 func _build_trees() -> void:
-	_static_step("trees", func() -> void: _trees(_brng))
+	await _static_step("trees", func() -> void: await _trees(_brng))
 	_willows(_brng)                                      # (they sway: always built live)
 
 
 func _build_undergrowth() -> void:
-	_undergrowth(_brng)
-	_forest_floor(_brng)
+	await _undergrowth(_brng)
+	await _forest_floor(_brng)
 
 
 func _build_places() -> void:
-	_clearings(_brng)
+	await _clearings(_brng)
+	await Slicer.tick(self)
 	_pine_flats()
 	for id in _labels:
+		await Slicer.tick(self)
 		for way: Dictionary in _labels[id]:
+			await Slicer.tick(self)
 			way["label"] = _sign(id, way["dir"], str(way["name"]))
 			way["marks"] = _chevrons(id, way)
 
@@ -476,7 +510,7 @@ func _build_sky() -> void:
 	var to_sun := TO_SUN.normalized()
 	land = preload("res://scripts/garden/distant_land.gd").new()   # the land beyond: a 1:16 miniature (3D skybox)
 	add_child(land)
-	land.setup(self, to_sun, compiled_land_world())
+	await land.setup(self, to_sun, compiled_land_world())
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color("ffe4b8")
 	sun.light_energy = 1.15
@@ -518,7 +552,7 @@ func _home_way() -> void:
 	brook.basis = Basis(Vector3.UP.cross(flow), Vector3.UP, flow)
 	brook.position = b + Vector3(0, -0.5, 0)
 	add_child(brook)
-	GardenProps.creek(brook, func(z: float) -> float: return 0.35 * sin(z * 0.2), -22.0, 22.0, 2.4)
+	GardenProps.creek(brook, func(z: float) -> float: return 0.35 * sin(z * 0.2), -22.0, 11.0, 2.4)
 	for sgn: float in [-1.0, 1.0]:                      # a path each side, from the trailhead to the bridge and on home
 		var pts := PackedVector3Array()
 		var t0 := 1.0 if sgn < 0 else 9.4
@@ -529,7 +563,7 @@ func _home_way() -> void:
 			t += 0.8
 		_ribbon(pts, false)
 	for k in range(16):                                   # cattails and stones along its banks
-		var along := rng.randf_range(-14.0, 14.0)
+		var along := rng.randf_range(-14.0, 8.0)
 		if absf(along) < 2.2:
 			continue
 		var bank := (1.0 if rng.randf() < 0.5 else -1.0) * rng.randf_range(1.5, 2.2)
@@ -628,6 +662,33 @@ func _index_trails() -> void:
 			_cells[c] = flat
 			var full: PackedVector3Array = _cells3.get(c, PackedVector3Array())
 			full.append(pts[i])
+			_cells3[c] = full
+
+
+## Trails don't climb every little hump: their heights are smoothed along them (the ends stay at the places), and the
+## ground is then shaped to them (the trail bed in height()).
+func _smooth_trails() -> void:
+	for e in _paths:
+		var pts: PackedVector3Array = e["pts"]
+		for pass_i in range(24):
+			var ys := PackedFloat32Array()
+			for p in pts:
+				ys.append(p.y)
+			for i in range(1, pts.size() - 1):
+				pts[i].y = ys[i - 1] * 0.25 + ys[i] * 0.5 + ys[i + 1] * 0.25
+		e["pts"] = pts                                   # (a packed array out of a Dictionary is a copy: store it back)
+
+
+## The index holds a point every ~0.8 m along each trail; the trail bed wants them closer (so a bend never leaves a
+## bump between two points): add the midpoints to the 3D index (only used for heights and clearance).
+func _densify_trails() -> void:
+	for e in _paths:
+		var pts: PackedVector3Array = e["pts"]
+		for i in range(1, pts.size()):
+			var m := pts[i - 1].lerp(pts[i], 0.5)
+			var c := Vector2i(floori(m.x / CELL), floori(m.z / CELL))
+			var full: PackedVector3Array = _cells3.get(c, PackedVector3Array())
+			full.append(m)
 			_cells3[c] = full
 
 
@@ -747,7 +808,7 @@ func _home_dist(p: Vector2) -> float:
 	var t := clampf(p.dot(HOME_DIR), 0.0, 18.0)
 	var d := p.distance_to(HOME_DIR * t)
 	var bq := p - BROOK_AT
-	if absf(bq.dot(HOME_DIR.orthogonal())) < 15.0:
+	if bq.dot(HOME_DIR.orthogonal()) > -15.0 and bq.dot(HOME_DIR.orthogonal()) < 10.0:
 		d = minf(d, maxf(absf(bq.dot(HOME_DIR)) - 1.4, 0.0))  # nothing standing in the creek
 	return d
 
@@ -764,12 +825,13 @@ func _ground(rng: RandomNumberGenerator) -> void:
 	var litter := Color("3d3022")
 	var grid: Array = []
 	for j in range(nz + 1):
+		await Slicer.tick(self)
 		var row: Array = []
 		for i in range(nx + 1):
 			var x := x0 + i * step
 			var z := z0 + j * step
 			var c := moss.lerp(litter, clampf(0.5 + _fine.get_noise_2d(x * 2.0, z * 2.0) * 1.2, 0.0, 1.0)).darkened(rng.randf() * 0.08)
-			var needles := smoothstep(PINES_R + 8.0, PINES_R - 4.0, Vector2(x, z).distance_to(NODES["pines"]["at"]))
+			var needles := smoothstep(PINES_R + 4.0, PINES_R - 2.0, Vector2(x, z).distance_to(NODES["pines"]["at"]))
 			if needles > 0.0:                                 # the pine flats: a deep bed of orange needles
 				c = c.lerp(Color("9c4f26").lerp(Color("c47c38"), clampf(0.5 + _fine.get_noise_2d(x * 1.3 + 90.0, z * 1.3) * 1.4, 0.0, 1.0)), needles)
 			row.append([Vector3(x, height(x, z), z), c])
@@ -839,6 +901,7 @@ func _trail_litter(rng: RandomNumberGenerator) -> void:
 	var roots: Array = []
 	var autumn := [Color("b8702e"), Color("c9923c"), Color("9a5426"), Color("a8402a"), Color("c8a848"), Color("7a6a30")]
 	for e in _paths:
+		await Slicer.tick(self)
 		var pts: PackedVector3Array = e["pts"]
 		for i in range(1, pts.size() - 1):
 			var a := pts[i - 1]
@@ -886,6 +949,7 @@ func _trail_litter(rng: RandomNumberGenerator) -> void:
 func _trees(rng: RandomNumberGenerator) -> void:
 	var maker = preload("res://scripts/garden/woods_trees.gd").new(self)
 	for k in range(1300):
+		await Slicer.tick(self)
 		var p := Vector2(rng.randf_range(-58, 58), rng.randf_range(-108, 16))
 		if _keep_open(p, rng):
 			continue
@@ -1011,6 +1075,7 @@ func _forest_floor(rng: RandomNumberGenerator) -> void:
 	var tries := 0
 	var placed := 0
 	while placed < 170 and tries < 3000:
+		await Slicer.tick(self)
 		tries += 1
 		var p := Vector2(rng.randf_range(-56, 56), rng.randf_range(-106, 14))
 		if _near_trail(p, 1.8) or not _near_trail(p, 14.0) or _keep_open(p, rng):
@@ -1119,6 +1184,7 @@ func _undergrowth(rng: RandomNumberGenerator) -> void:
 	var buf := PackedFloat32Array()
 	var n := 0
 	for e in _paths:
+		await Slicer.tick(self)
 		var pts: PackedVector3Array = e["pts"]
 		for i in pts.size():
 			for k in range(5):
@@ -1168,6 +1234,7 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 	dot.radial_segments = 6
 	dot.rings = 3
 	for id in NODES:
+		await Slicer.tick(self)
 		var c := node_pos(id)
 		var a := rng.randf() * TAU
 		if id == "nursery":                              # it has its own lamps and things (nursery.gd)
@@ -1213,13 +1280,9 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 			f.set_meta("phase", rng.randf() * TAU)
 			add_child(f)
 			_fireflies.append(f)
-	_old_oak(rng)
-	_creek(rng)
-	_ridge(rng)
-	_mossy_fork(rng)
-	_trailhead_board()
-	_pond(rng)
-	_cellar_hole(rng)
+	for f: Callable in [_old_oak, _creek, _ridge, _mossy_fork, func(_r) -> void: _trailhead_board(), _pond, _cellar_hole]:
+		await Slicer.tick(self)
+		f.call(rng)
 	var camp := node_pos("hollow") + Vector3(2.6, 0, -1.8)     # a ring of stones in fern hollow: tap it to light it
 	camp.y = height(camp.x, camp.z)
 	campfire = preload("res://scripts/garden/fire_pit.gd").build(self, camp, 0.0)
@@ -1291,7 +1354,7 @@ func _needle_bed(c: Vector2, rng: RandomNumberGenerator) -> void:
 	m.metallic_specular = 0.0
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var r := PINES_R + 2.0
+	var r := PINES_R
 	var step := 0.8
 	var n := int(r * 2.0 / step)
 	var grid: Array = []
@@ -2231,7 +2294,7 @@ func _step_walk(delta: float) -> void:
 	if Vector2(d.x, d.z).length() > 0.3:
 		_goal_yaw = atan2(-d.x, -d.z)
 	var slope := atan2(d.y, maxf(0.5, Vector2(d.x, d.z).length()))
-	_pitch = lerpf(_pitch, clampf(slope * 0.45 - 0.1, -0.3, 0.12), clampf(delta * 2.0, 0.0, 1.0))   # eyes on the trail, a little up or down with it
+	_pitch = lerpf(_pitch, clampf(slope * 0.8 - 0.08, -0.35, 0.3), clampf(delta * 2.0, 0.0, 1.0))   # eyes on the trail: up a climb you look up it, not into it
 	var bob := sin(s * 2.6) * 0.045
 	_place_camera(here + Vector3(0, EYE + bob, 0))
 	for i in followers.size():                          # trailing along behind, each a little further back

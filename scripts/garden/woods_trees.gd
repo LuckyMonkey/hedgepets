@@ -55,7 +55,7 @@ func _patch(p: Vector2) -> Dictionary:
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		# (keyed by patch only: bump the version whenever tree placement changes, or an old bake is used)
-		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees9", key])) != null}
+		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees11", key])) != null}
 	return _patches[key]
 
 
@@ -232,7 +232,7 @@ func finish() -> void:
 	var leaf_mats := {}
 	for key: Vector2i in _patches:
 		var pt: Dictionary = _patches[key]
-		var ck := BakeCache.key(["woodstrees9", key])
+		var ck := BakeCache.key(["woodstrees11", key])
 		var cached = BakeCache.fetch(ck)
 		var made: Array
 		if cached != null:

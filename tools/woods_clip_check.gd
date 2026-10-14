@@ -197,7 +197,21 @@ func _run() -> void:
 					var d := q.distance_to(p)
 					if d < float(s[1]) * 0.6:                      # a card's box is bigger than the card: be generous
 						_hit("%s %s #leafy" % [mm.mesh.get_class(), str(mmi.material_override.resource_path if mmi.material_override else "")], cpos, s[2], d)
-	var solid := 0
+	# the ground itself: nowhere along the walk may the land rise into the camera
+	var buried := 0
+	for cellk in samples:
+		for s: Array in samples[cellk]:
+			if s[2] != "eye":
+				continue
+			var p: Vector3 = s[0]
+			for o: Vector2 in [Vector2.ZERO, Vector2(0.35, 0), Vector2(-0.35, 0), Vector2(0, 0.35), Vector2(0, -0.35)]:
+				if w.height(p.x + o.x, p.z + o.y) > p.y - 0.45:
+					buried += 1
+					if buried <= 12:
+						print("TERRAIN eye at (%.1f, %.1f, %.1f): ground %.2f m below the eye" % [p.x, p.y, p.z, p.y - w.height(p.x + o.x, p.z + o.y)])
+					break
+	print("woods_clip_check: %d eye samples with the ground within 0.45 m" % buried)
+	var solid := buried
 	var keys: Array = hits.keys()
 	keys.sort_custom(func(a, b) -> bool: return hits[a]["d"] < hits[b]["d"])
 	for k in keys:

@@ -93,9 +93,9 @@ func setup(woods: Node3D, to_sun: Vector3, compiled_world: Node3D = null) -> voi
 		sun.shadow_enabled = false
 		sun.basis = Basis.looking_at(-to_sun, Vector3.UP)
 		world.add_child(sun)
-		_terrain(world)
+		await _terrain(world)
 		_lake(world)
-		_forest(world)
+		await _forest(world)
 		_village(world)
 		_toy_garden(world)
 		_fire_tower(world)
@@ -189,7 +189,7 @@ func _own_height(x: float, z: float) -> float:
 		h = lerpf(h, -0.05 + (Vector2(x, z) - FORK_SKY).dot(FORK_DIR) * 0.012, e)
 	var ep := _band(x, z, PINES_SKY, PINES_DIR)
 	if ep > 0.0:                                      # and so do the pines beyond the flats
-		var level: float = (_woods.height(38.0, -24.0) / SCALE - 0.03) if _woods != null else -0.05
+		var level: float = (_woods.height(36.0, -6.0) / SCALE - 0.03) if _woods != null else -0.05
 		h = lerpf(h, level + (Vector2(x, z) - PINES_SKY).dot(PINES_DIR) * 0.008, ep)
 	return h
 
@@ -229,6 +229,7 @@ func _terrain(world: Node3D) -> void:
 		radii.append(r)
 		r *= 1.075
 	for ri in radii.size():
+		await Slicer.tick(self)
 		var row: Array = []
 		for si in range(seg):
 			var a := si * TAU / seg
@@ -311,6 +312,7 @@ func _forest(world: Node3D) -> void:
 	var balls: Array = []
 	var tries := 0
 	while cones.size() + balls.size() < 5200 and tries < 30000:
+		await Slicer.tick(self)
 		tries += 1
 		var a := rng.randf() * TAU
 		var r := pow(rng.randf(), 0.7) * 300.0 + 12.0
@@ -356,9 +358,9 @@ func _forest(world: Node3D) -> void:
 		node.material_override = m
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		world.add_child(node)
-	_dense_forest(world)
-	_near_forest(world)
-	_endless_woods(world)
+	await _dense_forest(world)
+	await _near_forest(world)
+	await _endless_woods(world)
 
 
 ## Looking into the woods from the mossy fork, the trees go on for ever: trunk behind trunk under one closed canopy,
@@ -369,7 +371,7 @@ const FORK_DIR := Vector2(-0.33, -0.944)
 
 
 ## The pine flats' long view (woods.gd PINES_VIEW): white pines on level, needle-orange ground, on for miles.
-const PINES_SKY := Vector2(38.0 / 16.0, -24.0 / 16.0)
+const PINES_SKY := Vector2(36.0 / 16.0, -6.0 / 16.0)
 const PINES_DIR := Vector2(0.96, 0.28)
 
 
@@ -387,8 +389,8 @@ func _in_endless(x: float, z: float) -> float:
 
 
 func _endless_woods(world: Node3D) -> void:
-	_endless_band(world, FORK_SKY, FORK_DIR, 314159, false)
-	_endless_band(world, PINES_SKY, PINES_DIR, 271, true)
+	await _endless_band(world, FORK_SKY, FORK_DIR, 314159, false)
+	await _endless_band(world, PINES_SKY, PINES_DIR, 271, true)
 
 
 func _endless_band(world: Node3D, origin: Vector2, dir: Vector2, seed: int, all_pine: bool) -> void:
@@ -399,6 +401,7 @@ func _endless_band(world: Node3D, origin: Vector2, dir: Vector2, seed: int, all_
 	var firs: Array = []
 	var s := 3.4
 	while s < 380.0:
+		await Slicer.tick(self)
 		var step := 0.42 + s * 0.022
 		var half := 6.0 + s * 0.42
 		var lat := -half
@@ -451,6 +454,7 @@ func _near_forest(world: Node3D) -> void:
 	var reach := 44.0
 	var n := int(reach / step)
 	for ix in range(-n, n + 1):
+		await Slicer.tick(self)
 		for iz in range(-n, n + 1):
 			var p := Vector2(ix * step + rng.randf_range(-0.5, 0.5) * step, iz * step - 2.6 + rng.randf_range(-0.5, 0.5) * step)
 			var mx := p.x * SCALE
@@ -517,6 +521,7 @@ func _dense_forest(world: Node3D) -> void:
 	var cell := 7.2
 	var cells := 64
 	for ix in range(-cells, cells + 1):
+		await Slicer.tick(self)
 		for iz in range(-cells, cells + 1):
 			var p := Vector2((float(ix) + rng.randf_range(-0.46, 0.46)) * cell, (float(iz) + rng.randf_range(-0.46, 0.46)) * cell - 2.6)
 			var radius := p.length()
@@ -584,7 +589,7 @@ func _dense_forest(world: Node3D) -> void:
 	_forest_multimesh(world, _forest_trunk_mesh(), trunks, "DistantTrunks")
 	_forest_multimesh(world, _forest_cluster_mesh(3), understory, "DistantUnderstory")
 	_forest_multimesh(world, _forest_deadwood_mesh(), deadwood, "DistantDeadwood")
-	_forest_canopy_shelves(world)
+	await _forest_canopy_shelves(world)
 
 
 ## A few large canopy groups establish the depth bands the individual trees cannot express at thumbnail scale. They
@@ -599,6 +604,7 @@ func _forest_canopy_shelves(world: Node3D) -> void:
 	var vista_b: Array = []
 	var bands := [[16.0, 18], [33.0, 24], [62.0, 30], [112.0, 38], [190.0, 46]]
 	for band_i: int in bands.size():
+		await Slicer.tick(self)
 		var band: Array = bands[band_i]
 		var radius: float = band[0]
 		var count: int = band[1]

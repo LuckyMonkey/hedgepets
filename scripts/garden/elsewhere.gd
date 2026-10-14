@@ -75,7 +75,9 @@ func enter() -> void:
 	var out := create_tween()
 	out.tween_property(_veil, "color:a", 1.0, 0.35)
 	await out.finished
-	if not _built:
+	if _prebuilding:
+		await _wait_for_prebuild()
+	elif not _built:
 		await _build_staged()
 	await before_away()                                  # (the garden is still lit: a place can look back at it)
 	pause_garden(true)
@@ -91,6 +93,43 @@ func enter() -> void:
 ## The steps of building it, [words, Callable], with a loading card between them (empty: just _build()).
 func build_steps() -> Array:
 	return []
+
+
+## Build it in the background, a few milliseconds a frame (Slicer), while you're in the garden: the garden loads,
+## then the woods. Walk in before it's done and the loading card shows how far it's got (and it hurries).
+signal prebuilt
+var _prebuilding := false
+var _pre_step := ""
+var _pre_done := 0.0
+
+
+func prebuild() -> void:
+	if _built or _prebuilding:
+		return
+	_prebuilding = true
+	var steps := build_steps()
+	Slicer.active = true
+	Slicer.budget_us = 5000
+	for i in steps.size():
+		_pre_step = str(steps[i][0])
+		_pre_done = float(i) / steps.size()
+		await (steps[i][1] as Callable).call()
+		await get_tree().process_frame
+	Slicer.active = false
+	_built = true
+	_prebuilding = false
+	prebuilt.emit()
+
+
+func _wait_for_prebuild() -> void:
+	var card: CanvasLayer = preload("res://scripts/garden/loading_card.gd").new()
+	card.note = loading_note()
+	add_child(card)
+	Slicer.budget_us = 40000                             # you're waiting: bigger slices (the card still moves)
+	while _prebuilding:
+		card.stage(_pre_step, _pre_done)
+		await get_tree().process_frame
+	card.finish()
 
 
 ## Build it all now, in one go (the bake, and checks that don't want to wait).

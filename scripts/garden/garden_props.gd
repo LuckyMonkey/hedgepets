@@ -739,6 +739,7 @@ static func merge_static(parent: Node3D, roots: Array, cell := 24.0) -> int:
 			parts.append(r)
 		parts.append_array(r.find_children("*", "MeshInstance3D", true, false))
 	for mi: MeshInstance3D in parts:
+		await Slicer.tick(parent)
 		if mi.mesh == null:
 			continue
 		var xf: Transform3D = inv * mi.global_transform
@@ -758,6 +759,7 @@ static func merge_static(parent: Node3D, roots: Array, cell := 24.0) -> int:
 	holder.name = "MergedProps"
 	parent.add_child(holder)
 	for key in groups:
+		await Slicer.tick(parent)
 		var g: Array = groups[key]
 		var merged := MeshInstance3D.new()
 		merged.mesh = (g[0] as SurfaceTool).commit()

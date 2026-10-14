@@ -161,6 +161,8 @@ func _ready() -> void:
 	var begin := start_place()
 	if begin.begins_with("woods"):
 		_start_in_woods.call_deferred(begin.get_slice(":", 1))
+	elif OS.get_environment("HEDGEPETS_FRESH") == "" and OS.get_environment("HEDGEPETS_NO_PREBUILD") == "":
+		get_tree().create_timer(1.5).timeout.connect(woods.prebuild)   # the garden's up: now the woods, quietly
 
 
 ## Where to start (development): `-- --start=woods:ridge` on the command line (the HedgePets editor dock uses it), or
