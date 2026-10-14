@@ -271,9 +271,93 @@ func node_pos(id: String) -> Vector3:
 # ------------------------------------------------------------------ building it (once)
 ## Built in steps (Elsewhere shows a loading card between them; the bake runs them all at once).
 func build_steps() -> Array:
-	return [["Finding the trails", _build_trails], ["Shaping the hills and the creek", _build_land], ["Growing the trees", _build_trees],
-		["Ferns and fallen logs", _build_undergrowth], ["The old oak, the pond, the signs", _build_places], ["Letting the sun in", _build_sky],
+	return [["Finding the trails", _build_trails], ["Shaping the hills and the creek", _static_step.bind("land", _build_land)],
+		["Growing the trees", _build_trees], ["Ferns and fallen logs", _static_step.bind("undergrowth", _build_undergrowth)],
+		["The old oak, the pond, the signs", _build_places], ["Letting the sun in", _build_sky],
 		["Down to the nursery", _build_nursery], ["Tidying up", _merge_static]]
+
+
+# ------------------------------------------------------------------ the compiled woods
+## The woods' static geometry - ground, trails, litter, the creek and footbridge home, the trees, the undergrowth,
+## and the 1:16 land's world - can be compiled once (tools/compile_woods.gd) into res://world/woods_compiled.scn and
+## loaded instead of generated: ~0.3 s instead of ~2.5 s here, far more on a phone. Everything you interact with
+## (signs, finds, the nursery, willows, the campfire, sunbeams, trinkets) is still built by code, drawing the same
+## random numbers it always did (each skipped step's generator state is stored), so it lands exactly where it did.
+## The compiled file carries a fingerprint of the generator code; a changed generator means it's ignored (built live,
+## with a warning) - unless res://world/woods.lock exists, which keeps the compiled woods as they are (a saved version).
+const COMPILED := "res://world/woods_compiled.scn"
+const LOCK := "res://world/woods.lock"
+const SOURCES := ["res://scripts/garden/woods.gd", "res://scripts/garden/woods_trees.gd", "res://scripts/garden/distant_land.gd",
+	"res://scripts/garden/garden_props.gd", "res://scripts/art/foliage_builder.gd", "res://scripts/art/hedge_anatomy.gd"]
+var compiling := false                 # tools/compile_woods.gd: copy what each static step makes
+var recorded := {}                     # compiling: key -> {"nodes": [detached copies], "state": int}
+var _compiled: Node                    # the instanced compiled scene while building from it, or null
+var compiled_used := false
+
+
+static func source_stamp() -> String:
+	var all := ""
+	for path in SOURCES:
+		var text := FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+		if text == "":
+			return ""                                    # an export: the code can't be read; the file is trusted
+		all += text
+	return all.sha256_text().substr(0, 16)
+
+
+func _open_compiled() -> bool:
+	if compiling or OS.get_environment("HEDGEPETS_NO_COMPILED") != "" or not ResourceLoader.exists(COMPILED):
+		return false
+	var ps := load(COMPILED) as PackedScene
+	if ps == null:
+		return false
+	var root := ps.instantiate()
+	var live := source_stamp()
+	if live != "" and live != str(root.get_meta("stamp", "")) and not FileAccess.file_exists(LOCK):
+		push_warning("Woods: the generators changed since %s was compiled; building live. Run tools/compile_woods.gd." % COMPILED)
+		root.free()
+		return false
+	_compiled = root
+	compiled_used = true
+	return true
+
+
+## A static step: from the compiled woods when there is one (its nodes moved in, the generator left where the step
+## would have left it), otherwise generated - and, when compiling, copied for the compiled file.
+func _static_step(key: String, f: Callable) -> void:
+	if _compiled == null and not compiling and not _tried_compiled:
+		_tried_compiled = true
+		_open_compiled()
+	if _compiled != null:
+		var group := _compiled.get_node(key)
+		for n in group.get_children():
+			group.remove_child(n)
+			add_child(n)
+		_brng.state = int(_compiled.get_meta("states")[key])
+		return
+	var before := {}
+	for n in get_children():
+		before[n] = true
+	f.call()
+	if compiling:
+		var copies: Array = []
+		for n in get_children():
+			if not before.has(n):
+				copies.append(n.duplicate())
+		recorded[key] = {"nodes": copies, "state": _brng.state}
+
+
+var _tried_compiled := false
+
+
+## The 1:16 land's world from the compiled woods (clouds aren't in it: they drift, so they're built live), or null.
+func compiled_land_world() -> Node3D:
+	if _compiled == null or not _compiled.has_node("sky"):
+		return null
+	var sky := _compiled.get_node("sky")
+	var world: Node3D = sky.get_child(0)
+	sky.remove_child(world)
+	return world
 
 
 var _brng: RandomNumberGenerator
@@ -288,6 +372,9 @@ func _build() -> void:
 ## bridge... - merged into one mesh per material per 24 m patch (GardenProps.merge_static): ~1300 fewer draw calls at
 ## the trailhead. What moves or answers a tap stays itself: finds, motes, willows, the campfire, the nursery, signs.
 func _merge_static() -> void:
+	if _compiled != null:
+		_compiled.free()                                 # (its contents are in the woods now)
+		_compiled = null
 	if OS.get_environment("HEDGEPETS_NO_MERGE") != "":     # (benchmarks: the unmerged woods, for comparison)
 		return
 	var keep := {}
@@ -366,7 +453,8 @@ func _build_land() -> void:
 
 
 func _build_trees() -> void:
-	_trees(_brng)
+	_static_step("trees", func() -> void: _trees(_brng))
+	_willows(_brng)                                      # (they sway: always built live)
 
 
 func _build_undergrowth() -> void:
@@ -388,7 +476,7 @@ func _build_sky() -> void:
 	var to_sun := TO_SUN.normalized()
 	land = preload("res://scripts/garden/distant_land.gd").new()   # the land beyond: a 1:16 miniature (3D skybox)
 	add_child(land)
-	land.setup(self, to_sun)
+	land.setup(self, to_sun, compiled_land_world())
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color("ffe4b8")
 	sun.light_energy = 1.15
@@ -821,7 +909,6 @@ func _trees(rng: RandomNumberGenerator) -> void:
 		maker.tree(kind, Vector3(p.x, height(p.x, p.y), p.y), rng, _near_trail(p, maker.LEAFY_REACH), blaze)
 	maker.finish()
 	set_meta("trees_rejected", maker.rejected)
-	_willows(rng)
 
 
 ## Leafy crowns: a few made once with the hedgepets' foliage (fixed seeds, so they bake), shared by every tree near a

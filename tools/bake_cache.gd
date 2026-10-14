@@ -36,7 +36,10 @@ func _run() -> void:
 	var t0 := Time.get_ticks_msec()
 	var g: Node = (load("res://garden.tscn") as PackedScene).instantiate()
 	root.add_child(g)
-	g.woods.build_now()                                  # the woods too: their leafy trees and things bake as well
+	# the woods too (their trees and things), unless they're compiled (tools/compile_woods.gd: they load from
+	# res://world/woods_compiled.scn and never ask the cache); BAKE_WOODS=1 bakes them anyway
+	if not ResourceLoader.exists("res://world/woods_compiled.scn") or OS.get_environment("BAKE_WOODS") != "":
+		g.woods.build_now()
 	var live_ms := Time.get_ticks_msec() - t0
 	# every pet in its own plant: the first one (Gerald) is built at startup, the rest whenever they arrive
 	var t1 := Time.get_ticks_msec()

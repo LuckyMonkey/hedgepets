@@ -4,6 +4,11 @@
 # Needs: Godot 4.7.2 export templates (~/.local/share/godot/export_templates/4.7.2.stable), ssh fridge@fridge.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+if [ -f world/woods.compile ]; then                     # opt-in: ship the compiled woods (faster woods, ~16 MB more download)
+  echo "== compile the woods"
+  xvfb-run -a -s "-screen 0 320x240x24" godot --audio-driver Dummy --rendering-driver opengl3 --resolution 320x240 --path . \
+    --script tools/compile_woods.gd 2>&1 | grep -E "compiled woods|built from it" || true
+fi
 echo "== bake the startup cache (always before an export)"
 godot --headless --path . --script tools/bake_cache.gd | grep -E "round trip|cache file"
 echo "== export the Web preset"

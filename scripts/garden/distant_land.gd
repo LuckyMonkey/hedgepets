@@ -50,7 +50,7 @@ var _toy_y := INF                                  # bigger than life: a make-be
 var _woods: Node3D
 
 
-func setup(woods: Node3D, to_sun: Vector3) -> void:
+func setup(woods: Node3D, to_sun: Vector3, compiled_world: Node3D = null) -> void:
 	name = "DistantLand"
 	_woods = woods
 	_noise = FastNoiseLite.new()
@@ -75,7 +75,8 @@ func setup(woods: Node3D, to_sun: Vector3) -> void:
 	view.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	view.positional_shadow_atlas_size = 0
 	add_child(view)
-	var world := Node3D.new()
+	var world := compiled_world if compiled_world != null else Node3D.new()   # (compiled: terrain, forest, village... ready made)
+	world.name = "World"
 	view.add_child(world)
 	sky_cam = Camera3D.new()
 	sky_cam.near = 0.05
@@ -83,20 +84,21 @@ func setup(woods: Node3D, to_sun: Vector3) -> void:
 	sky_cam.keep_aspect = Camera3D.KEEP_WIDTH
 	sky_cam.environment = _environment()
 	view.add_child(sky_cam)
-	var sun := DirectionalLight3D.new()
-	sun.light_color = Color("ffe4b8")
-	sun.light_energy = 1.1
-	sun.shadow_enabled = false
-	sun.basis = Basis.looking_at(-to_sun, Vector3.UP)
-	world.add_child(sun)
 	_toy_y = INF
 	_toy_y = _own_height_raw(TOY_GARDEN.x, TOY_GARDEN.y)
-	_terrain(world)
-	_lake(world)
-	_forest(world)
-	_village(world)
-	_toy_garden(world)
-	_fire_tower(world)
+	if compiled_world == null:
+		var sun := DirectionalLight3D.new()
+		sun.light_color = Color("ffe4b8")
+		sun.light_energy = 1.1
+		sun.shadow_enabled = false
+		sun.basis = Basis.looking_at(-to_sun, Vector3.UP)
+		world.add_child(sun)
+		_terrain(world)
+		_lake(world)
+		_forest(world)
+		_village(world)
+		_toy_garden(world)
+		_fire_tower(world)
 	_clouds_build(world)
 	woods.get_viewport().size_changed.connect(_fit)
 	_fit()
