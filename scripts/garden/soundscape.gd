@@ -37,11 +37,16 @@ var _wind: AudioStreamPlayer
 var _players := {}
 var _wait := {}
 var _rng := RandomNumberGenerator.new()
+var _film_clock := -1.0            # HEDGEPETS_SOUND_SEED (films, tests): seeded events, the swell on game time
 
 
 func setup(g: Node3D) -> void:
 	garden = g
-	_rng.randomize()
+	if OS.get_environment("HEDGEPETS_SOUND_SEED") != "":
+		_rng.seed = int(OS.get_environment("HEDGEPETS_SOUND_SEED"))
+		_film_clock = 0.0
+	else:
+		_rng.randomize()
 	_wind = AudioStreamPlayer.new()
 	var loop := load("res://assets/audio/wind_leaves.ogg") as AudioStreamOggVorbis
 	loop.loop = true
@@ -64,7 +69,11 @@ func _process(delta: float) -> void:
 	if _wind == null:
 		return
 	# the wind swells and settles slowly, never quite the same
-	_wind.volume_db = (-22.0 + 2.0 * sin(Time.get_ticks_msec() * 0.00011)) if not muted else -80.0
+	var ms := float(Time.get_ticks_msec())
+	if _film_clock >= 0.0:
+		_film_clock += delta
+		ms = _film_clock * 1000.0
+	_wind.volume_db = (-22.0 + 2.0 * sin(ms * 0.00011)) if not muted else -80.0
 	for k in EVENTS:
 		_wait[k] = float(_wait[k]) - delta
 		if _wait[k] <= 0.0:
