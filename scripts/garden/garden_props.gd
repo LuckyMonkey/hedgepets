@@ -727,6 +727,47 @@ static func bake_static(r: Node3D) -> Node3D:
 	return r
 
 
+## Merge many static things into a few meshes: every MeshInstance3D under `roots` (with its material and ink overlay),
+## grouped by `cell`-metre patch and material, becomes one mesh per group under `parent`/MergedProps. Same look, a
+## fraction of the draw calls. Only for things that never move again. Returns the number of meshes made.
+static func merge_static(parent: Node3D, roots: Array, cell := 24.0) -> int:
+	var inv := parent.global_transform.affine_inverse()
+	var groups := {}
+	var parts: Array = []
+	for r: Node in roots:
+		if r is MeshInstance3D:
+			parts.append(r)
+		parts.append_array(r.find_children("*", "MeshInstance3D", true, false))
+	for mi: MeshInstance3D in parts:
+		if mi.mesh == null:
+			continue
+		var xf: Transform3D = inv * mi.global_transform
+		var c := Vector2i(floori(xf.origin.x / cell), floori(xf.origin.z / cell))
+		var key := "%d_%d_%d_%d_%d" % [c.x, c.y, mi.material_override.get_instance_id() if mi.material_override else 0,
+			mi.material_overlay.get_instance_id() if mi.material_overlay else 0, mi.cast_shadow]
+		if not groups.has(key):
+			var st := SurfaceTool.new()
+			st.begin(Mesh.PRIMITIVE_TRIANGLES)
+			groups[key] = [st, mi.material_override, mi.material_overlay, mi.cast_shadow]
+		for surf in range(mi.mesh.get_surface_count()):
+			(groups[key][0] as SurfaceTool).append_from(mi.mesh, surf, xf)
+	for r: Node in roots:
+		r.get_parent().remove_child(r)
+		r.queue_free()
+	var holder := Node3D.new()
+	holder.name = "MergedProps"
+	parent.add_child(holder)
+	for key in groups:
+		var g: Array = groups[key]
+		var merged := MeshInstance3D.new()
+		merged.mesh = (g[0] as SurfaceTool).commit()
+		merged.material_override = g[1]
+		merged.material_overlay = g[2]
+		merged.cast_shadow = g[3]
+		holder.add_child(merged)
+	return groups.size()
+
+
 # ------------------------------------------------------------------ around the garden
 ## The creek: a strip mesh following `center(z) -> x`, `width` wide, from z0 to z1, with the creek shader.
 static func creek(parent: Node3D, center: Callable, z0: float, z1: float, width: float) -> MeshInstance3D:

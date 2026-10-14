@@ -181,11 +181,15 @@ func height(x: float, z: float) -> float:
 
 
 func _own_height(x: float, z: float) -> float:
-	var e := _in_endless(x, z)
+	var h := _own_height_raw(x, z)
+	var e := _band(x, z, FORK_SKY, FORK_DIR)
 	if e > 0.0:                                       # the long woods lie level, rising only very gently
-		var d := (Vector2(x, z) - FORK_SKY).dot(FORK_DIR)
-		return lerpf(_own_height_raw(x, z), -0.05 + d * 0.012, e)
-	return _own_height_raw(x, z)
+		h = lerpf(h, -0.05 + (Vector2(x, z) - FORK_SKY).dot(FORK_DIR) * 0.012, e)
+	var ep := _band(x, z, PINES_SKY, PINES_DIR)
+	if ep > 0.0:                                      # and so do the pines beyond the flats
+		var level: float = (_woods.height(38.0, -24.0) / SCALE - 0.03) if _woods != null else -0.05
+		h = lerpf(h, level + (Vector2(x, z) - PINES_SKY).dot(PINES_DIR) * 0.008, ep)
+	return h
 
 
 func _own_height_raw(x: float, z: float) -> float:
@@ -254,6 +258,8 @@ func _terrain(world: Node3D) -> void:
 
 ## Forest green on the hills, farm fields in the valley, bare granite up high, a little autumn in the trees.
 func _ground_colour(x: float, y: float, z: float) -> Color:
+	if _band(x, z, PINES_SKY, PINES_DIR) > 0.5:       # under the white pines: a floor of orange needles
+		return Color("8a4a24").lerp(Color("a85e2c"), 0.5 + _hills.get_noise_2d(x * 3.0, z * 3.0))
 	if _in_endless(x, z) > 0.5:                       # under the endless canopy: leaf litter in shade
 		return Color("2a2418").lerp(Color("3a3020"), 0.5 + _hills.get_noise_2d(x * 3.0, z * 3.0))
 	var forest := Color("1c3022").lerp(Color("26381f"), 0.5 + _hills.get_noise_2d(x * 2.0, z * 2.0))   # the floor under a canopy: deep shade
@@ -360,18 +366,32 @@ const FORK_SKY := Vector2(2.0 / 16.0, -24.0 / 16.0)
 const FORK_DIR := Vector2(-0.33, -0.944)
 
 
-func _in_endless(x: float, z: float) -> float:
-	var d := Vector2(x, z) - FORK_SKY
-	var s := d.dot(FORK_DIR)
+## The pine flats' long view (woods.gd PINES_VIEW): white pines on level, needle-orange ground, on for miles.
+const PINES_SKY := Vector2(38.0 / 16.0, -24.0 / 16.0)
+const PINES_DIR := Vector2(0.96, 0.28)
+
+
+func _band(x: float, z: float, origin: Vector2, dir: Vector2) -> float:
+	var d := Vector2(x, z) - origin
+	var s := d.dot(dir)
 	if s < 3.0:
 		return 0.0
-	var lat := absf(d.dot(FORK_DIR.orthogonal()))
+	var lat := absf(d.dot(dir.orthogonal()))
 	return smoothstep(6.0 + s * 0.42, 2.0 + s * 0.3, lat) * smoothstep(3.0, 6.0, s)
 
 
+func _in_endless(x: float, z: float) -> float:
+	return maxf(_band(x, z, FORK_SKY, FORK_DIR), _band(x, z, PINES_SKY, PINES_DIR))
+
+
 func _endless_woods(world: Node3D) -> void:
+	_endless_band(world, FORK_SKY, FORK_DIR, 314159, false)
+	_endless_band(world, PINES_SKY, PINES_DIR, 271, true)
+
+
+func _endless_band(world: Node3D, origin: Vector2, dir: Vector2, seed: int, all_pine: bool) -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 314159
+	rng.seed = seed
 	var trunks: Array = []
 	var crowns: Array = []
 	var firs: Array = []
@@ -381,7 +401,7 @@ func _endless_woods(world: Node3D) -> void:
 		var half := 6.0 + s * 0.42
 		var lat := -half
 		while lat < half:
-			var p := FORK_SKY + FORK_DIR * (s + rng.randf_range(-0.5, 0.5) * step) + FORK_DIR.orthogonal() * (lat + rng.randf_range(-0.5, 0.5) * step)
+			var p := origin + dir * (s + rng.randf_range(-0.5, 0.5) * step) + dir.orthogonal() * (lat + rng.randf_range(-0.5, 0.5) * step)
 			lat += step
 			var mx := p.x * SCALE
 			var mz := p.y * SCALE
@@ -390,11 +410,11 @@ func _endless_woods(world: Node3D) -> void:
 			if rng.randf() < 0.12:
 				continue
 			var y := height(p.x, p.y)
-			var metres := (p - FORK_SKY).length() * SCALE
+			var metres := (p - origin).length() * SCALE
 			var tall := rng.randf_range(2.4, 3.3)             # old growth: tall trunks, the canopy far overhead
 			var girth := (0.06 + step * 0.06) * rng.randf_range(0.8, 1.3)   # far trunks a touch thicker: they still read
 			trunks.append([Transform3D(Basis().scaled(Vector3(girth, tall, girth)), Vector3(p.x, y + tall * 0.5 - 0.05, p.y)), haze(Color("3e3026").lerp(Color("54443a"), rng.randf()), metres)])
-			if rng.randf() < 0.3:                         # a hemlock or a pine among the hardwoods
+			if all_pine or rng.randf() < 0.3:             # a hemlock or a pine among the hardwoods (all white pine past the flats)
 				var w := rng.randf_range(0.4, 0.6) + step * 0.2
 				firs.append([Transform3D(Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(w, tall * 0.7, w)), Vector3(p.x, y + tall * 0.68, p.y)), haze(Color("1e3a2a").lerp(Color("2a4a32"), rng.randf()), metres)])
 			else:                                         # the canopy: crowns overlapping into one ceiling
@@ -404,8 +424,7 @@ func _endless_woods(world: Node3D) -> void:
 		s += step
 	_forest_multimesh(world, _forest_trunk_mesh(), trunks, "EndlessTrunks")
 	_forest_multimesh(world, _forest_cluster_mesh(0), crowns, "EndlessCanopy")
-	_forest_multimesh(world, _forest_pine_mesh(false), firs, "EndlessFirs")
-	print("endless woods: %d trunks" % trunks.size())
+	_forest_multimesh(world, _forest_pine_mesh(true if all_pine else false), firs, "EndlessFirs")
 
 
 ## Right past the edge of the woods: the forest goes on, tree by tree - trunks you look between, crowns overlapping,
@@ -643,11 +662,11 @@ static func haze(colour: Color, metres: float) -> Color:
 
 
 func _forest_cluster_mesh(variant: int) -> Mesh:
-	var source := SphereMesh.new()
+	var source := SphereMesh.new()                   # a few pixels across: as few triangles as still read round
 	source.radius = 1.0
 	source.height = 2.0
-	source.radial_segments = 6
-	source.rings = 3
+	source.radial_segments = 5
+	source.rings = 2
 	var parts: Array
 	match variant:
 		0:
@@ -672,6 +691,9 @@ func _forest_pine_mesh(narrow: bool) -> Mesh:
 	source.bottom_radius = 1.0
 	source.height = 1.0
 	source.radial_segments = 6
+	source.rings = 0                                  # (the default 4 rings and caps were triangles nobody sees)
+	source.cap_top = false
+	source.cap_bottom = false
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var tiers := 4 if narrow else 5
@@ -690,6 +712,9 @@ func _forest_trunk_mesh() -> Mesh:
 	mesh.bottom_radius = 0.55
 	mesh.height = 1.0
 	mesh.radial_segments = 5
+	mesh.rings = 0
+	mesh.cap_top = false
+	mesh.cap_bottom = false
 	return mesh
 
 

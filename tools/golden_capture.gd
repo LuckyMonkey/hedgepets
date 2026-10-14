@@ -101,7 +101,7 @@ func _run() -> void:
 			"oak": Vector3(woods._oak_at().x, 0, woods._oak_at().y) - woods.node_pos("oak"),
 			"creek": Vector3(woods.CREEK_AT.x, 0, woods.CREEK_AT.y) - woods.node_pos("creek"),
 			"home": Vector3(woods.HOME_DIR.x, 0, woods.HOME_DIR.y),                 # back over the footbridge
-			"pines": Vector3(-0.6, 0, -1),
+			"pines": Vector3(woods.PINES_VIEW.x, 0, woods.PINES_VIEW.y),            # the flats' long view east
 			"lookout": Vector3(woods.OAK_VIEW.x, 0, woods.OAK_VIEW.y),             # the old oak's view over the treetops
 			"pond": Vector3(woods.POND_AT.x, 0, woods.POND_AT.y) - woods.node_pos("pond"),
 		}

@@ -66,7 +66,7 @@ func _near(lo: Vector3, hi: Vector3) -> Array:
 
 
 func _hit(what: String, at: Vector3, kind: String, d: float, r := 0.0) -> void:
-	if r - d < 0.03:
+	if r - d < 0.035:
 		what += " #graze"                                 # within 3 cm of the edge: brushing past, not through
 	var key := "%s@%d,%d" % [what, roundi(at.x), roundi(at.z)]
 	if not hits.has(key) or hits[key]["d"] > d:
@@ -125,7 +125,10 @@ func _run() -> void:
 	var t := 0.0
 	while t <= 17.0:
 		var p2: Vector2 = w.HOME_DIR * t
-		home.append(Vector3(p2.x, w.height(p2.x, p2.y), p2.y))
+		var y: float = w.height(p2.x, p2.y)
+		if absf((p2 - w.BROOK_AT).dot(w.HOME_DIR)) < 2.6:   # over the creek you walk on the footbridge's deck
+			y = maxf(y, w._base(Vector2.ZERO) + 0.2)
+		home.append(Vector3(p2.x, y, p2.y))
 		t += 0.5
 	lines.append(home)
 	for pts: PackedVector3Array in lines:
