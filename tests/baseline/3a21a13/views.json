@@ -33,6 +33,18 @@
       "where": "garden",
       "yaw": 0.0
     },
+    "garden_south": {
+      "distance": 15.0,
+      "target": "Vector3(0, 0, 9)",
+      "where": "garden",
+      "yaw": 180.0
+    },
+    "garden_street": {
+      "distance": 24.0,
+      "target": "Vector3(0, 0, 16)",
+      "where": "garden",
+      "yaw": 180.0
+    },
     "garden_to_woods": {
       "distance": 11.0,
       "target": "Vector3(2, 0, -6)",

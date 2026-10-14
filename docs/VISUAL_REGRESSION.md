@@ -2,14 +2,14 @@
 
 ## Golden baselines
 
-**Current: `tests/baseline/b0a2616/`.** This is an intentional visual change, asked for by the owner on
+**Current: `tests/baseline/3a21a13/`.** This is an intentional visual change, asked for by the owner on
 2026-10-14:
 
-- fieldstone walls of chonky cushion stones, and rounder rocks;
+- big low-poly cushion stones in the walls; the neighbourhood as a 1:16 skybox (Greg's house real, set back);
 - dense woods across the creek;
 - a worn trail from the footbridge.
 
-It adds the views `garden_wall` and `garden_creek`. `tests/results/2026-10-14_f72b9bd_vs_b0a2616.json` records how
+It adds the views `garden_wall` and `garden_creek`. `tests/results/(none: superseded)` records how
 far each view moved from the old set. The layout is unchanged: the garden's shared RNG ends the build in the same
 state as before. What differs is the walls, the rocks, the trees past the creek and their afternoon shadows on the west lawn, plus the shadow-map fitting that follows the new casters.
 
