@@ -191,6 +191,8 @@ func pause_garden(on: bool) -> void:
 	for c in garden.get_children():
 		if c is DirectionalLight3D:
 			c.visible = not on
+	if garden.neighborhood != null:
+		garden.neighborhood.show_land(not on)            # (no need to draw the street while you're away)
 	var bus := AudioServer.get_bus_index("Master")
 	var m := muffle()
 	if on and m.x > 0.0:

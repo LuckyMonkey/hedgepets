@@ -1,4 +1,4 @@
-extends Node
+extends MiniatureSky
 
 ## The land beyond the woods, as a 1:16 miniature in its own world (the "3D skybox" of the Source engine's sky_camera):
 ## a SubViewport holds the model and a camera that copies the woods camera - same turn, same field of view, its
@@ -15,18 +15,12 @@ extends Node
 ## woods' sun is. Everything near the middle sits low, under the woods' own ground (which is drawn over it).
 ## Built once (fixed seeds); rendered at RES of the screen; only while you're in the woods.
 
-const SCALE := 16.0
-const RES := 0.6                                    # of the screen's resolution
 
-var view: SubViewport
-var sky_cam: Camera3D
 var _clouds: Array = []
 var _noise: FastNoiseLite
 var _hills: FastNoiseLite
 var _forest_noise: FastNoiseLite
 var _forest_cluster: FastNoiseLite
-var _t := 0.0
-var _sky_mat: ShaderMaterial
 
 ## Landmarks, in sky units (metres / SCALE) from the woods' origin: [x, z, height, radius, kind]
 const PEAKS := [
@@ -68,22 +62,7 @@ func setup(woods: Node3D, to_sun: Vector3, compiled_world: Node3D = null) -> voi
 	_forest_cluster.seed = 271829
 	_forest_cluster.frequency = 0.075
 	_forest_cluster.fractal_octaves = 2
-	view = SubViewport.new()
-	view.own_world_3d = true
-	view.transparent_bg = false
-	view.msaa_3d = Viewport.MSAA_DISABLED
-	view.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	view.positional_shadow_atlas_size = 0
-	add_child(view)
-	var world := compiled_world if compiled_world != null else Node3D.new()   # (compiled: terrain, forest, village... ready made)
-	world.name = "World"
-	view.add_child(world)
-	sky_cam = Camera3D.new()
-	sky_cam.near = 0.05
-	sky_cam.far = 1400.0
-	sky_cam.keep_aspect = Camera3D.KEEP_WIDTH
-	sky_cam.environment = _environment()
-	view.add_child(sky_cam)
+	var world := _make_view(woods.get_viewport(), _environment(), compiled_world)   # (compiled: terrain, forest... ready made)
 	_toy_y = INF
 	_toy_y = _own_height_raw(TOY_GARDEN.x, TOY_GARDEN.y)
 	if compiled_world == null:
@@ -100,46 +79,11 @@ func setup(woods: Node3D, to_sun: Vector3, compiled_world: Node3D = null) -> voi
 		_toy_garden(world)
 		_fire_tower(world)
 	_clouds_build(world)
-	woods.get_viewport().size_changed.connect(_fit)
-	_fit()
 
 
-func _fit() -> void:
-	var s := get_viewport().get_visible_rect().size
-	view.size = Vector2i(maxi(64, int(s.x * RES)), maxi(64, int(s.y * RES)))
-
-
-func show_land(on: bool) -> void:
-	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
-	if on:
-		_fit()
-
-
-## Follow the woods camera: same turn and field of view, its position scaled down.
-func follow(cam: Camera3D, local_pos: Vector3, delta: float) -> void:
-	_t += delta
-	sky_cam.position = local_pos / SCALE
-	sky_cam.rotation = cam.rotation
-	sky_cam.fov = cam.fov
-	if _sky_mat != null:                              # how the woods' sky finds this picture's pixels
-		var s := get_viewport().get_visible_rect().size
-		_sky_mat.set_shader_parameter("view_inv", cam.global_basis.orthonormalized().transposed())
-		_sky_mat.set_shader_parameter("tan_half_w", tan(deg_to_rad(cam.fov) * 0.5))
-		_sky_mat.set_shader_parameter("aspect", s.x / maxf(s.y, 1.0))
-	for c: Node3D in _clouds:
+func _tick(_delta: float) -> void:
+	for c: Node3D in _clouds:                         # the clouds drift
 		c.position.x = c.get_meta("x0") + fmod(_t * 0.35 + c.get_meta("ph"), 120.0) - 60.0
-
-
-## The woods' sky: this land's picture, behind everything.
-func sky_for_woods() -> Sky:
-	var m := ShaderMaterial.new()
-	_sky_mat = m
-	m.shader = preload("res://shaders/distant_sky.gdshader")
-	m.set_shader_parameter("land", view.get_texture())
-	var sky := Sky.new()
-	sky.sky_material = m
-	sky.radiance_size = Sky.RADIANCE_SIZE_32
-	return sky
 
 
 func _environment() -> Environment:

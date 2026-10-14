@@ -331,9 +331,9 @@ static func stone_wall(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNu
 				hi += 1
 			var gap := (hi - lo + 1) * BIN
 			var up := floor_y / tall
-			var w := maxf(minf(wr.randf_range(0.45, 0.95) * lerpf(1.0, 0.65, up), gap + 0.1), 0.18)
+			var w := maxf(minf(wr.randf_range(0.7, 1.3) * lerpf(1.0, 0.7, up), gap + 0.12), 0.3)
 			var start := lo * BIN + (wr.randf() * (gap - w) if gap > w else (gap - w) * 0.5)
-			var h := minf(w * wr.randf_range(0.5, 0.8), lerpf(0.5, 0.3, up))       # boulders at the foot, smaller up top
+			var h := minf(w * wr.randf_range(0.45, 0.7), lerpf(0.6, 0.38, up))      # boulders at the foot, smaller up top
 			var s0 := clampi(int(start / BIN), 0, n - 1)
 			var s1 := clampi(int((start + w) / BIN), 0, n - 1)
 			var base := 0.0
@@ -357,7 +357,7 @@ static func stone_wall(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNu
 	# the top: wide flat stones across both faces, a few missing where it has tumbled
 	var x := wr.randf_range(0.0, 0.15)
 	while x < length - 0.25:
-		var w := wr.randf_range(0.45, 0.7)
+		var w := wr.randf_range(0.7, 1.1)
 		if wr.randf() < 0.78:
 			var s0 := clampi(int(x / BIN), 0, n - 1)
 			var s1 := clampi(int((x + w) / BIN), 0, n - 1)
@@ -369,7 +369,7 @@ static func stone_wall(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNu
 			_field_stone(r, at, Vector3(w * 0.55, h * 0.5, wr.randf_range(0.2, 0.27)), yaw, wr, true)
 		x += w * 0.94
 	# fallen at its foot, on either side
-	for k in range(int(length * 0.45)):
+	for k in range(int(length * 0.25)):
 		var along := wr.randf_range(0.2, length - 0.2)
 		var sz := wr.randf_range(0.1, 0.2)
 		var at := from + dir * along + side * (1.0 if wr.randf() < 0.5 else -1.0) * wr.randf_range(0.5, 0.85) + Vector3(0, sz * 0.4, 0)
@@ -470,7 +470,7 @@ static func fieldstone(variant: int) -> ArrayMesh:
 	var v := variant % 3
 	if _fieldstones.has(v):
 		return _fieldstones[v]
-	var mesh := HedgeAnatomy.build_mesh({"radii": Vector3.ONE, "shape": {"exponent": [2.4, 2.8, 3.2][v], "flat_bottom": 0.6, "taper": [0.05, -0.08, 0.0][v]}}, 5, 8)
+	var mesh := HedgeAnatomy.build_mesh({"radii": Vector3.ONE, "shape": {"exponent": [2.4, 2.8, 3.2][v], "flat_bottom": 0.6, "taper": [0.05, -0.08, 0.0][v]}}, 4, 6)
 	_fieldstones[v] = mesh
 	return mesh
 

@@ -47,11 +47,12 @@ const GATES := {
 	"fence": {"out": Vector3(2.5, 0, -17.0), "peek": Vector3(2.5, 0, -11.7), "inside": Vector3(2.5, 0, -8.5)},
 	"woods": {"out": Vector3(17.0, 0, -2.0), "peek": Vector3(10.2, 0, -2.0), "inside": Vector3(6.5, 0, -2.0)},
 	"creek": {"out": Vector3(-23.0, 0, 1.5), "peek": Vector3(-14.2, 0, 1.5), "inside": Vector3(-10.0, 0, 1.5)},
-	"houses": {"out": Vector3(-1.0, 0, 17.0), "peek": Vector3(-1.0, 0, 10.6), "inside": Vector3(-1.0, 0, 7.0)},
+	"houses": {"out": Vector3(2.6, 0, 13.0), "peek": Vector3(-1.0, 0, 10.6), "inside": Vector3(-1.0, 0, 7.0)},   # out: into his yard, beside the stairs
 	# the burrow behind the bottom-corner tree: burrowing pets peek out of it and climb out (hideouts.gd)
 	"burrow": {"out": Vector3(-12.3, -1.0, 4.9), "peek": Vector3(-11.6, 0, 4.9), "inside": Vector3(-9.0, 0, 3.8)},
 }
 const BURROW_AT := Vector3(-12.3, 0, 4.9)
+const GREG_Z := 20.9                              # the white house with the blue door (its back to the garden)
 ## The back fence, in runs you can mend one at a time; the collapsed bit (FENCE_GAP) becomes a gate when mended.
 const FENCE_SECTIONS := [Vector2(-16.0, -7.2), Vector2(-7.2, 1.6), Vector2(1.6, 6.0), Vector2(6.0, 10.4), Vector2(10.4, 16.0)]   # on the 2.2 m post grid
 const FENCE_GAP := Vector2(0.5, 4.5)
@@ -146,6 +147,7 @@ func _ready() -> void:
 		boot_ms[st[0]] = Time.get_ticks_msec() - t0
 		done += float(st[2])
 	_place_camera()
+	neighborhood.follow(camera, camera.position, 0.0)
 	if staged:
 		card.stage("Almost there", 1.0)
 		var t1 := Time.get_ticks_msec()
@@ -279,6 +281,7 @@ func _build_sounds() -> void:
 	sounds.setup(self)
 
 
+var neighborhood: Node                            # scripts/garden/neighborhood.gd: the street, the houses, the town (skybox)
 var hideouts: Node
 var den: Node                                     # scripts/garden/den.gd: the room under the burrow (built on first visit)
 var woods: Node                                   # scripts/garden/woods.gd: the trails over the footbridge
@@ -315,6 +318,13 @@ func _build_world() -> void:
 	env.fog_enabled = true                               # a little air between the near and far garden
 	env.fog_light_color = Color("a7b37a")
 	env.fog_density = 0.01
+	neighborhood = preload("res://scripts/garden/neighborhood.gd").new()   # beyond the back fence: a 1:16 skybox
+	add_child(neighborhood)
+	neighborhood.setup(self)
+	env.background_mode = Environment.BG_SKY
+	env.sky = neighborhood.sky_for_woods(Color("a7b37a"), 1.4)
+	env.fog_sky_affect = 0.0                             # (the miniature has the garden's fog of its own)
+	neighborhood.show_land(true)
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -382,13 +392,20 @@ func _build_ground() -> void:
 	m.set_shader_parameter("macro", ImageTexture.create_from_image(img))
 	m.set_shader_parameter("detail", ImageTexture.create_from_image(detail))
 	m.set_shader_parameter("dapple", load("res://assets/sprites/dapple.png"))
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(160, 160)
-	var ground := MeshInstance3D.new()
-	ground.mesh = plane
-	ground.material_override = m
-	ground.name = "Lawn"
-	add_child(ground)
+	# the lawn stops just behind the back fence: past it is the neighbourhood skybox (its own yards and street) - but
+	# the creek's woods, the trees east and the white house's own yard stand on real ground
+	for piece: Array in [[Vector2(-80, -80), Vector2(80, 11.5)], [Vector2(-80, 11.5), Vector2(-16.5, 30.0)],
+			[Vector2(12.0, 11.5), Vector2(80, 20.0)], [Vector2(-6.4, 11.5), Vector2(6.4, 26.0)]]:
+		var lo: Vector2 = piece[0]
+		var hi: Vector2 = piece[1]
+		var plane := PlaneMesh.new()
+		plane.size = hi - lo
+		var ground := MeshInstance3D.new()
+		ground.mesh = plane
+		ground.material_override = m
+		ground.name = "Lawn"
+		ground.position = Vector3((lo.x + hi.x) * 0.5, 0, (lo.y + hi.y) * 0.5)
+		add_child(ground)
 	_bald_noise = big
 
 
@@ -542,14 +559,21 @@ func _surroundings() -> void:
 	add_child(south)
 	var gx: float = GATES["houses"]["peek"].x
 	GardenProps.broken_fence(south, -16.0, 16.0, 10.0, r, Vector2(gx - 1.1, gx + 1.1))
-	GardenProps.house(south, Vector3(-12.5, 0, 20.0), 0.0, Color("e8e2d2"), Vector3(8.0, 5.0, 6.5), false, r)
-	GardenProps.house(south, Vector3(0.0, 0, 18.5), 0.0, Color("eeeae0"), Vector3(9.0, 5.5, 7.0), true, r, Color("3a5a8a"), gx)   # white siding, blue door; its stairs come down to the gate
-	GardenProps.house(south, Vector3(12.5, 0, 20.5), 0.0, Color("8a3a2a"), Vector3(8.0, 5.0, 6.5), false, r)
+	# the houses next door are in the neighbourhood skybox (neighborhood.gd); built here only to draw the same random
+	# numbers as ever (so nothing else in the garden moves), then let go
+	var gone := Node3D.new()
+	GardenProps.house(gone, Vector3(-12.5, 0, 20.0), 0.0, Color("e8e2d2"), Vector3(8.0, 5.0, 6.5), false, r)
+	GardenProps.house(south, Vector3(0.0, 0, GREG_Z), 0.0, Color("eeeae0"), Vector3(9.0, 5.5, 7.0), true, r, Color("3a5a8a"), gx)   # white siding, blue door: real (he comes and goes); set back so the stairs land in his yard, not the fence
+	GardenProps.house(gone, Vector3(12.5, 0, 20.5), 0.0, Color("8a3a2a"), Vector3(8.0, 5.0, 6.5), false, r)
+	gone.free()
+	var stone := GardenProps.mat("flagstone", Color("9a968a"))
+	for k in range(3):                                   # flagstones from the foot of his stairs to the gate
+		GardenProps.part(south, GardenProps.cyl(0.32, 0.34, 0.05, 7), stone, Vector3(gx + (k % 2) * 0.12 - 0.06, 0.02, 10.9 + k * 0.62), Vector3(0, k * 40, 0), 0.006)
 	GardenProps.bake_static(south)
 	GardenProps.open_gate(self, Vector3(gx + 1.1, 0, 10.0), 2.1, 115.0)
 	var watcher: Node3D = preload("res://scripts/garden/porch_watcher.gd").new()   # the man on the porch
 	add_child(watcher)
-	watcher.setup(self, Vector3(0.0, 0, 18.5))
+	watcher.setup(self, Vector3(0.0, 0, GREG_Z))
 	# east: woods past the stone wall, through the gap in it
 	for k in range(12):
 		var at := Vector3(r.randf_range(12.0, 28.0), 0, r.randf_range(-24.0, 16.0))
@@ -1208,6 +1232,7 @@ func _process(delta: float) -> void:
 	_elev = Motion.spring(_elev, _goal_elev, _cam_elev, 0.1 if _dragged else 0.25, delta)
 	_distance = Motion.spring(_distance, _goal_distance, _cam_zoom, 0.16, delta)
 	_place_camera()
+	neighborhood.follow(camera, camera.position, delta)
 
 
 func _clamp_target(t: Vector3) -> Vector3:

@@ -66,6 +66,8 @@ func _run() -> void:
 		"garden_to_woods": [Vector3(2.0, 0, -6.0), 180.0, 11.0],
 		"garden_east": [Vector3(5.0, 0, 0.0), 95.0, 9.0],
 		"garden_wall": [Vector3(8.2, 0, -3.5), 60.0, 4.2],
+		"garden_south": [Vector3(0.0, 0, 9.0), 180.0, 15.0],                         # the back fence, his house, the neighbourhood
+		"garden_street": [Vector3(0.0, 0, 16.0), 180.0, 24.0],                       # wider: next door, the street, the town
 		"garden_creek": [Vector3(-19.0, 0, 1.5), 78.0, 11.0],
 	}
 	for name in garden_views:
