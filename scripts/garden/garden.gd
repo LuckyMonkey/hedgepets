@@ -510,7 +510,11 @@ func _surroundings() -> void:
 		GardenProps.rock(west, Vector3(_creek_x(z) + r.randf_range(-1.5, 1.5), 0, z), r.randf_range(0.2, 0.45), r)
 	GardenProps.bake_static(west)
 	for k in range(4):
-		_pine(Vector3(_creek_x(-20.0 + k * 11.0) - r.randf_range(4.0, 7.0), 0, -20.0 + k * 11.0), r.randf_range(10.0, 13.0))
+		var pz := -20.0 + k * 11.0
+		if absf(pz - bz) < 3.0:
+			pz = bz - 3.4                                    # not in the way of the trail off the bridge
+		_pine(Vector3(_creek_x(-20.0 + k * 11.0) - r.randf_range(4.0, 7.0), 0, pz), r.randf_range(10.0, 13.0))
+	_west_woods(bz)
 	# south: the houses, backs to the garden, and a picket fence with the garden gate standing open
 	var south := Node3D.new()
 	south.name = "Houses"
@@ -534,6 +538,77 @@ func _surroundings() -> void:
 			_tree(at, r.randf_range(10.0, 13.0), SpeciesBuilder.palette_of(["autumn", "green", "crimson"][k % 3]), ["hedgeoak", "hedgemaple"][k % 2])
 		else:
 			_pine(at, r.randf_range(10.0, 15.0))
+
+
+## Across the creek the woods begin: the same oaks, maples and pines as on the trails, close together, with a worn
+## trail leading in from the footbridge (the way to the woods). Its own random numbers, so nothing in the garden moves.
+func _west_woods(bz: float) -> void:
+	var keep := _rng
+	var crowns := _crowns.size()                          # (their crowns don't drop leaves on the lawn: litter stays as it was)
+	_rng = RandomNumberGenerator.new()
+	_rng.seed = 1914
+	var x0 := _creek_x(bz) - 2.4                              # the bridge's far end
+	var placed: Array = []
+	for t in range(900):
+		if placed.size() >= 26:
+			break
+		var p := Vector2(_rng.randf_range(-36.0, -19.4), _rng.randf_range(-27.0, 21.0))
+		if p.x > _creek_x(p.y) - 2.4:
+			continue                                          # off the bank
+		if absf(p.y - _trail_z(p.x, bz)) < 2.7 and p.x > x0 - 20.0:
+			continue                                          # the trail stays open
+		if placed.any(func(q: Vector2) -> bool: return q.distance_to(p) < 3.4):
+			continue
+		placed.append(p)
+	for i in placed.size():
+		var p: Vector2 = placed[i]
+		var far := p.x < -26.5
+		if _rng.randf() < 0.45:
+			_pine(Vector3(p.x, 0, p.y), _rng.randf_range(10.5, 14.0), far)
+		else:
+			_tree(Vector3(p.x, 0, p.y), _rng.randf_range(9.5, 12.5), SpeciesBuilder.palette_of(["autumn", "green", "crimson", "autumn"][i % 4]), ["hedgeoak", "hedgemaple"][i % 2], far)
+	_woods_trail(x0, bz)
+	_crowns.resize(crowns)
+	_rng = keep
+
+
+## Where the trail into the woods runs (its z at x), bending a little as it leaves the bridge.
+func _trail_z(x: float, bz: float) -> float:
+	var x0 := _creek_x(bz) - 2.4
+	return bz + sin((x0 - x) * 0.16) * 1.4
+
+
+## The worn trail from the bridge into the trees: bare earth, soft-edged, fading as it goes in.
+func _woods_trail(x0: float, bz: float) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var prev: Array = []
+	var steps := 28
+	for i in range(steps + 1):
+		var x := x0 + 0.3 - i * 0.6
+		var z := _trail_z(x, bz)
+		var fade := 1.0 - smoothstep(0.55, 1.0, float(i) / steps)
+		var w := 0.85 + 0.15 * sin(i * 1.7)
+		var row := [[Vector3(x, 0.02, z - w * 1.6), 0.0], [Vector3(x, 0.02, z - w * 0.6), fade], [Vector3(x, 0.02, z + w * 0.6), fade], [Vector3(x, 0.02, z + w * 1.6), 0.0]]
+		if not prev.is_empty():
+			for k in range(3):
+				for v: Array in [prev[k], row[k], row[k + 1], prev[k], row[k + 1], prev[k + 1]]:
+					st.set_color(Color(1, 1, 1, float(v[1]) * 0.85))
+					st.set_normal(Vector3.UP)
+					st.add_vertex(v[0])
+		prev = row
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color("6b5a40")
+	m.vertex_color_use_as_albedo = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.roughness = 1.0
+	m.metallic_specular = 0.0
+	var node := MeshInstance3D.new()
+	node.name = "WoodsTrail"
+	node.mesh = st.commit()
+	node.material_override = m
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
 
 
 ## The woods all around: a wall of tall trees behind the back fence and down the sides, so the yard feels small and

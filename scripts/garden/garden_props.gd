@@ -281,43 +281,131 @@ static func broken_sprinkler(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
 static func rock(parent: Node3D, at: Vector3, size: float, rng: RandomNumberGenerator) -> Node3D:
 	var r := root(parent, "Rock", at, rng.randf_range(0, 360))
 	var grey := Color("8d8a80").lerp(Color("a39e90"), rng.randf())
-	part(r, blob(Vector3(size, size * 0.62, size * 0.8), {"exponent": 2.3, "taper": rng.randf_range(-0.2, 0.2), "flat_bottom": 0.4}), mat("rock%d" % int(grey.r * 100), grey), Vector3(0, size * 0.22, 0), Vector3.ZERO, 0.01)
+	var shape := int((rng.randf_range(-0.2, 0.2) + 0.2) * 29.9)    # (the draw that once set its taper)
+	part(r, fieldstone((Vector3(size, size * 0.62, size * 0.8) / 0.03).round() * 0.03, shape % 12), mat("rock%d" % int(grey.r * 100), grey), Vector3(0, size * 0.3, 0), Vector3.ZERO, 0.01)
 	return r
 
 
-## A New England dry-stone wall: two or three courses of field stones, no mortar, slumped and mossy in places.
-## A New England dry-stone wall: flat field stones laid in tight courses with no mortar, joints staggered from
-## course to course like brickwork, two faces leaning in a little (wider at the base), big flat cap stones across the
-## top. The stones are rounded slabs, not bricks, and nearly every one touches its neighbours.
+## A New England fieldstone wall: no mortar and no courses. Stones of every size, cleared from the fields, stacked
+## the way a farmer stacked them: big ones at the bottom, each stone settled into the lowest gap along the wall,
+## small ones chinked into the narrow gaps, two faces leaning in toward a tumbled top of wide flat stones, a few
+## fallen at its foot. Each face is packed against a height profile, so every stone sits on the ones below it.
+## Its own random numbers (seeded by where it stands); the garden's `rng` is advanced exactly as the old coursed
+## wall did, so nothing else in the garden moves.
 static func stone_wall(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNumberGenerator) -> Node3D:
 	var r := root(parent, "StoneWall", Vector3.ZERO, 0.0)
 	var length := from.distance_to(to)
+	_old_wall_draws(length, rng)
+	var wr := RandomNumberGenerator.new()
+	wr.seed = hash([snappedf(from.x, 0.01), snappedf(from.z, 0.01), snappedf(to.x, 0.01), snappedf(to.z, 0.01)])
 	var dir := (to - from).normalized()
 	var side := dir.cross(Vector3.UP)
 	var yaw := rad_to_deg(atan2(-dir.z, dir.x))
-	var moss := Color("6e7a4a")
-	var courses := 5
-	var y := 0.0
-	for course in range(courses):
-		var ch := rng.randf_range(0.13, 0.17)                     # this course's height
-		var lean := lerpf(0.2, 0.13, float(course) / courses)    # the faces step in as they rise
-		for face: float in [-1.0, 1.0]:
-			var x := (0.0 if course % 2 == 0 else 0.25) + rng.randf_range(-0.05, 0.05)   # stagger the joints
+	var tall := wr.randf_range(0.78, 0.9)
+	const BIN := 0.04
+	var n := int(length / BIN)
+	var tops := []
+	for face: float in [-1.0, 1.0]:
+		var prof := PackedFloat32Array()
+		prof.resize(n)
+		var aim := PackedFloat32Array()
+		aim.resize(n)
+		var ph := wr.randf() * TAU
+		for i in range(n):
+			var x := i * BIN
+			var ends := 0.62 + 0.38 * smoothstep(0.0, 0.9, minf(x, length - x))   # the ends slump
+			aim[i] = tall * ends * (0.9 + 0.1 * sin(x * 1.3 + ph) + 0.04 * sin(x * 4.1 + ph * 2.0))
+		for guard in range(4000):
+			var i := -1
+			for k in range(n):
+				if prof[k] < aim[k] - 0.05 and (i < 0 or prof[k] < prof[i]):
+					i = k
+			if i < 0:
+				break
+			var floor_y := prof[i]
+			var lo := i
+			var hi := i
+			while lo > 0 and prof[lo - 1] <= floor_y + 0.03:
+				lo -= 1
+			while hi < n - 1 and prof[hi + 1] <= floor_y + 0.03:
+				hi += 1
+			var gap := (hi - lo + 1) * BIN
+			var up := floor_y / tall
+			var w := maxf(minf(wr.randf_range(0.28, 0.7) * lerpf(1.0, 0.6, up), gap + 0.08), 0.1)
+			var start := lo * BIN + (wr.randf() * (gap - w) if gap > w else (gap - w) * 0.5)
+			var h := minf(w * wr.randf_range(0.55, 0.95), lerpf(0.46, 0.26, up))   # boulders at the foot, smaller up top
+			var s0 := clampi(int(start / BIN), 0, n - 1)
+			var s1 := clampi(int((start + w) / BIN), 0, n - 1)
+			var base := 0.0
+			for k in range(s0, s1 + 1):
+				base = maxf(base, prof[k])
+			base -= h * 0.12                                    # it settles into the stones below
+			var mid := (s0 + s1) * 0.5
+			var halfspan := maxf((s1 - s0) * 0.5, 0.5)
+			for k in range(s0, s1 + 1):
+				var u := (k - mid) / halfspan
+				prof[k] = maxf(prof[k], base + h * (0.92 - 0.25 * u * u))
+			var y := base + h * 0.5
+			var d := wr.randf_range(0.22, 0.36)
+			var half_t := lerpf(0.44, 0.27, clampf(y / tall, 0.0, 1.0))    # the faces lean in as they rise
+			var at := from + dir * (start + w * 0.5) + side * face * (half_t - d * 0.5 + wr.randf_range(-0.01, 0.02)) + Vector3(0, y, 0)
+			_field_stone(r, at, Vector3(w * 0.56, h * 0.58, d * 0.5), yaw, wr, false)
+		tops.append(prof)
+	# the hearting between the faces: dark rubble, so the gaps between stones look deep, never see-through
+	var core := part(r, box(Vector3(maxf(length - 1.4, 0.2), tall * 0.62, 0.34)), mat("wallcore", Color("4a4844")), from.lerp(to, 0.5) + Vector3(0, tall * 0.31, 0), Vector3(0, yaw, 0), 0.0)
+	core.name = "Hearting"
+	# the top: wide flat stones across both faces, a few missing where it has tumbled
+	var x := wr.randf_range(0.0, 0.15)
+	while x < length - 0.25:
+		var w := wr.randf_range(0.3, 0.52)
+		if wr.randf() < 0.78:
+			var s0 := clampi(int(x / BIN), 0, n - 1)
+			var s1 := clampi(int((x + w) / BIN), 0, n - 1)
+			var base := 0.0
+			for k in range(s0, s1 + 1):
+				base = maxf(base, maxf(tops[0][k], tops[1][k]))
+			var h := wr.randf_range(0.16, 0.26)
+			var at := from + dir * (x + w * 0.5) + side * wr.randf_range(-0.05, 0.05) + Vector3(0, base + h * 0.3, 0)
+			_field_stone(r, at, Vector3(w * 0.55, h * 0.5, wr.randf_range(0.2, 0.27)), yaw, wr, true)
+		x += w * 0.94
+	# fallen at its foot, on either side
+	for k in range(int(length * 0.45)):
+		var along := wr.randf_range(0.2, length - 0.2)
+		var sz := wr.randf_range(0.1, 0.2)
+		var at := from + dir * along + side * (1.0 if wr.randf() < 0.5 else -1.0) * wr.randf_range(0.5, 0.85) + Vector3(0, sz * 0.4, 0)
+		_field_stone(r, at, Vector3(sz * 1.2, sz * 0.7, sz), wr.randf_range(0, 360), wr, false)
+	return r
+
+
+## Consume exactly the random numbers the old coursed wall drew (5 courses x 2 faces, then the caps), so the rest of
+## the garden - built after the walls from the same generator - stays exactly where it was.
+static func _old_wall_draws(length: float, rng: RandomNumberGenerator) -> void:
+	for course in range(5):
+		var ch := rng.randf_range(0.13, 0.17)
+		for face in range(2):
+			var x := (0.0 if course % 2 == 0 else 0.25) + rng.randf_range(-0.05, 0.05)
 			while x < length - 0.1:
-				var half := rng.randf_range(0.18, 0.32)            # half the stone's length along the wall
-				var stone_h := ch * rng.randf_range(0.85, 1.0)
-				var at := from + dir * (x + half) + side * (face * lean + rng.randf_range(-0.02, 0.02)) + Vector3(0, y + stone_h * 0.5, 0)
-				_wall_stone(r, at, Vector3(half, stone_h * 0.5, rng.randf_range(0.11, 0.15)), yaw + rng.randf_range(-5, 5), rng, moss, false)
+				var half := rng.randf_range(0.18, 0.32)
+				rng.randf_range(0.85, 1.0)
+				rng.randf_range(-0.02, 0.02)
+				rng.randf_range(0.11, 0.15)
+				rng.randf_range(-5, 5)
+				rng.randf()
+				rng.randf()
+				rng.randf_range(-3, 3)
+				rng.randf_range(-3, 3)
 				x += half * 2.0 * 0.97
-		y += ch * 0.97
-	# cap stones: wide and flat across both faces
 	var x := rng.randf_range(0.0, 0.2)
 	while x < length - 0.15:
 		var half := rng.randf_range(0.22, 0.38)
-		var at := from + dir * (x + half) + Vector3(0, y + 0.06, 0)
-		_wall_stone(r, at, Vector3(half, 0.07, rng.randf_range(0.2, 0.25)), yaw + rng.randf_range(-6, 6), rng, moss, true)
+		rng.randf_range(0.2, 0.25)
+		rng.randf_range(-6, 6)
+		rng.randf()
+		rng.randf()
+		rng.randf()
+		rng.randf_range(-3, 3)
+		rng.randf_range(-3, 3)
 		x += half * 2.0 * 0.96
-	return r
 
 
 static func _wall_stone(r: Node3D, at: Vector3, radii: Vector3, yaw: float, rng: RandomNumberGenerator, moss: Color, cap: bool) -> void:
@@ -330,6 +418,77 @@ static func _wall_stone(r: Node3D, at: Vector3, radii: Vector3, yaw: float, rng:
 	var stone := part(r, blob(q, {"exponent": 2.7, "flat_bottom": 0.75}, 8, 12), mat("wall%d" % int(grey.r * 100 + grey.g * 10), grey),
 		at, Vector3(rng.randf_range(-3, 3), yaw, rng.randf_range(-3, 3)), 0.008)
 	stone.name = "Stone"
+
+
+## New England field stone: granite and gneiss greys, some warm, some with pale lichen; moss on the top stones.
+const FIELD_GREYS := ["7e7c76", "8f8c84", "a09d94", "6f6d68", "978d7f", "aaa69b", "868a7f"]
+
+
+static func _field_stone(r: Node3D, at: Vector3, radii: Vector3, yaw: float, rng: RandomNumberGenerator, cap: bool) -> void:
+	var q := (radii / 0.03).round() * 0.03                     # sizes snap to a grid: shared, cached meshes
+	q = q.max(Vector3(0.03, 0.03, 0.03))
+	var g := rng.randi() % FIELD_GREYS.size()
+	var m := mat("fieldstone%d" % g, Color(FIELD_GREYS[g]))
+	if cap and rng.randf() < 0.45:
+		m = mat("fieldstone_moss%d" % (g % 3), Color(FIELD_GREYS[g]).lerp(Color("6e7a4a"), 0.3))
+	var stone := part(r, fieldstone(q, rng.randi() % 12), m, at,
+		Vector3(rng.randf_range(-7, 7), yaw + rng.randf_range(-12, 12), rng.randf_range(-9, 9)), 0.008)
+	stone.name = "Stone"
+
+
+## An irregular stone: a low-poly ball broken by a few flat cuts (the faces of a split field stone), lumpy, with a
+## flat-ish bottom. 12 shapes; cached like every generated mesh.
+static func fieldstone(radii: Vector3, variant: int) -> ArrayMesh:
+	var k := BakeCache.key(["fieldstone", radii, variant])
+	var cached = BakeCache.fetch(k)
+	if cached != null:
+		return cached
+	var vr := RandomNumberGenerator.new()
+	vr.seed = 9100 + variant
+	var cuts: Array = []
+	cuts.append([Vector3(vr.randf_range(-0.2, 0.2), 1, vr.randf_range(-0.2, 0.2)).normalized(), vr.randf_range(0.62, 0.8)])   # a flat-ish top
+	for c in range(vr.randi_range(5, 8)):
+		cuts.append([Vector3(vr.randf_range(-1, 1), vr.randf_range(-0.5, 0.5), vr.randf_range(-1, 1)).normalized(), vr.randf_range(0.5, 0.8)])
+	var bumps := Vector3(vr.randf_range(0, 9), vr.randf_range(0, 9), vr.randf_range(0, 9))
+	const RINGS := 7
+	const SEGS := 11
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var verts := PackedVector3Array()
+	for i in range(RINGS + 1):
+		var th := PI * float(i) / RINGS
+		for j in range(SEGS):
+			var ph := TAU * float(j) / SEGS
+			var v := Vector3(sin(th) * cos(ph), cos(th), sin(th) * sin(ph))
+			v *= 1.0 + 0.07 * sin(v.x * 3.1 + bumps.x) * sin(v.y * 2.7 + bumps.y) * sin(v.z * 3.3 + bumps.z)
+			for c: Array in cuts:
+				var dd: float = v.dot(c[0])
+				if dd > c[1]:
+					v -= (c[0] as Vector3) * (dd - float(c[1]))
+			v.y = maxf(v.y, -0.62)                                # it sits on a flat-ish bottom
+			verts.append(v)
+	var lo := Vector3.INF                                         # the cuts shrank it: fill the box it was asked for
+	var hi := -Vector3.INF
+	for v in verts:
+		lo = lo.min(v)
+		hi = hi.max(v)
+	var mid := (lo + hi) * 0.5
+	var span := (hi - lo) * 0.5
+	for i in verts.size():
+		verts[i] = (verts[i] - mid) / span * radii
+	for i in range(RINGS):
+		for j in range(SEGS):
+			var a := i * SEGS + j
+			var b := i * SEGS + (j + 1) % SEGS
+			var c := a + SEGS
+			var d := b + SEGS
+			for idx in [a, c, b, b, c, d]:
+				st.add_vertex(verts[idx])
+	st.index()
+	st.generate_normals()
+	var mesh := st.commit()
+	BakeCache.store(k, mesh)
+	return mesh
 
 
 static func old_tire(parent: Node3D, at: Vector3, yaw: float) -> Node3D:

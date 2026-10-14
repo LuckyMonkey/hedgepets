@@ -10,7 +10,8 @@ uniform float seed = 0.0;
 
 void fragment() {
 	float across = 1.0 - pow(abs(UV.x - 0.5) * 2.0, 1.6);
-	float along = smoothstep(0.0, 0.15, UV.y) * (1.0 - smoothstep(0.55, 1.0, UV.y));
+	// no visible top: it fades in gradually over its whole upper half, so it seems to come from the canopy
+	float along = smoothstep(0.0, 0.5, UV.y) * (1.0 - smoothstep(0.55, 1.0, UV.y));
 	float breathe = 0.75 + 0.25 * sin(TIME * 0.35 + seed * 6.3) * sin(TIME * 0.21 + seed * 2.1);
 	// a few streaks along the shaft, like light through gaps in the leaves
 	float streaks = 0.7 + 0.3 * sin(UV.x * 23.0 + seed * 11.0) * sin(UV.x * 9.0 - seed * 4.0);
@@ -21,5 +22,8 @@ void fragment() {
 	ALBEDO = colour;
 	// up close it fades away: you never walk into a column of light (in the woods the camera passes right by them)
 	float near = smoothstep(2.0, 6.0, length(VERTEX));
+	// looked down on (from an overlook, over the treetops) a shaft is a card in mid-air: below your eye it fades away
+	float below = (INV_VIEW_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).y - (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).y;
+	near *= 1.0 - smoothstep(2.0, 5.0, below);
 	ALPHA = clamp(strength * 15.0 * across * along * breathe * streaks * smoothstep(0.1, 0.5, facing) * near, 0.0, 0.35);
 }

@@ -65,6 +65,8 @@ func _run() -> void:
 		"garden_pet": [Vector3(0, 0, -0.8), 0.0, 4.6],
 		"garden_to_woods": [Vector3(2.0, 0, -6.0), 180.0, 11.0],
 		"garden_east": [Vector3(5.0, 0, 0.0), 95.0, 9.0],
+		"garden_wall": [Vector3(8.2, 0, -3.5), 60.0, 4.2],
+		"garden_creek": [Vector3(-19.0, 0, 1.5), 78.0, 11.0],
 	}
 	for name in garden_views:
 		if not _want(name):
@@ -82,7 +84,7 @@ func _run() -> void:
 			await process_frame
 			if i % 2 == 0:
 				_shot("moving_%02d" % (i / 2), {"where": "garden orbit", "yaw": -20.0 + i * 1.5})
-	var woods_ids := ["trailhead", "fork", "ridge", "oak", "creek"]
+	var woods_ids := ["trailhead", "fork", "ridge", "oak", "creek", "home"]
 	var any_woods := false
 	for id in woods_ids:
 		any_woods = any_woods or _want("woods_" + id)
@@ -98,13 +100,14 @@ func _run() -> void:
 			"ridge": Vector3(woods.VIEW_DIR.x, 0, woods.VIEW_DIR.y),            # the 1:16 land beyond
 			"oak": Vector3(woods._oak_at().x, 0, woods._oak_at().y) - woods.node_pos("oak"),
 			"creek": Vector3(woods.CREEK_AT.x, 0, woods.CREEK_AT.y) - woods.node_pos("creek"),
+			"home": Vector3(woods.HOME_DIR.x, 0, woods.HOME_DIR.y),                 # back over the footbridge
 		}
 		for id in woods_ids:
 			if not _want("woods_" + id):
 				continue
 			var d: Vector3 = looks[id]
 			d.y = 0.0
-			woods._at = id
+			woods._at = "trailhead" if id == "home" else id
 			woods._yaw = woods._heading_of(d.normalized())
 			woods._goal_yaw = woods._yaw
 			woods._pitch = deg_to_rad(4.0) if id == "oak" else deg_to_rad(-6.0)

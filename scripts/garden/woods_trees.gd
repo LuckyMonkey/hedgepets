@@ -54,7 +54,8 @@ func _patch(p: Vector2) -> Dictionary:
 	if not _patches.has(key):
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees8", key])) != null}
+		# (keyed by patch only: bump the version whenever tree placement changes, or an old bake is used)
+		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees9", key])) != null}
 	return _patches[key]
 
 
@@ -149,8 +150,10 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool, 
 				# a drooping tier of needles (a cone): reads as a white pine near or far, and costs next to nothing
 				_cones_plan.append([at + off - Vector3(0, 0.6, 0) * s, w * 2.0 * s, 1.9 * w * s, Color("22382a").lerp(Color("2e4a30"), rng.randf())])
 	# never in your way: nothing of it near the camera's path along any trail (its eye height, all the way)
-	for l: Array in _limbs_plan:
-		for f: float in [0.0, 0.5, 1.0]:
+	for l: Array in _limbs_plan:                      # all along every limb (a long one can cross between its ends)
+		var n := maxi(2, ceili((l[0] as Vector3).distance_to(l[1]) / 0.6))
+		for i in range(n + 1):
+			var f := float(i) / n
 			if not woods.eye_clear((l[0] as Vector3).lerp(l[1], f), lerpf(l[2], l[3], f) + 0.6):
 				_count_rejected(leaves)
 				return
@@ -158,10 +161,11 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool, 
 		if not woods.eye_clear(c[1], 1.6 * (c[2] as Vector3).x + 0.4):
 			_count_rejected(leaves)
 			return
-	for c: Array in _cones_plan:
-		if not woods.eye_clear((c[0] as Vector3) + Vector3(0, c[2] * 0.3, 0), c[1] + 0.3):
-			_count_rejected(leaves)
-			return
+	for c: Array in _cones_plan:                      # a cone's skirt is widest at its base: check it there too
+		for lvl: Array in [[0.0, 1.0], [0.3, 0.75], [0.6, 0.45]]:
+			if not woods.eye_clear((c[0] as Vector3) + Vector3(0, c[2] * lvl[0], 0), c[1] * lvl[1] + 0.35):
+				_count_rejected(leaves)
+				return
 	if pt["cached"]:                                  # this patch is in the bake: planned (same numbers drawn), not built
 		return
 	for c: Array in _cones_plan:
@@ -228,7 +232,7 @@ func finish() -> void:
 	var leaf_mats := {}
 	for key: Vector2i in _patches:
 		var pt: Dictionary = _patches[key]
-		var ck := BakeCache.key(["woodstrees8", key])
+		var ck := BakeCache.key(["woodstrees9", key])
 		var cached = BakeCache.fetch(ck)
 		var made: Array
 		if cached != null:

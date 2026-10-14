@@ -77,6 +77,7 @@ func enter() -> void:
 	await out.finished
 	if not _built:
 		await _build_staged()
+	await before_away()                                  # (the garden is still lit: a place can look back at it)
 	pause_garden(true)
 	visible = true
 	cam.make_current()
@@ -196,6 +197,11 @@ func give_back() -> void:
 
 
 func _build() -> void:
+	pass
+
+
+## Just before the garden is put away (veiled; still lit and drawn).
+func before_away() -> void:
 	pass
 
 

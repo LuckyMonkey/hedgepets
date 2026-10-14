@@ -51,6 +51,10 @@ const VIEW_DIR := Vector2(0.89, -0.456)
 ## look north-north-west through thinning trunks into miles more forest (distant_land.gd carries both on).
 const OAK_VIEW := Vector2(-0.148, -0.989)
 const FORK_VIEW := Vector2(-0.33, -0.944)
+## The way home: behind the trailhead, the garden's creek and the same footbridge you just crossed, and past it the
+## garden itself (a picture, tilt-shifted like the land beyond). HOME_DIR matches the "Home to the garden" sign.
+const HOME_DIR := Vector2(0.287, 0.958)
+const BROOK_AT := Vector2(2.01, 6.71)                    # HOME_DIR * 7: where the creek crosses the way home
 ## Toward the sun: low in the morning sky, out past the ridge.
 const TO_SUN := Vector3(0.55, 0.5, -0.32)
 ## Things to find, and what each is. what: litter (a coin, gone for good), junk (a few tugs, more coins, gone for good),
@@ -183,6 +187,11 @@ func height(x: float, z: float) -> float:
 	v -= 1.6 * smoothstep(POND_R + 2.5, POND_R - 1.5, dp)
 	var dc := (Vector2(x, z) - CELLAR_AT).abs()                 # the cellar hole: a square pit, stone-lined
 	v -= 1.2 * smoothstep(3.6, 2.8, maxf(dc.x, dc.y))
+	var bq := Vector2(x, z) - BROOK_AT                          # the garden's creek behind the trailhead: level banks, a channel
+	var bl := absf(bq.dot(HOME_DIR))
+	var reach := smoothstep(26.0, 14.0, absf(bq.dot(HOME_DIR.orthogonal())))
+	v = lerpf(v, _base(Vector2.ZERO), smoothstep(10.0, 3.0, bl) * reach)
+	v -= 0.85 * smoothstep(2.3, 0.9, bl) * reach
 	return v - _channel(x, z)
 
 
@@ -295,6 +304,7 @@ func _build_land() -> void:
 	_ground(_brng)
 	for e in _paths:
 		_ribbon(e["pts"], e.get("stub", false))
+	_home_way()
 	_trail_litter(_brng)
 
 
@@ -344,6 +354,94 @@ func _build_sky() -> void:
 	env.fog_height_density = 0.06
 	_sunbeams(rng, to_sun)
 	cam.environment = env
+	_home_view()
+
+
+# ------------------------------------------------------------------ the way home
+## The garden's creek and its footbridge behind the trailhead - the same bridge, plank for plank (the garden's seed) -
+## with the worn path running over it toward home. Its own random numbers.
+func _home_way() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1775                                       # the garden's: its footbridge is built first from this
+	var level := _base(Vector2.ZERO)
+	var home := Vector3(HOME_DIR.x, 0, HOME_DIR.y)
+	var b := Vector3(BROOK_AT.x, level, BROOK_AT.y)
+	GardenProps.footbridge(self, b - home * 2.3, b + home * 2.3, rng)
+	var flow := Vector3(HOME_DIR.orthogonal().x, 0, HOME_DIR.orthogonal().y)
+	var brook := Node3D.new()
+	brook.name = "Brook"
+	brook.basis = Basis(Vector3.UP.cross(flow), Vector3.UP, flow)
+	brook.position = b + Vector3(0, -0.5, 0)
+	add_child(brook)
+	GardenProps.creek(brook, func(z: float) -> float: return 0.35 * sin(z * 0.2), -22.0, 22.0, 2.4)
+	for sgn: float in [-1.0, 1.0]:                      # a path each side, from the trailhead to the bridge and on home
+		var pts := PackedVector3Array()
+		var t0 := 1.0 if sgn < 0 else 9.4
+		var t1 := 4.6 if sgn < 0 else 17.0
+		var t := t0
+		while t <= t1:
+			pts.append(Vector3(HOME_DIR.x * t, height(HOME_DIR.x * t, HOME_DIR.y * t), HOME_DIR.y * t))
+			t += 0.8
+		_ribbon(pts, false)
+	for k in range(16):                                   # cattails and stones along its banks
+		var along := rng.randf_range(-14.0, 14.0)
+		if absf(along) < 2.2:
+			continue
+		var bank := (1.0 if rng.randf() < 0.5 else -1.0) * rng.randf_range(1.5, 2.2)
+		var p := BROOK_AT + HOME_DIR.orthogonal() * along + HOME_DIR * bank
+		if k % 2 == 0:
+			GardenProps.cattails(self, Vector3(p.x, height(p.x, p.y), p.y), rng)
+		else:
+			GardenProps.rock(self, Vector3(p.x, height(p.x, p.y) - 0.1, p.y), snappedf(rng.randf_range(0.25, 0.5), 0.05), rng)
+
+
+var _home_mat: ShaderMaterial
+
+
+## Past the bridge: the garden, as a picture taken each time you come in (before_away), tilt-shifted and hazed like
+## the land beyond, its edges dissolving into the trees.
+func _home_view() -> void:
+	_home_mat = ShaderMaterial.new()
+	_home_mat.shader = preload("res://shaders/home_view.gdshader")
+	var card := MeshInstance3D.new()
+	card.name = "HomeView"
+	var q := QuadMesh.new()
+	q.size = Vector2(40.0, 22.5)
+	card.mesh = q
+	card.material_override = _home_mat
+	card.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(card)
+	var at := Vector3(HOME_DIR.x, 0, HOME_DIR.y) * 30.0
+	at.y = _base(Vector2.ZERO) + 8.0
+	card.position = at
+	card.look_at(to_global(at + Vector3(HOME_DIR.x, 0, HOME_DIR.y)), Vector3.UP)
+	card.visible = false                                  # until there's a picture
+
+
+## The garden as you leave it (sun, pets, whatever you've built), for the view back home.
+func before_away() -> void:
+	if _home_mat == null or DisplayServer.get_name() == "headless":
+		return
+	var vp := SubViewport.new()
+	vp.size = Vector2i(960, 540)
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var c := Camera3D.new()
+	c.fov = 50.0
+	c.far = 300.0
+	vp.add_child(c)
+	add_child(vp)
+	c.global_position = garden.to_global(Vector3(-15.2, 2.0, 1.5))
+	c.look_at(garden.to_global(Vector3(0.0, 0.8, 4.0)), Vector3.UP)
+	c.current = true
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	var img := vp.get_texture().get_image()
+	vp.queue_free()
+	if img == null or img.is_empty():
+		return
+	img.generate_mipmaps()
+	_home_mat.set_shader_parameter("view", ImageTexture.create_from_image(img))
+	get_node("HomeView").visible = true
 
 
 func _build_nursery() -> void:
@@ -424,11 +522,14 @@ func _index_trails() -> void:
 		var pts: PackedVector3Array = e["pts"]
 		for i in range(pts.size()):
 			var c := Vector2i(floori(pts[i].x / CELL), floori(pts[i].z / CELL))
-			if not _cells.has(c):
-				_cells[c] = PackedVector2Array()
-				_cells3[c] = PackedVector3Array()
-			(_cells[c] as PackedVector2Array).append(Vector2(pts[i].x, pts[i].z))
-			(_cells3[c] as PackedVector3Array).append(pts[i])
+			# (a packed array read out of a Dictionary is a copy: append, then store it back - appending to the cast
+			# alone left every cell empty, so nothing was ever kept off the trails)
+			var flat: PackedVector2Array = _cells.get(c, PackedVector2Array())
+			flat.append(Vector2(pts[i].x, pts[i].z))
+			_cells[c] = flat
+			var full: PackedVector3Array = _cells3.get(c, PackedVector3Array())
+			full.append(pts[i])
+			_cells3[c] = full
 
 
 ## The nearest trail point to p (within 6 m), or INF.
@@ -512,6 +613,12 @@ func eye_clear(c: Vector3, r: float) -> bool:
 				var nearest := Vector3(q.x, clampf(c.y, lo, hi), q.z)
 				if nearest.distance_to(c) < r:
 					return false
+	var hp := Vector2(c.x, c.z)                              # and the way home, over the footbridge
+	var hq: Vector2 = HOME_DIR * clampf(hp.dot(HOME_DIR), 0.0, 17.0)
+	if hq.distance_to(hp) < r + 0.1:
+		var y := height(hq.x, hq.y)
+		if Vector3(hq.x, clampf(c.y, y + 0.3, y + EYE + 0.5), hq.y).distance_to(c) < r:
+			return false
 	return true
 
 
@@ -529,7 +636,17 @@ func _near_trail(p: Vector2, margin: float) -> bool:
 	for id in NODES:
 		if (NODES[id]["at"] as Vector2).distance_to(p) < margin + float(NODES[id].get("room", 3.5)):
 			return true
-	return false
+	return _home_dist(p) < margin + 0.6                   # the way home over the footbridge counts as a trail
+
+
+## How far p is from the way home (the trailhead, over the footbridge, on toward the garden), and from its creek.
+func _home_dist(p: Vector2) -> float:
+	var t := clampf(p.dot(HOME_DIR), 0.0, 18.0)
+	var d := p.distance_to(HOME_DIR * t)
+	var bq := p - BROOK_AT
+	if absf(bq.dot(HOME_DIR.orthogonal())) < 15.0:
+		d = minf(d, maxf(absf(bq.dot(HOME_DIR)) - 1.4, 0.0))  # nothing standing in the creek
+	return d
 
 
 func _ground(rng: RandomNumberGenerator) -> void:
@@ -669,7 +786,8 @@ func _trees(rng: RandomNumberGenerator) -> void:
 		var blaze := Vector3.ZERO                            # a painted trail blaze on trunks right by the path
 		if _near_trail(p, 4.2) and rng.randf() < 0.3:
 			var t := _nearest_trail(p)
-			blaze = Vector3(t.x - p.x, 0, t.y - p.y).normalized()
+			if t != Vector2.INF:                                 # (not by the way home: no blazes on that)
+				blaze = Vector3(t.x - p.x, 0, t.y - p.y).normalized()
 		maker.tree(kind, Vector3(p.x, height(p.x, p.y), p.y), rng, _near_trail(p, maker.LEAFY_REACH), blaze)
 	maker.finish()
 	set_meta("trees_rejected", maker.rejected)
@@ -941,11 +1059,30 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 		light.omni_range = 6.0
 		light.position = spot + Vector3(0, 1.4, 0)
 		add_child(light)
-		for k in range(3):
-			var r := _out_of_view(id, c, _off_trail(_clear_spot(c, rng.randf_range(4.0, 6.5), rng), 1.6))
-			GardenProps.rock(self, r + Vector3(0, -0.1, 0), snappedf(rng.randf_range(0.5, 1.1), 0.1), rng)
-		var log := _out_of_view(id, c, _off_trail(_clear_spot(c, rng.randf_range(4.0, 6.0), rng), 2.2))
-		GardenProps.part(self, GardenProps.cyl(0.28, 0.32, rng.randf_range(2.4, 3.6), 9), GardenProps.mat("woodslog", Color("4a3a2a")), log + Vector3(0, 0.25, 0), Vector3(90, rng.randf_range(0, 180), 0), 0.012)
+		for k in range(3):                               # (same numbers drawn as ever; each kept clear by its own size)
+			var raw := _clear_spot(c, rng.randf_range(4.0, 6.5), rng)
+			var size := snappedf(rng.randf_range(0.5, 1.1), 0.1)
+			var r := _off_trail(_out_of_view(id, c, raw), 1.3 + size)
+			GardenProps.rock(self, r + Vector3(0, -0.1, 0), size, rng)
+		var raw_log := _clear_spot(c, rng.randf_range(4.0, 6.0), rng)
+		var log_len := rng.randf_range(2.4, 3.6)
+		var log := _off_trail(_out_of_view(id, c, raw_log), 1.3 + log_len * 0.5)   # a log is long: all of it off the trail
+		var log_yaw := rng.randf_range(0, 180)
+		var log_ok := false
+		for k in range(6):                               # and checked end to end: turned or moved out until it's clear
+			var axis := Vector3(sin(deg_to_rad(log_yaw)), 0, cos(deg_to_rad(log_yaw))) * log_len * 0.5
+			var clear := true
+			for f: float in [-1.0, -0.5, 0.0, 0.5, 1.0]:
+				clear = clear and eye_clear(log + axis * f + Vector3(0, 0.3, 0), 0.75)
+				clear = clear and _home_dist(Vector2(log.x + axis.x * f, log.z + axis.z * f)) > 1.0
+			if clear:
+				log_ok = true
+				break
+			log_yaw += 60.0
+			if k >= 2:
+				log = _off_trail(log + (log - c).normalized() * 0.8, 1.3 + log_len * 0.5)
+		if log_ok:                                       # (nowhere clear to lie: this clearing does without)
+			GardenProps.part(self, GardenProps.cyl(0.28, 0.32, log_len, 9), GardenProps.mat("woodslog", Color("4a3a2a")), log + Vector3(0, 0.25, 0), Vector3(90, log_yaw, 0), 0.012)
 		for k in range(10):
 			var f := MeshInstance3D.new()
 			f.mesh = dot
@@ -1166,7 +1303,10 @@ func _creek(rng: RandomNumberGenerator) -> void:
 			if rng.randf() < 0.45:
 				var b := _creek_point(i + rng.randf_range(-1, 1)) + side * sgn * rng.randf_range(2.1, 2.8)
 				if not _near_trail(b, 1.4):
-					GardenProps.rock(self, Vector3(b.x, height(b.x, b.y) - 0.15, b.y), snappedf(rng.randf_range(0.35, 0.7), 0.1), rng)
+					var size := snappedf(rng.randf_range(0.35, 0.7), 0.1)
+					if _near_trail(b, 1.7 + size):
+						size = 0.25                                  # right by the trail: only a small one
+					GardenProps.rock(self, Vector3(b.x, height(b.x, b.y) - 0.15, b.y), size, rng)
 			elif rng.randf() < 0.3:
 				var b := _creek_point(i + rng.randf_range(-1, 1)) + side * sgn * rng.randf_range(1.6, 2.2)
 				if not _near_trail(b, 2.0):
@@ -1210,16 +1350,21 @@ func _ridge(rng: RandomNumberGenerator) -> void:
 func _sunbeams(rng: RandomNumberGenerator, to_sun: Vector3) -> void:
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/light_shaft.gdshader")
+	# sparingly: one by each place, a few along the trails; none at the two overlooks (you'd look down on them)
 	var spots: Array = []
+	var overlooks: Array = [NODES["oak"]["at"], NODES["ridge"]["at"]]
 	for id in NODES:
-		for k in range(2 if id != "nursery" else 1):
-			var c: Vector2 = NODES[id]["at"]
-			spots.append(c + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(4.0, 8.0))
+		var c: Vector2 = NODES[id]["at"]
+		var p: Vector2 = c + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(4.0, 8.0)
+		if not id in ["nursery", "oak", "ridge"]:
+			spots.append(p)
 	for e in _paths:
 		var pts: PackedVector3Array = e["pts"]
 		for i in range(6, pts.size() - 6, 14):
-			if rng.randf() < 0.6:
-				spots.append(Vector2(pts[i].x, pts[i].z) + Vector2(rng.randf_range(-2.0, 2.0), rng.randf_range(-2.0, 2.0)))
+			if rng.randf() < 0.35:
+				var p := Vector2(pts[i].x, pts[i].z) + Vector2(rng.randf_range(-2.0, 2.0), rng.randf_range(-2.0, 2.0))
+				if overlooks.all(func(o: Vector2) -> bool: return o.distance_to(p) > 20.0):
+					spots.append(p)
 	var side := to_sun.cross(Vector3.FORWARD if absf(to_sun.z) < 0.9 else Vector3.RIGHT).normalized()
 	for p: Vector2 in spots:
 		var at := _off_trail(Vector3(p.x, 0, p.y), 2.5)          # never standing on a trail
@@ -1302,12 +1447,13 @@ func _mossy_fork(rng: RandomNumberGenerator) -> void:
 	var c := node_pos("fork")
 	var moss := GardenProps.mat("forkmoss", Color("4e6e30"))
 	for k in range(6):
-		var p := _off_trail(_clear_spot(c, rng.randf_range(3.8, 6.0), rng), 1.8)
+		var raw := _clear_spot(c, rng.randf_range(3.8, 6.0), rng)
+		var size := snappedf(rng.randf_range(0.7, 1.4), 0.1)        # (drawn here as ever; known first, so it's kept clear)
+		var p := _off_trail(raw, 1.2 + size)
 		var fv := Vector2(p.x - c.x, p.z - c.z)
 		if fv.normalized().dot(FORK_VIEW) > 0.75:              # out of the long view north
 			p = c + Vector3(-FORK_VIEW.orthogonal().x, 0, -FORK_VIEW.orthogonal().y) * fv.length() * signf(fv.dot(FORK_VIEW.orthogonal()) + 0.001)
-			p = _off_trail(Vector3(p.x, 0, p.z), 1.8)
-		var size := snappedf(rng.randf_range(0.7, 1.4), 0.1)
+			p = _off_trail(Vector3(p.x, 0, p.z), 1.2 + size)
 		GardenProps.rock(self, p - Vector3(0, 0.2, 0), size, rng)
 		GardenProps.part(self, GardenProps.blob(Vector3(size * 0.9, size * 0.28, size * 0.7), {"exponent": 2.2}), moss, p + Vector3(0, size * 0.42, 0), Vector3(0, rng.randf_range(0, 360), 0), 0.006)
 
