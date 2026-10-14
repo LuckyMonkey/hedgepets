@@ -1,7 +1,8 @@
 extends SceneTree
 
-## Compile the woods (see woods.gd "the compiled woods"): build them once live, keep a copy of what the static steps
-## made (ground, trails, litter, the creek home, trees, undergrowth) and the 1:16 land's world (not its clouds), the
+## Compile the woods' base map (see woods.gd "the compiled woods"): build them once live, keep a copy of what the
+## static steps made (ground, trail beds, litter, the creek home, undergrowth) and the 1:16 land's world (not its
+## clouds; trees are code-driven and never compiled), the
 ## generator state after each step, and a fingerprint of the generator code; save res://world/woods_compiled.scn.
 ## Needs a renderer (MultiMesh buffers):
 ##   xvfb-run -a godot --audio-driver Dummy --rendering-driver opengl3 --path . --script tools/compile_woods.gd
@@ -58,13 +59,6 @@ func _run() -> void:
 			world.remove_child(c)
 			c.free()
 	sky.add_child(world)
-	var squeezed := {}                                    # meshes stored compressed: 16-bit positions in their box, packed
-	for mi in out.find_children("*", "MeshInstance3D", true, false):   # normals (well under a millimetre; half the size)
-		var m: Mesh = (mi as MeshInstance3D).mesh
-		if m is ArrayMesh and not squeezed.has(m):
-			squeezed[m] = _squeeze(m as ArrayMesh)
-		if squeezed.has(m):
-			(mi as MeshInstance3D).mesh = squeezed[m]
 	out.set_meta("stamp", w.source_stamp())
 	out.set_meta("states", states)
 	out.set_meta("trees_rejected", w.get_meta("trees_rejected", 0))

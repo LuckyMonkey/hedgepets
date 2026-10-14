@@ -304,11 +304,11 @@ func build_steps() -> Array:
 
 
 # ------------------------------------------------------------------ the compiled woods
-## The woods' static geometry - ground, trails, litter, the creek and footbridge home, the trees, the undergrowth,
-## and the 1:16 land's world - can be compiled once (tools/compile_woods.gd) into res://world/woods_compiled.scn and
-## loaded instead of generated: ~0.3 s instead of ~2.5 s here, far more on a phone. Everything you interact with
-## (signs, finds, the nursery, willows, the campfire, sunbeams, trinkets) is still built by code, drawing the same
-## random numbers it always did (each skipped step's generator state is stored), so it lands exactly where it did.
+## A hybrid: the woods' BASE MAP - ground, trail beds, litter, the creek and footbridge home, the undergrowth, and the
+## 1:16 land's world - is compiled once (tools/compile_woods.gd) into res://world/woods_compiled.scn and loaded
+## instead of generated. The TREES stay code-driven entities (built by woods_trees.gd, from the bake cache), and so
+## does everything you interact with (signs, finds, the nursery, willows, the campfire, sunbeams, trinkets), drawing
+## the same random numbers it always did (each skipped step's generator state is stored): it lands exactly where it did.
 ## The compiled file carries a fingerprint of the generator code; a changed generator means it's ignored (built live,
 ## with a warning) - unless res://world/woods.lock exists, which keeps the compiled woods as they are (a saved version).
 const COMPILED := "res://world/woods_compiled.scn"
@@ -358,6 +358,7 @@ func _static_step(key: String, f: Callable) -> void:
 		var group := _compiled.get_node(key)
 		for n in group.get_children():
 			group.remove_child(n)
+			_unown(n)
 			add_child(n)
 		_brng.state = int(_compiled.get_meta("states")[key])
 		return
@@ -383,7 +384,15 @@ func compiled_land_world() -> Node3D:
 	var sky := _compiled.get_node("sky")
 	var world: Node3D = sky.get_child(0)
 	sky.remove_child(world)
+	_unown(world)
 	return world
+
+
+## Nodes moved out of the compiled scene: no longer owned by it.
+func _unown(n: Node) -> void:
+	n.owner = null
+	for c in n.get_children():
+		_unown(c)
 
 
 var _brng: RandomNumberGenerator
@@ -484,8 +493,8 @@ func _build_land() -> void:
 
 
 func _build_trees() -> void:
-	await _static_step("trees", func() -> void: await _trees(_brng))
-	_willows(_brng)                                      # (they sway: always built live)
+	await _trees(_brng)                                  # trees are code-driven entities (never compiled): the base map is
+	_willows(_brng)                                      # what's compiled; willows sway: always built live
 
 
 func _build_undergrowth() -> void:

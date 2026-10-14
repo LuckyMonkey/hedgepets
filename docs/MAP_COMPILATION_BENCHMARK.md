@@ -93,3 +93,24 @@ This needs:
 
 It would also make the woods lighter at runtime: far less unique geometry in GPU memory, and faster builds whether
 compiled or live. The look stays the same, because the trees already reuse these 15 crowns.
+
+## Decision (owner, 2026-10-14): a hybrid, shipped
+
+**Trees are code-driven entities. The base map is compiled.**
+
+- **Compiled into `world/woods_compiled.scn` (2.5 MB):**
+  - the ground;
+  - the trail beds and their litter;
+  - the creek and footbridge home;
+  - the undergrowth;
+  - the 1:16 land's world.
+- **Built by code at runtime:**
+  - the trees (woods_trees.gd, from the bake cache);
+  - everything interactive.
+- **Results:**
+  - Woods build: 0.86 s instead of 3.3 s on this desktop.
+  - Compared against a live build: the ridge is pixel-identical, the lookout differs by 232 near-invisible pixels, and
+    the fork differs only in a few fallen-leaf colours (global RNG).
+  - Clip check: 0 solid hits.
+- **Shipping:** `world/woods.compile` makes `deploy_web.sh` recompile it before baking. The fingerprint still guards
+  the editor against a stale file.
