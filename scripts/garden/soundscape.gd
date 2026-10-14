@@ -33,6 +33,9 @@ const WIND := true
 
 var garden: Node3D
 var muted := false
+var wind_on := true                # the sound menu (garden_game: 🔊): the wind loop, and the birds and neighbours
+var events_on := true
+const SETTINGS := "user://settings.cfg"
 var _wind: AudioStreamPlayer
 var _players := {}
 var _wait := {}
@@ -42,6 +45,7 @@ var _film_clock := -1.0            # HEDGEPETS_SOUND_SEED (films, tests): seeded
 
 func setup(g: Node3D) -> void:
 	garden = g
+	load_settings()
 	if OS.get_environment("HEDGEPETS_SOUND_SEED") != "":
 		_rng.seed = int(OS.get_environment("HEDGEPETS_SOUND_SEED"))
 		_film_clock = 0.0
@@ -73,13 +77,13 @@ func _process(delta: float) -> void:
 	if _film_clock >= 0.0:
 		_film_clock += delta
 		ms = _film_clock * 1000.0
-	_wind.volume_db = (-22.0 + 2.0 * sin(ms * 0.00011)) if not muted else -80.0
+	_wind.volume_db = (-22.0 + 2.0 * sin(ms * 0.00011)) if not muted and wind_on else -80.0
 	for k in EVENTS:
 		_wait[k] = float(_wait[k]) - delta
 		if _wait[k] <= 0.0:
 			var e: Array = EVENTS[k]
 			_wait[k] = _rng.randf_range(e[1].x, e[1].y)
-			if not muted:
+			if not muted and events_on:
 				_play(k, e)
 
 
@@ -132,3 +136,40 @@ func _unhandled_input(event: InputEvent) -> void:
 		for k in _players:
 			if muted:
 				(_players[k] as AudioStreamPlayer3D).stop()
+
+
+## The sound menu's choices, kept between visits: all sound on/off, the wind, the birds and neighbours.
+func load_settings() -> void:
+	var c := ConfigFile.new()
+	if c.load(SETTINGS) != OK:
+		return
+	wind_on = bool(c.get_value("sound", "wind", true))
+	events_on = bool(c.get_value("sound", "events", true))
+	set_all(bool(c.get_value("sound", "all", true)), false)
+
+
+func save_settings() -> void:
+	var c := ConfigFile.new()
+	c.set_value("sound", "all", not AudioServer.is_bus_mute(0))
+	c.set_value("sound", "wind", wind_on)
+	c.set_value("sound", "events", events_on)
+	c.save(SETTINGS)
+
+
+func set_all(on: bool, save := true) -> void:
+	AudioServer.set_bus_mute(0, not on)
+	if save:
+		save_settings()
+
+
+func set_wind(on: bool) -> void:
+	wind_on = on
+	save_settings()
+
+
+func set_events(on: bool) -> void:
+	events_on = on
+	if not on:
+		for k in _players:
+			(_players[k] as AudioStreamPlayer3D).stop()
+	save_settings()

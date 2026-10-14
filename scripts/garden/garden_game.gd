@@ -60,6 +60,7 @@ const MAX_FOLLOWERS := 3
 const STAGE_SECONDS := 18.0        # watered growth time per stage
 const WATER_SECONDS := 40.0        # how long one watering lasts
 const INCOME_SECONDS := 30.0
+var _income_ticks := 0
 
 var garden: Node3D
 var coins := 15
@@ -213,8 +214,12 @@ func _process(delta: float) -> void:
 	if _income <= 0.0:
 		_income = INCOME_SECONDS
 		var counts := garden_counts()
+		_income_ticks += 1
 		for p: CharacterArtProfile in garden.roster:
-			if pet_state[p.pet_name] == "resident" and _met(p.wants["resident"], counts) and gifts.size() < 12:
+			# a happy resident leaves something every half minute; every resident, now and then (never a dry spell:
+			# coins always come in, whatever you've cleared or not grown yet)
+			var happy := _met(p.wants["resident"], counts)
+			if pet_state[p.pet_name] == "resident" and (happy or _income_ticks % 3 == 0) and gifts.size() < 12:
 				var node: HedgePetNode = _node(p)
 				if node.visible:
 					_drop_gift(node)
@@ -1582,6 +1587,66 @@ func _button(text: String, tip: String, size := 64) -> Button:
 	return b
 
 
+## Debug tools (coins on demand): in the editor, with HEDGEPETS_DEBUG=1, or on the web with ?debug in the address.
+func debug_enabled() -> bool:
+	if OS.has_feature("editor") or OS.get_environment("HEDGEPETS_DEBUG") != "":
+		return true
+	return OS.has_feature("web") and str(JavaScriptBridge.eval("location.search")).contains("debug")
+
+
+func debug_coins() -> void:
+	coins += 100
+	toast("🪙 +100 (debug)")
+	_refresh()
+	save()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F9 and debug_enabled():
+		debug_coins()
+
+
+var _sound_menu: PanelContainer
+
+
+## The sound menu: all sound, the wind in the leaves, the birds and neighbours. Remembered (user://settings.cfg).
+func _toggle_sound_menu() -> void:
+	var sounds: Node = garden.get_node("Soundscape")
+	if _sound_menu == null:
+		_sound_menu = PanelContainer.new()
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.98, 0.96, 0.9, 0.95)
+		style.set_corner_radius_all(28)
+		style.set_content_margin_all(24)
+		_sound_menu.add_theme_stylebox_override("panel", style)
+		_sound_menu.position = Vector2(440, 130)
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 12)
+		_sound_menu.add_child(box)
+		for row: Array in [["🔊  Sound", not AudioServer.is_bus_mute(0), func(on: bool) -> void: sounds.set_all(on)],
+				["🍃  Wind in the leaves", sounds.wind_on, func(on: bool) -> void: sounds.set_wind(on)],
+				["🐦  Birds and neighbours", sounds.events_on, func(on: bool) -> void: sounds.set_events(on)]]:
+			var c := CheckButton.new()
+			c.text = row[0]
+			c.button_pressed = row[1]
+			c.add_theme_font_size_override("font_size", 38)
+			c.add_theme_color_override("font_color", Color(0.3, 0.24, 0.16))
+			c.add_theme_color_override("font_pressed_color", Color(0.3, 0.24, 0.16))
+			c.add_theme_color_override("font_hover_color", Color(0.3, 0.24, 0.16))
+			c.toggled.connect(row[2])
+			box.add_child(c)
+		var done := _button("✓", "Close", 44)
+		done.pressed.connect(_toggle_sound_menu)
+		box.add_child(done)
+		_ui.add_child(_sound_menu)
+		Motion.slide_in(_sound_menu, _sound_menu.position, Vector2(0, -30))
+		return
+	Motion.fade(_sound_menu, 0.0, Motion.FAST)
+	var m := _sound_menu
+	_sound_menu = null
+	get_tree().create_timer(0.4).timeout.connect(m.queue_free)
+
+
 func _build_ui() -> void:
 	_ui = CanvasLayer.new()
 	_ui.layer = 5
@@ -1613,6 +1678,15 @@ func _build_ui() -> void:
 	db.position = Vector2(800, 10)
 	db.pressed.connect(func() -> void: garden.den.enter())
 	_ui.add_child(db)
+	var sb := _button("🔊", "Sound: all sound, the wind, the birds and neighbours", 52)
+	sb.position = Vector2(670, 10)
+	sb.pressed.connect(_toggle_sound_menu)
+	_ui.add_child(sb)
+	if debug_enabled():                                  # testing: coins on demand (desktop F9 too)
+		var cb := _button("🪙+", "Debug: 100 coins", 40)
+		cb.position = Vector2(540, 10)
+		cb.pressed.connect(debug_coins)
+		_ui.add_child(cb)
 	# a message line
 	_toast = Label.new()
 	_toast.add_theme_font_size_override("font_size", 30)
