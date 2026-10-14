@@ -52,6 +52,23 @@ ordinary backyard at the edge of the woods if you grow and build what they like.
 | Bake cache (startup speed) | `tools/bake_cache.gd` → `assets/baked/garden.res` | `docs/MOBILE.md` |
 | Web page around the game | `deploy/web/shell.html` | `docs/MOBILE.md` |
 
+## World editor, filmmaker, regression and benchmarks (2026-10-14 runbook)
+
+- **The rule:** these tools must never change how the game looks, sounds or plays. The golden views prove it.
+- **Architecture:** `docs/WORLD_ARCHITECTURE.md` (what's generated, the stable IDs, why overrides are post-build).
+- **World editor:** `godot --path . res://world_editor.tscn`.
+  - Overrides are stored in `res://world/garden_overrides.tres` (`WorldOverrides`, applied before the player's
+    save).
+  - The check is `tools/world_editor_check.gd`. Doc: `docs/WORLD_EDITOR.md`.
+- **Filmmaker:** `res://filmmaker.tscn -- --film=res://films/demo/project.tres` (preview).
+  - Render with `tools/film_render.sh <film> <out>` (Movie Maker, reproducible frames and audio).
+  - Doc: `docs/FILMMAKER.md`.
+- **Golden regression:** `tools/golden_capture.gd` + `tools/image_compare.py` against `tests/baseline/f72b9bd`.
+  Never update the baseline silently. Doc: `docs/VISUAL_REGRESSION.md`.
+- **Benchmarks:** `tools/bench_world.sh` (procedural / cached; `--gpu` for frame times).
+  Docs: `docs/PERFORMANCE_BASELINE.md`, `docs/MAP_COMPILATION_BENCHMARK.md`.
+- **Offscreen Godot runs always take `--audio-driver Dummy`**, or the soundscape plays through the owner's speakers.
+
 ## The pet viewer and debugger
 
 - **Desktop:** `godot --path . res://main3d.tscn`.
