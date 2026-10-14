@@ -158,6 +158,25 @@ func _ready() -> void:
 	print("HedgePets: garden ready in %d ms at %s %s (cache %d hits, %d misses)" % [Time.get_ticks_msec() - start, DisplayServer.window_get_size(), boot_ms, BakeCache.hits, BakeCache.misses])
 	is_built = true
 	built.emit()
+	var begin := start_place()
+	if begin.begins_with("woods"):
+		_start_in_woods.call_deferred(begin.get_slice(":", 1))
+
+
+## Where to start (development): `-- --start=woods:ridge` on the command line (the HedgePets editor dock uses it), or
+## HEDGEPETS_START=woods:ridge. Empty: the garden, as always.
+static func start_place() -> String:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--start="):
+			return a.trim_prefix("--start=")
+	return OS.get_environment("HEDGEPETS_START")
+
+
+func _start_in_woods(place: String) -> void:
+	await woods.enter()
+	if woods.NODES.has(place):
+		woods._at = place
+		woods._settle(Vector3.INF)
 
 
 # ------------------------------------------------------------------ the sun

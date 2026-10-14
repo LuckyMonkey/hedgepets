@@ -52,6 +52,16 @@ ordinary backyard at the edge of the woods if you grow and build what they like.
 | Bake cache (startup speed) | `tools/bake_cache.gd` → `assets/baked/garden.res` | `docs/MOBILE.md` |
 | Web page around the game | `deploy/web/shell.html` | `docs/MOBILE.md` |
 
+## Development environment (2026-10-14)
+
+`docs/DEV_ENVIRONMENT.md`. The Godot editor has a HedgePets dock (`addons/hedgepets_dev`): play from any place, a
+clickable woods map, the world editor, the filmmaker, and checks. Start anywhere with `-- --start=woods:<place>`. Debug
+coins: 🪙+ / F9 in the editor, `?debug` on the web, `-- --debug` in a terminal. The sound menu is 🔊 (settings in
+`user://settings.cfg`).
+
+**The woods are one loop with no dead ends** (pine flats between the nursery and the ridge; pond to the old oak).
+Keep it that way.
+
 ## World editor, filmmaker, regression and benchmarks (2026-10-14 runbook)
 
 - **The rule:** these tools must never change how the game looks, sounds or plays. The golden views prove it.

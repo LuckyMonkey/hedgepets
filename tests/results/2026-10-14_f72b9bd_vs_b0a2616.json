@@ -1,0 +1,142 @@
+{
+  "tolerance": 0,
+  "failed": 17,
+  "images": {
+    "garden_closeup": {
+      "exact": false,
+      "diff_pixels": 34465,
+      "diff_pixels_over_tol": 34465,
+      "max_channel_diff": 170,
+      "mean_abs_diff": 0.8196,
+      "ssim": 0.98572
+    },
+    "garden_east": {
+      "exact": false,
+      "diff_pixels": 138374,
+      "diff_pixels_over_tol": 138374,
+      "max_channel_diff": 201,
+      "mean_abs_diff": 4.5817,
+      "ssim": 0.91887
+    },
+    "garden_overview": {
+      "exact": false,
+      "diff_pixels": 50500,
+      "diff_pixels_over_tol": 50500,
+      "max_channel_diff": 156,
+      "mean_abs_diff": 0.6633,
+      "ssim": 0.98878
+    },
+    "garden_pet": {
+      "exact": false,
+      "diff_pixels": 9575,
+      "diff_pixels_over_tol": 9575,
+      "max_channel_diff": 169,
+      "mean_abs_diff": 0.2147,
+      "ssim": 0.99515
+    },
+    "garden_to_woods": {
+      "exact": false,
+      "diff_pixels": 56018,
+      "diff_pixels_over_tol": 56018,
+      "max_channel_diff": 164,
+      "mean_abs_diff": 0.5143,
+      "ssim": 0.99296
+    },
+    "moving_00": {
+      "exact": false,
+      "diff_pixels": 244381,
+      "diff_pixels_over_tol": 244381,
+      "max_channel_diff": 218,
+      "mean_abs_diff": 2.3056,
+      "ssim": 0.91518
+    },
+    "moving_01": {
+      "exact": false,
+      "diff_pixels": 241531,
+      "diff_pixels_over_tol": 241531,
+      "max_channel_diff": 218,
+      "mean_abs_diff": 2.1717,
+      "ssim": 0.91849
+    },
+    "moving_02": {
+      "exact": false,
+      "diff_pixels": 240185,
+      "diff_pixels_over_tol": 240185,
+      "max_channel_diff": 217,
+      "mean_abs_diff": 2.0955,
+      "ssim": 0.92206
+    },
+    "moving_03": {
+      "exact": false,
+      "diff_pixels": 238946,
+      "diff_pixels_over_tol": 238946,
+      "max_channel_diff": 214,
+      "mean_abs_diff": 2.0107,
+      "ssim": 0.92452
+    },
+    "moving_04": {
+      "exact": false,
+      "diff_pixels": 241085,
+      "diff_pixels_over_tol": 241085,
+      "max_channel_diff": 215,
+      "mean_abs_diff": 1.949,
+      "ssim": 0.9281
+    },
+    "moving_05": {
+      "exact": false,
+      "diff_pixels": 240453,
+      "diff_pixels_over_tol": 240453,
+      "max_channel_diff": 215,
+      "mean_abs_diff": 1.8913,
+      "ssim": 0.93129
+    },
+    "moving_06": {
+      "exact": false,
+      "diff_pixels": 240753,
+      "diff_pixels_over_tol": 240753,
+      "max_channel_diff": 212,
+      "mean_abs_diff": 1.8534,
+      "ssim": 0.93471
+    },
+    "moving_07": {
+      "exact": false,
+      "diff_pixels": 241083,
+      "diff_pixels_over_tol": 241083,
+      "max_channel_diff": 214,
+      "mean_abs_diff": 1.8562,
+      "ssim": 0.93429
+    },
+    "moving_08": {
+      "exact": false,
+      "diff_pixels": 241965,
+      "diff_pixels_over_tol": 241965,
+      "max_channel_diff": 212,
+      "mean_abs_diff": 1.9017,
+      "ssim": 0.9342
+    },
+    "moving_09": {
+      "exact": false,
+      "diff_pixels": 242770,
+      "diff_pixels_over_tol": 242770,
+      "max_channel_diff": 212,
+      "mean_abs_diff": 1.9246,
+      "ssim": 0.9338
+    },
+    "moving_10": {
+      "exact": false,
+      "diff_pixels": 246955,
+      "diff_pixels_over_tol": 246955,
+      "max_channel_diff": 206,
+      "mean_abs_diff": 1.9725,
+      "ssim": 0.93412
+    },
+    "moving_11": {
+      "exact": false,
+      "diff_pixels": 247767,
+      "diff_pixels_over_tol": 247767,
+      "max_channel_diff": 206,
+      "mean_abs_diff": 1.9855,
+      "ssim": 0.93343
+    }
+  }
+}

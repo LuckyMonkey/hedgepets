@@ -1589,7 +1589,7 @@ func _button(text: String, tip: String, size := 64) -> Button:
 
 ## Debug tools (coins on demand): in the editor, with HEDGEPETS_DEBUG=1, or on the web with ?debug in the address.
 func debug_enabled() -> bool:
-	if OS.has_feature("editor") or OS.get_environment("HEDGEPETS_DEBUG") != "":
+	if OS.has_feature("editor") or OS.get_environment("HEDGEPETS_DEBUG") != "" or "--debug" in OS.get_cmdline_user_args():
 		return true
 	return OS.has_feature("web") and str(JavaScriptBridge.eval("location.search")).contains("debug")
 
