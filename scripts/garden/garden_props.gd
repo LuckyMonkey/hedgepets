@@ -282,7 +282,7 @@ static func rock(parent: Node3D, at: Vector3, size: float, rng: RandomNumberGene
 	var r := root(parent, "Rock", at, rng.randf_range(0, 360))
 	var grey := Color("8d8a80").lerp(Color("a39e90"), rng.randf())
 	var shape := int((rng.randf_range(-0.2, 0.2) + 0.2) * 29.9)    # (the draw that once set its taper)
-	part(r, fieldstone_sized((Vector3(size, size * 0.62, size * 0.8) / 0.03).round() * 0.03, shape % 12), mat("rock%d" % int(grey.r * 100), grey), Vector3(0, size * 0.3, 0), Vector3.ZERO, 0.01)
+	part(r, fieldstone_sized((Vector3(size, size * 0.62, size * 0.8) / 0.03).round() * 0.03, shape % 3), mat("rock%d" % int(grey.r * 100), grey), Vector3(0, size * 0.3, 0), Vector3.ZERO, 0.01)
 	return r
 
 
@@ -331,9 +331,9 @@ static func stone_wall(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNu
 				hi += 1
 			var gap := (hi - lo + 1) * BIN
 			var up := floor_y / tall
-			var w := maxf(minf(wr.randf_range(0.28, 0.7) * lerpf(1.0, 0.6, up), gap + 0.08), 0.1)
+			var w := maxf(minf(wr.randf_range(0.45, 0.95) * lerpf(1.0, 0.65, up), gap + 0.1), 0.18)
 			var start := lo * BIN + (wr.randf() * (gap - w) if gap > w else (gap - w) * 0.5)
-			var h := minf(w * wr.randf_range(0.55, 0.95), lerpf(0.46, 0.26, up))   # boulders at the foot, smaller up top
+			var h := minf(w * wr.randf_range(0.5, 0.8), lerpf(0.5, 0.3, up))       # boulders at the foot, smaller up top
 			var s0 := clampi(int(start / BIN), 0, n - 1)
 			var s1 := clampi(int((start + w) / BIN), 0, n - 1)
 			var base := 0.0
@@ -346,7 +346,7 @@ static func stone_wall(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNu
 				var u := (k - mid) / halfspan
 				prof[k] = maxf(prof[k], base + h * (0.92 - 0.25 * u * u))
 			var y := base + h * 0.5
-			var d := wr.randf_range(0.22, 0.36)
+			var d := wr.randf_range(0.3, 0.42)
 			var half_t := lerpf(0.44, 0.27, clampf(y / tall, 0.0, 1.0))    # the faces lean in as they rise
 			var at := from + dir * (start + w * 0.5) + side * face * (half_t - d * 0.5 + wr.randf_range(-0.01, 0.02)) + Vector3(0, y, 0)
 			_field_stone(r, at, Vector3(w * 0.56, h * 0.58, d * 0.5), yaw, wr, false)
@@ -357,7 +357,7 @@ static func stone_wall(parent: Node3D, from: Vector3, to: Vector3, rng: RandomNu
 	# the top: wide flat stones across both faces, a few missing where it has tumbled
 	var x := wr.randf_range(0.0, 0.15)
 	while x < length - 0.25:
-		var w := wr.randf_range(0.3, 0.52)
+		var w := wr.randf_range(0.45, 0.7)
 		if wr.randf() < 0.78:
 			var s0 := clampi(int(x / BIN), 0, n - 1)
 			var s1 := clampi(int((x + w) / BIN), 0, n - 1)
@@ -431,24 +431,18 @@ static func _field_stone(r: Node3D, at: Vector3, radii: Vector3, yaw: float, rng
 	var m := mat("fieldstone%d" % g, Color(FIELD_GREYS[g]))
 	if cap and rng.randf() < 0.45:
 		m = mat("fieldstone_moss%d" % (g % 3), Color(FIELD_GREYS[g]).lerp(Color("6e7a4a"), 0.3))
-	var stone := part(r, fieldstone_sized(q, rng.randi() % 12), m, at,
+	var stone := part(r, fieldstone_sized(q, rng.randi() % 3), m, at,
 		Vector3(rng.randf_range(-7, 7), yaw + rng.randf_range(-12, 12), rng.randf_range(-9, 9)), 0.008)
 	stone.name = "Stone"
-
-
-## An irregular unit stone (radius 1; size it with the node's scale): a low-poly ball broken by a few flat cuts (the
-## faces of a split field stone), lumpy, with a flat-ish bottom. Only 12 shapes exist, shared by every stone and
-## rock: ~100 triangles each, built once per run (a few ms), never stored in the bake.
-static var _fieldstones := {}
 
 
 static var _sized := {}
 
 
-## One of the 12 unit stones stretched to `radii`: its vertex arrays scaled (normals by the inverse), made at runtime
-## in a moment and shared by every stone of that size and shape. Nothing is stored in the bake.
+## One of the unit stones stretched to `radii`: its vertex arrays scaled (normals by the inverse), made at runtime in
+## a moment and shared by every stone of that size and shape. Nothing is stored in the bake.
 static func fieldstone_sized(radii: Vector3, variant: int) -> ArrayMesh:
-	var key := [radii, variant]
+	var key := [radii, variant % 3]
 	if _sized.has(key):
 		return _sized[key]
 	var arrays := fieldstone(variant).surface_get_arrays(0)
@@ -466,55 +460,18 @@ static func fieldstone_sized(radii: Vector3, variant: int) -> ArrayMesh:
 	return m
 
 
+## A unit stone (radius 1; fieldstone_sized stretches it): the world's own chonky shape - a soft cushion, flat-ish
+## underneath, low-poly - so stones match everything else. Three shapes (rounder to boxier); the variety is in their
+## colours and sizes. Built once per run, never stored in the bake.
+static var _fieldstones := {}
+
+
 static func fieldstone(variant: int) -> ArrayMesh:
-	if _fieldstones.has(variant):
-		return _fieldstones[variant]
-	var radii := Vector3.ONE
-	var vr := RandomNumberGenerator.new()
-	vr.seed = 9100 + variant
-	var cuts: Array = []
-	cuts.append([Vector3(vr.randf_range(-0.2, 0.2), 1, vr.randf_range(-0.2, 0.2)).normalized(), vr.randf_range(0.62, 0.8)])   # a flat-ish top
-	for c in range(vr.randi_range(5, 8)):
-		cuts.append([Vector3(vr.randf_range(-1, 1), vr.randf_range(-0.5, 0.5), vr.randf_range(-1, 1)).normalized(), vr.randf_range(0.5, 0.8)])
-	var bumps := Vector3(vr.randf_range(0, 9), vr.randf_range(0, 9), vr.randf_range(0, 9))
-	const RINGS := 6
-	const SEGS := 9
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var verts := PackedVector3Array()
-	for i in range(RINGS + 1):
-		var th := PI * float(i) / RINGS
-		for j in range(SEGS):
-			var ph := TAU * float(j) / SEGS
-			var v := Vector3(sin(th) * cos(ph), cos(th), sin(th) * sin(ph))
-			v *= 1.0 + 0.07 * sin(v.x * 3.1 + bumps.x) * sin(v.y * 2.7 + bumps.y) * sin(v.z * 3.3 + bumps.z)
-			for c: Array in cuts:
-				var dd: float = v.dot(c[0])
-				if dd > c[1]:
-					v -= (c[0] as Vector3) * (dd - float(c[1]))
-			v.y = maxf(v.y, -0.62)                                # it sits on a flat-ish bottom
-			verts.append(v)
-	var lo := Vector3.INF                                         # the cuts shrank it: fill the box it was asked for
-	var hi := -Vector3.INF
-	for v in verts:
-		lo = lo.min(v)
-		hi = hi.max(v)
-	var mid := (lo + hi) * 0.5
-	var span := (hi - lo) * 0.5
-	for i in verts.size():
-		verts[i] = (verts[i] - mid) / span * radii
-	for i in range(RINGS):
-		for j in range(SEGS):
-			var a := i * SEGS + j
-			var b := i * SEGS + (j + 1) % SEGS
-			var c := a + SEGS
-			var d := b + SEGS
-			for idx in [a, c, b, b, c, d]:
-				st.add_vertex(verts[idx])
-	st.index()
-	st.generate_normals()
-	var mesh := st.commit()
-	_fieldstones[variant] = mesh
+	var v := variant % 3
+	if _fieldstones.has(v):
+		return _fieldstones[v]
+	var mesh := HedgeAnatomy.build_mesh({"radii": Vector3.ONE, "shape": {"exponent": [2.4, 2.8, 3.2][v], "flat_bottom": 0.6, "taper": [0.05, -0.08, 0.0][v]}}, 5, 8)
+	_fieldstones[v] = mesh
 	return mesh
 
 

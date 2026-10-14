@@ -22,7 +22,7 @@ extends Elsewhere
 
 const ORIGIN := Vector3(0, -300, 0)             # far below everything: nothing of the garden is ever in view
 const EYE := 1.5
-const WALK_SPEED := 3.2
+const WALK_SPEED := 5.0
 const NODES := {
 	"trailhead": {"at": Vector2(0, 0), "lift": 0.0, "name": "The trailhead"},
 	"fork": {"at": Vector2(2, -24), "lift": 1.5, "name": "The mossy fork"},
@@ -33,9 +33,14 @@ const NODES := {
 	"nursery": {"at": Vector2(24, -16), "lift": 0.5, "name": "The nursery", "flat": 9.0, "room": 12.0},
 	"pond": {"at": Vector2(-42, -90), "lift": -3.0, "name": "Beaver pond", "room": 8.0},
 	"cellar": {"at": Vector2(-40, -14), "lift": 1.0, "name": "The cellar hole", "room": 8.0},
+	"pines": {"at": Vector2(38, -24), "lift": 0.5, "name": "The pine flats", "flat": 11.0, "room": 7.0},
 }
 const EDGES := [["trailhead", "fork"], ["fork", "hollow"], ["fork", "ridge"], ["hollow", "creek"], ["ridge", "oak"], ["creek", "oak"], ["fork", "nursery"],
-	["creek", "pond"], ["trailhead", "cellar"], ["cellar", "hollow"]]
+	["creek", "pond"], ["trailhead", "cellar"], ["cellar", "hollow"],
+	# no dead ends: the nursery goes on through the pine flats to the ridge, the pond on round to the old oak
+	["nursery", "pines"], ["pines", "ridge"], ["pond", "oak"]]
+## The pine flats: level ground under white pines, deep in orange needles.
+const PINES_R := 15.0
 ## The beaver pond (its middle, how wide), and the old farmhouse's cellar hole.
 const POND_AT := Vector2(-46.0, -98.6)
 const POND_R := 6.5
@@ -183,10 +188,13 @@ func height(x: float, z: float) -> float:
 	if s > 3.0:                                          # past the ridge's edge the land falls away
 		var lat := rv.dot(VIEW_DIR.orthogonal())
 		v -= 20.0 * smoothstep(3.0, 22.0, s) * exp(-lat * lat / (2.0 * 20.0 * 20.0))
-	var dp := Vector2(x, z).distance_to(POND_AT)                # the pond's bowl
-	v -= 1.6 * smoothstep(POND_R + 2.5, POND_R - 1.5, dp)
+	var dp := Vector2(x, z).distance_to(POND_AT)                # the pond: level banks round a bowl the water fills
+	v = lerpf(v, _base(POND_AT) - 2.0, smoothstep(POND_R + 7.0, POND_R + 1.5, dp))
+	v -= 1.5 * smoothstep(POND_R + 0.8, POND_R - 1.5, dp)
 	var dc := (Vector2(x, z) - CELLAR_AT).abs()                 # the cellar hole: a square pit, stone-lined
 	v -= 1.2 * smoothstep(3.6, 2.8, maxf(dc.x, dc.y))
+	var pf: Dictionary = NODES["pines"]                          # the pine flats stay level whatever the land does round them
+	v = lerpf(v, _base(pf["at"]) + float(pf["lift"]), smoothstep(float(pf["flat"]) + 6.0, float(pf["flat"]), Vector2(x, z).distance_to(pf["at"])))
 	var bq := Vector2(x, z) - BROOK_AT                          # the garden's creek behind the trailhead: level banks, a channel
 	var bl := absf(bq.dot(HOME_DIR))
 	var reach := smoothstep(26.0, 14.0, absf(bq.dot(HOME_DIR.orthogonal())))
@@ -219,11 +227,7 @@ var _pond_y := INF
 
 func pond_level() -> float:
 	if _pond_y == INF:
-		var rim := INF
-		for k in range(16):
-			var r := POND_AT + Vector2.from_angle(k * TAU / 16.0) * (POND_R + 0.5)
-			rim = minf(rim, height(r.x, r.y))
-		_pond_y = rim - 0.25
+		_pond_y = _base(POND_AT) - 2.0 - 0.3                 # just under the level banks
 	return _pond_y
 
 
@@ -319,6 +323,7 @@ func _build_undergrowth() -> void:
 
 func _build_places() -> void:
 	_clearings(_brng)
+	_pine_flats()
 	for id in _labels:
 		for way: Dictionary in _labels[id]:
 			way["label"] = _sign(id, way["dir"], str(way["name"]))
@@ -354,7 +359,6 @@ func _build_sky() -> void:
 	env.fog_height_density = 0.06
 	_sunbeams(rng, to_sun)
 	cam.environment = env
-	_home_view()
 
 
 # ------------------------------------------------------------------ the way home
@@ -395,53 +399,7 @@ func _home_way() -> void:
 			GardenProps.rock(self, Vector3(p.x, height(p.x, p.y) - 0.1, p.y), snappedf(rng.randf_range(0.25, 0.5), 0.05), rng)
 
 
-var _home_mat: ShaderMaterial
 
-
-## Past the bridge: the garden, as a picture taken each time you come in (before_away), tilt-shifted and hazed like
-## the land beyond, its edges dissolving into the trees.
-func _home_view() -> void:
-	_home_mat = ShaderMaterial.new()
-	_home_mat.shader = preload("res://shaders/home_view.gdshader")
-	var card := MeshInstance3D.new()
-	card.name = "HomeView"
-	var q := QuadMesh.new()
-	q.size = Vector2(40.0, 22.5)
-	card.mesh = q
-	card.material_override = _home_mat
-	card.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(card)
-	var at := Vector3(HOME_DIR.x, 0, HOME_DIR.y) * 30.0
-	at.y = _base(Vector2.ZERO) + 8.0
-	card.position = at
-	card.look_at(to_global(at + Vector3(HOME_DIR.x, 0, HOME_DIR.y)), Vector3.UP)
-	card.visible = false                                  # until there's a picture
-
-
-## The garden as you leave it (sun, pets, whatever you've built), for the view back home.
-func before_away() -> void:
-	if _home_mat == null or DisplayServer.get_name() == "headless":
-		return
-	var vp := SubViewport.new()
-	vp.size = Vector2i(960, 540)
-	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-	var c := Camera3D.new()
-	c.fov = 50.0
-	c.far = 300.0
-	vp.add_child(c)
-	add_child(vp)
-	c.global_position = garden.to_global(Vector3(-15.2, 2.0, 1.5))
-	c.look_at(garden.to_global(Vector3(0.0, 0.8, 4.0)), Vector3.UP)
-	c.current = true
-	await RenderingServer.frame_post_draw
-	await RenderingServer.frame_post_draw
-	var img := vp.get_texture().get_image()
-	vp.queue_free()
-	if img == null or img.is_empty():
-		return
-	img.generate_mipmaps()
-	_home_mat.set_shader_parameter("view", ImageTexture.create_from_image(img))
-	get_node("HomeView").visible = true
 
 
 func _build_nursery() -> void:
@@ -594,6 +552,10 @@ func _off_trail(p: Vector3, clear: float) -> Vector3:
 			break
 		var away := (q - t).normalized() if q.distance_to(t) > 0.01 else Vector2.RIGHT
 		q = t + away * (clear + 0.1)
+	var h: Vector2 = HOME_DIR * clampf(q.dot(HOME_DIR), 0.0, 18.0)   # and off the way home over the footbridge
+	if q.distance_to(h) < clear:
+		var away := (q - h).normalized() if q.distance_to(h) > 0.01 else HOME_DIR.orthogonal()
+		q = h + away * (clear + 0.1)
 	return Vector3(q.x, height(q.x, q.y), q.y)
 
 
@@ -666,6 +628,9 @@ func _ground(rng: RandomNumberGenerator) -> void:
 			var x := x0 + i * step
 			var z := z0 + j * step
 			var c := moss.lerp(litter, clampf(0.5 + _fine.get_noise_2d(x * 2.0, z * 2.0) * 1.2, 0.0, 1.0)).darkened(rng.randf() * 0.08)
+			var needles := smoothstep(PINES_R + 8.0, PINES_R - 4.0, Vector2(x, z).distance_to(NODES["pines"]["at"]))
+			if needles > 0.0:                                 # the pine flats: a deep bed of orange needles
+				c = c.lerp(Color("9c4f26").lerp(Color("c47c38"), clampf(0.5 + _fine.get_noise_2d(x * 1.3 + 90.0, z * 1.3) * 1.4, 0.0, 1.0)), needles)
 			row.append([Vector3(x, height(x, z), z), c])
 		grid.append(row)
 	for j in range(nz):
@@ -742,7 +707,8 @@ func _trail_litter(rng: RandomNumberGenerator) -> void:
 			for k in range(3):
 				var o := side * rng.randf_range(-1.1, 1.1) + d * rng.randf_range(-0.4, 0.4)
 				var p := pts[i] + o
-				var y := maxf(height(p.x, p.z), pts[i].y - 0.3) + 0.06
+				var on_path := absf(o.dot(side)) < 0.75           # on the trail's dirt, or on the ground beside it
+				var y := (maxf(height(p.x, p.z), pts[i].y - 0.3) + 0.06) if on_path else height(p.x, p.z) + 0.03
 				if rng.randf() < 0.55:
 					var sz := rng.randf_range(0.03, 0.08)
 					pebbles.append([Transform3D(Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(sz, sz * 0.6, sz * 0.8)), Vector3(p.x, y, p.z)), Color("8a867c").darkened(rng.randf() * 0.3)])
@@ -751,7 +717,8 @@ func _trail_litter(rng: RandomNumberGenerator) -> void:
 			if rng.randf() < 0.07:                             # a root across the path
 				var yaw := atan2(side.x, side.z)
 				var across := Basis(d * 0.04, side.normalized() * 1.6, d.cross(side).normalized() * 0.04)   # long axis across the path
-				roots.append([Transform3D(across, pts[i] + Vector3(0, 0.03, 0)), Color("5a4632")])
+				var ry := maxf(height(pts[i].x, pts[i].z), pts[i].y - 0.3) + 0.06   # lying on the trail's surface
+				roots.append([Transform3D(across, Vector3(pts[i].x, ry, pts[i].z)), Color("5a4632")])
 	var pebble := SphereMesh.new()
 	pebble.radius = 1.0
 	pebble.height = 2.0
@@ -777,12 +744,21 @@ func _trail_litter(rng: RandomNumberGenerator) -> void:
 ## leaves near the trails, dark crown masses further off. Never within 2.8 m of a trail.
 func _trees(rng: RandomNumberGenerator) -> void:
 	var maker = preload("res://scripts/garden/woods_trees.gd").new(self)
-	for k in range(900):
+	for k in range(1300):
 		var p := Vector2(rng.randf_range(-58, 58), rng.randf_range(-108, 16))
-		if _near_trail(p, 2.8) or _keep_open(p, rng):
+		if _keep_open(p, rng):
 			continue
+		if _near_trail(p, 2.8):                          # by a trail: stepped back off it, not lost (the woods stay thick)
+			var t := _nearest_trail(p)
+			if t == Vector2.INF or t.distance_to(p) < 0.01:
+				continue
+			p = t + (p - t).normalized() * rng.randf_range(3.2, 4.5)
+			if _near_trail(p, 2.8) or _keep_open(p, rng):
+				continue
 		var roll := rng.randf()
 		var kind := "pine" if roll < 0.35 else ("oak" if roll < 0.6 else ("maple" if roll < 0.85 else "birch"))
+		if p.distance_to(NODES["pines"]["at"]) < PINES_R + 6.0:
+			kind = "pine"                                # the flats are a white pine stand
 		var blaze := Vector3.ZERO                            # a painted trail blaze on trunks right by the path
 		if _near_trail(p, 4.2) and rng.randf() < 0.3:
 			var t := _nearest_trail(p)
@@ -953,14 +929,14 @@ func _keep_open(p: Vector2, rng: RandomNumberGenerator) -> bool:
 		return true
 	var rv := p - (NODES["ridge"]["at"] as Vector2)
 	var s := rv.dot(VIEW_DIR)
-	if s > 1.0 and absf(rv.dot(VIEW_DIR.orthogonal())) < 7.0 + s * 0.9:
-		return s < 20.0 or rng.randf() < 0.75
+	if s > 1.0 and absf(rv.dot(VIEW_DIR.orthogonal())) < 9.0 + s * 1.0:
+		return s < 28.0 or rng.randf() < 0.75
 	if p.distance_to(POND_AT) < POND_R + 2.0 or p.distance_to(CELLAR_AT) < 6.5:
 		return true
 	var ov := p - (NODES["oak"]["at"] as Vector2)               # the oak's lookout: nothing right in front of it
 	var os := ov.dot(OAK_VIEW)
-	if os > 2.0 and os < 20.0 and absf(ov.dot(OAK_VIEW.orthogonal())) < 4.0 + os * 0.75:
-		return true
+	if os > 2.0 and os < 40.0 and absf(ov.dot(OAK_VIEW.orthogonal())) < 5.0 + os * 0.85:
+		return true                                         # (the whole slope below: trees there would reach into the view)
 	var fv := p - (NODES["fork"]["at"] as Vector2)              # the fork's long view: thinned trunks, layer on layer
 	var fs := fv.dot(FORK_VIEW)
 	if fs > 5.0 and absf(fv.dot(FORK_VIEW.orthogonal())) < 3.0 + fs * 0.32:
@@ -1102,6 +1078,60 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 	var camp := node_pos("hollow") + Vector3(2.6, 0, -1.8)     # a ring of stones in fern hollow: tap it to light it
 	camp.y = height(camp.x, camp.z)
 	campfire = preload("res://scripts/garden/fire_pit.gd").build(self, camp, 0.0)
+
+
+## The pine flats: level ground under white pines, every bit of it orange needles - drifts of them, a few cones,
+## the odd fallen branch, all lying flat on the ground (on the trail too: it's soft underfoot). Own random numbers.
+func _pine_flats() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4711
+	var c: Vector2 = NODES["pines"]["at"]
+	var tufts: Array = []
+	var cones: Array = []
+	var sticks: Array = []
+	var colours := [Color("b4602c"), Color("c8803c"), Color("a24e24"), Color("d09048"), Color("8e4a26")]
+	for k in range(5200):
+		var p := c + Vector2.from_angle(rng.randf() * TAU) * sqrt(rng.randf()) * PINES_R
+		var y := height(p.x, p.y)
+		var t := _nearest_trail(p)
+		if t != Vector2.INF and t.distance_to(p) < 1.0:
+			y = maxf(y, _trail_y(t) - 0.3) + 0.06              # on the trail's dirt
+		var sz := rng.randf_range(0.07, 0.14)                 # a little drift of needles, not a flake
+		tufts.append([Transform3D(Basis.from_euler(Vector3(rng.randf_range(-0.08, 0.08), rng.randf() * TAU, rng.randf_range(-0.08, 0.08))).scaled(Vector3(sz, 0.008, sz * 0.4)), Vector3(p.x, y + 0.02, p.y)), colours[rng.randi() % colours.size()]])
+		if k % 40 == 0:
+			cones.append([Transform3D(Basis.from_euler(Vector3(0, rng.randf() * TAU, PI * 0.5)).scaled(Vector3(0.05, 0.09, 0.05)), Vector3(p.x, y + 0.05, p.y)), Color("6a4a2c")])
+		if k % 260 == 0 and (t == Vector2.INF or t.distance_to(p) > 2.0):
+			var len := rng.randf_range(0.8, 1.8)
+			sticks.append([Transform3D(Basis.from_euler(Vector3(PI * 0.5, rng.randf() * TAU, 0)).scaled(Vector3(0.035, len, 0.035)), Vector3(p.x, y + 0.04, p.y)), Color("5a4430")])
+	var tuft := SphereMesh.new()
+	tuft.radius = 1.0
+	tuft.height = 2.0
+	tuft.radial_segments = 5
+	tuft.rings = 2
+	var cone := SphereMesh.new()
+	cone.radius = 1.0
+	cone.height = 2.0
+	cone.radial_segments = 6
+	cone.rings = 3
+	var stick := CylinderMesh.new()
+	stick.top_radius = 0.7
+	stick.bottom_radius = 1.0
+	stick.height = 1.0
+	stick.radial_segments = 5
+	stick.rings = 1
+	_multimesh(tuft, tufts)
+	_multimesh(cone, cones)
+	_multimesh(stick, sticks)
+
+
+## A trail's height at a trail point (from the index).
+func _trail_y(t: Vector2) -> float:
+	var pts = _cells3.get(Vector2i(floori(t.x / CELL), floori(t.y / CELL)))
+	if pts != null:
+		for q: Vector3 in pts:
+			if Vector2(q.x, q.z).distance_to(t) < 0.01:
+				return q.y
+	return height(t.x, t.y)
 
 
 func _clear_spot(c: Vector3, r: float, rng: RandomNumberGenerator) -> Vector3:
