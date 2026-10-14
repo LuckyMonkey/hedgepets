@@ -9,8 +9,9 @@ All three must build the same world: the same seed, hour, camera and golden view
 | Woods build | 6.37 s | 1.11 s | not built |
 | Nodes | 4144 | 4144 | — |
 | Steady static memory | 181 MB | 255 MB | — |
-| Visual parity | Golden-exact (same generators) | **Golden-exact** (tests/results) | — |
-| Frame times / draw calls | needs `--gpu` | needs `--gpu` | — |
+| Visual parity | **Unverified: draws more than B** (see PERFORMANCE_BASELINE) | **Golden-exact** (tests/results) | — |
+| GPU garden p50 / draw calls | 9.9–12.3 ms / ~3064 | 6.4–8.1 ms / ~2785 | — |
+| GPU woods p50 / draw calls | 12.8–14.1 ms / ~2600 | 11.5–16.0 ms / ~2480 | — |
 
 ## What the numbers say so far (verified)
 

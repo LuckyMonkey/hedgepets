@@ -31,11 +31,39 @@ process. The raw data is in `tests/results/2026-10-14_bench_headless.jsonl`.
 - **Grass is only served from the cache in exports.** `garden.gd:842` reads the grass cache only when recording or
   when the generator source can't be read (an export). Editor and headless runs build the grass live (1.3 s), so
   editor timings overstate an exported build's cost by about that much.
-- Draw calls, primitives and frame-time percentiles need a real renderer. The tool measures them with `--gpu`, which
-  hasn't been run yet (it opens a window on the desktop).
+
+## GPU (RTX 3050, 540×960 window, 1080×1920 viewport, vsync off), 3 runs each
+
+Raw data: `tests/results/2026-10-14_bench_gpu.jsonl`. These are 300 timed frames after a 30-frame settle. Firefox
+was busy on the same desktop, so the spread is wide; ranges are given, not best runs.
+
+| | A garden | B garden | A woods | B woods |
+|---|---|---|---|---|
+| Mean frame | 11.4–14.9 ms | 7.4–11.1 ms | 14.5–16.7 ms | 13.6–18.5 ms |
+| p50 | 9.9–12.3 ms | 6.4–8.1 ms | 12.8–14.1 ms | 11.5–16.0 ms |
+| p95 | 22.1–30.0 ms | 16.9–24.6 ms | 24.9–31.4 ms | 26.6–35.6 ms |
+| p99 | 28.9–38.6 ms | 21.3–45.3 ms | 33.8–39.5 ms | 34.2–41.2 ms |
+| 1% low | 24–30 fps | 19–42 fps | 23–28 fps | 21–29 fps |
+| Draw calls | ~3064 | ~2785 | 2490–2760 | 2330–2560 |
+| Primitives | 2.68 M | 2.39 M | 7.2–7.6 M | 6.8–7.2 M |
+| Video memory | 237–243 MB | 255 MB | | |
+
+### What this shows (verified)
+
+- **Draw calls are high**: about 2800 in the garden and about 2500 in the woods. That's the main CPU-side rendering
+  cost to investigate (batching / merging candidates), and on mobile WebGL it will dominate.
+- **The woods are the heavy place**: about 7 M primitives, with 1% lows in the 20s even on the RTX 3050. A phone
+  will struggle here first.
+- **Frame pacing is uneven in every mode**: p95 is about 2.5× p50. The spikes need a profiler pass (per-frame
+  scripts? GC? MultiMesh updates?).
+- **A and B don't draw the same garden.** A (built live) issues about 280 more draw calls and about 290 k more
+  primitives than B (from the cache), consistently across runs. Either the baked cache no longer matches what the
+  generators produce, or live generation creates extra objects. Not yet explained. Next step: a golden capture
+  with `BENCH_MODE=procedural`-style bypass compared against the cached baseline. This matters because the editor
+  (live) and the shipped game (cached) may not look identical.
 
 ## Not yet measured
 
-- Frame times on the GPU (mean / p50 / p95 / p99 / 1% low, draw calls, primitives), garden and woods.
+- Time spent per subsystem (profiler): scripts vs rendering vs audio.
 - The web build: load time, first-visit shader compile (about 19 s per `docs/MOBILE.md`), memory.
 - Mobile browser and native export.
