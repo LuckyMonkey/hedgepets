@@ -101,7 +101,7 @@ func _build() -> void:
 	lamp.position = bench + Vector3(0.9, 1.6, 0.3)
 	add_child(lamp)
 	_build_lady(bench + Vector3(0, 0, 0.75))
-	_build_glasshouse(_on_ground(Vector3(0.6, 0, 10.0)))
+	_build_glasshouse(_on_ground(Vector3(0.6, 0, 8.0)))   # (all of it on the clearing's level ground)
 	_build_cabinet(_on_ground(Vector3(-2.4, 0, 7.4)))
 	for i in range(2):
 		_build_hive(_on_ground(Vector3(4.2 + i * 1.1, 0, 8.0 + i * 0.4)))
@@ -109,7 +109,7 @@ func _build() -> void:
 	# pots stacked by the path, and a water butt
 	for i in range(6):
 		GardenProps.part(self, GardenProps.cyl(0.14, 0.1, 0.22, 10), clay, _on_ground(Vector3(2.2, 0, 4.4)) + Vector3(0, 0.11 + i * 0.07, 0), Vector3(0, i * 20, 0), 0.006)
-	var butt := _on_ground(Vector3(-1.6, 0, 9.8))
+	var butt := _on_ground(Vector3(-2.3, 0, 9.4))
 	GardenProps.part(self, GardenProps.cyl(0.38, 0.34, 0.95, 14), GardenProps.mat("waterbutt", Color("3e4a3a")), butt + Vector3(0, 0.47, 0), Vector3.ZERO, 0.012)
 
 

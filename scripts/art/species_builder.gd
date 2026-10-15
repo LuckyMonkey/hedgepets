@@ -5,7 +5,7 @@ extends RefCounted
 ## character_art_profile.gd. A species is a body PLAN plus a PLANT, a PALETTE and PARTS:
 ##
 ##   plan     quadruped | sitter | bird | round | long | snail
-##   plant    the leaf sheet (ivy clover fern jasmine oak pine sage maple boxwood willow rose lavender)
+##   plant    the leaf sheet (ivy clover fern jasmine oak pine sage maple boxwood willow rose lavender aster)
 ##   palette  a name from PALETTES (the leaves); skin / skin2 / dark / beak: the ceramic parts (hex)
 ##   size     overall scale (1 = Gerald-ish); leg (leg length, 0 = little nubs); neck; head (head scale); eyes
 ##   body     [x, y, z] body stretch
@@ -41,6 +41,7 @@ const PALETTES := {
 	"creeper": ["5a1820", "8a2430", "b03838", "c85a3a", "7a3a3a", "e0806a", "4a1418"],
 	"frost": ["2e4a2a", "4a6a3a", "6a8a4a", "8aa05a", "7a907a", "dcd8b0", "34502a"],
 	"gold": ["4a5a22", "6e7e2a", "94a434", "c2c044", "8a9a52", "e8dc78", "3e4a1c"],
+	"aster": ["263a24", "38542e", "52703c", "6e8a46", "647a5e", "a8ba84", "34482c"],
 	"glossy": ["17331d", "1f4426", "2e5e32", "467a3a", "3e6448", "88ac74", "152a18"],
 }
 ## Every plant a pet can be made of (a leaf sheet baked from a font or drawn by tools/make_leaf_styles.py), with the
@@ -54,13 +55,14 @@ const PLANTS := {
 	"bostonivy": ["bostonivy", "2a3050", 0.3], "creeper": ["creeper", "2a2a48", 0.35], "variegated": ["frost", "f4f0d8", 0.3],
 	"needlepoint": ["green", "c8d070", 0.3], "heartivy": ["spring", "c8d070", 0.3], "persianivy": ["glossy", "c8d070", 0.25],
 	"goldchild": ["gold", "d8d070", 0.3], "fig": ["spring", "b8c860", 0.2],
+	"aster": ["aster", "fffaf4", 0.8],                    # calico aster: a cloud of tiny daisies, late in the year
 	"cannabis": ["hemp", "e8ecc8", 0.3],                  # never sold; see garden_game "contraband"
 }
 
 ## How many leaves a plant needs to cover a body: broad ivy covers with few, willow and lavender need twice as many.
 const LEAF_FULLNESS := {"ivy": 1.0, "bostonivy": 1.0, "creeper": 1.2, "variegated": 1.0, "oak": 1.2, "maple": 1.4,
 	"pine": 1.8, "holly": 1.0, "boxwood": 1.3, "moss": 1.4, "jasmine": 1.2, "rose": 1.1, "lavender": 2.0, "clover": 1.2,
-	"fern": 1.4, "willow": 2.0, "sage": 1.3, "needlepoint": 1.5, "heartivy": 1.0, "persianivy": 0.8, "goldchild": 1.0, "fig": 1.4, "cannabis": 1.7}
+	"fern": 1.4, "willow": 2.0, "sage": 1.3, "needlepoint": 1.5, "heartivy": 1.0, "persianivy": 0.8, "goldchild": 1.0, "fig": 1.4, "aster": 2.0, "cannabis": 1.7}
 
 
 static func fullness(plant: String) -> int:
@@ -79,13 +81,14 @@ const GROUPS := [
 	["jasmine", "rose", "lavender", "clover"],
 	["fern", "willow", "sage", "moss"],
 	["clover", "fern", "boxwood", "variegated"],
+	["aster", "lavender", "clover", "jasmine"],
 ]
 const PREFIX := {"ivy": "Ivy", "bostonivy": "Boston", "creeper": "Creeper", "variegated": "Frostleaf", "oak": "Oakleaf",
 	"maple": "Maple", "pine": "Pine", "holly": "Holly", "boxwood": "Box", "moss": "Mossback", "jasmine": "Jasmine",
 	"rose": "Briar", "lavender": "Lavender", "clover": "Clover", "fern": "Fern", "willow": "Willow", "sage": "Sage",
-	"needlepoint": "Needlepoint", "heartivy": "Heartleaf", "persianivy": "Persian", "goldchild": "Goldchild", "fig": "Fig", "cannabis": "Hempleaf"}
+	"needlepoint": "Needlepoint", "heartivy": "Heartleaf", "persianivy": "Persian", "goldchild": "Goldchild", "fig": "Fig", "aster": "Calico", "cannabis": "Hempleaf"}
 const PLANT_NAMES := {"ivy": "English ivy", "bostonivy": "Boston ivy", "creeper": "Virginia creeper",
-	"variegated": "variegated ivy", "boxwood": "boxwood", "moss": "moss", "holly": "holly", "cannabis": "cannabis"}
+	"variegated": "variegated ivy", "boxwood": "boxwood", "moss": "moss", "holly": "holly", "aster": "calico aster", "cannabis": "cannabis"}
 
 
 ## The plant a pet is made of by nature (its profile's own), not a regraft.

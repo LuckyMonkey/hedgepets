@@ -9,6 +9,8 @@ extends MiniatureSky
 var host: Node3D                                     # the garden
 var _sun: DirectionalLight3D
 var _mats := {}
+var _root: Node3D                                    # the 1:SCALE root: everything in here is built in metres
+var _unfaded := {}                                   # garden material -> its copy without the near fade
 
 
 func setup(garden: Node3D) -> void:
@@ -32,7 +34,30 @@ func setup(garden: Node3D) -> void:
 	var root := Node3D.new()
 	root.scale = Vector3.ONE / SCALE                  # built in metres
 	world.add_child(root)
+	_root = root
 	_build(root)
+
+
+## Take a real thing from the garden (garden-local metres) into the skybox, where it's drawn in depth with next door's
+## houses instead of over them (garden.gd: the tall trees behind the houses). Its materials lose the garden's near
+## fade, which in here (distances / SCALE) would dissolve it.
+func adopt(n: Node3D) -> void:
+	n.reparent(_root, false)
+	for g: Node in [n] + n.find_children("*", "GeometryInstance3D", true, false):
+		if g is GeometryInstance3D and (g as GeometryInstance3D).material_override != null:
+			(g as GeometryInstance3D).material_override = _unfade((g as GeometryInstance3D).material_override)
+			(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+func _unfade(m: Material) -> Material:
+	if not _unfaded.has(m):
+		var u := m.duplicate() as Material
+		if u is ShaderMaterial:
+			(u as ShaderMaterial).set_shader_parameter("near_fade", Vector2.ZERO)
+		elif u is BaseMaterial3D:
+			(u as BaseMaterial3D).distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_DISABLED
+		_unfaded[m] = u
+	return _unfaded[m]
 
 
 func _tick(_delta: float) -> void:
@@ -116,6 +141,37 @@ func _house(p: Node3D, at: Vector3, size: Vector3, siding: Color, roof: Color, r
 	_box(p, Vector3(0.7, 1.6, 0.7), at + Vector3(-size.x * 0.32, size.y * 1.35, rng.randf_range(-1.0, 1.0)), Color("7a4636"))
 
 
+## The garden's creek, on past the fence line (the real one stops there: garden.gd CREEK_END) behind next door's shed
+## to the street, where it goes under. Same course (garden._creek_x), the creek shader's colours, muddy at the banks.
+func _creek(p: Node3D) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var water := Color(0.40, 0.53, 0.60)
+	var bank := Color(0.36, 0.33, 0.26)
+	var z0: float = host.CREEK_END - 0.6
+	var rows: Array = []
+	var z := z0
+	while z <= 29.2:
+		var x: float = host._creek_x(z)
+		rows.append([Vector3(x - 1.5, -0.01, z), Vector3(x - 0.9, 0.0, z), Vector3(x + 0.9, 0.0, z), Vector3(x + 1.5, -0.01, z)])
+		z += 0.5
+	for i in range(rows.size() - 1):
+		for j in range(3):
+			var c: Color = water if j == 1 else bank
+			for v: Vector3 in [rows[i][j], rows[i + 1][j], rows[i + 1][j + 1], rows[i][j], rows[i + 1][j + 1], rows[i][j + 1]]:
+				st.set_color(c)
+				st.set_normal(Vector3.UP)
+				st.add_vertex(v)
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.roughness = 0.35
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var n := MeshInstance3D.new()
+	n.mesh = st.commit()
+	n.material_override = m
+	p.add_child(n)
+
+
 func _maple(p: Node3D, at: Vector3, rng: RandomNumberGenerator, big := 1.0) -> void:
 	var h := rng.randf_range(4.0, 6.0) * big
 	_cyl(p, 0.22 * big, h, at + Vector3(0, h * 0.5, 0), Color("4e3c2c"))
@@ -168,13 +224,14 @@ func _build(root: Node3D) -> void:
 	gm.material_override = gmat
 	root.add_child(gm)
 	# next door, both sides of the white house (which is real: it's in the garden)
-	_house(near, Vector3(-12.5, 0, 20.0), Vector3(8.0, 5.0, 6.5), Color("e8e2d2"), Color("4a4440"), rng)
+	_house(near, Vector3(-11.6, 0, 20.0), Vector3(6.6, 5.0, 6.5), Color("e8e2d2"), Color("4a4440"), rng)   # (clear of the creek)
 	_house(near, Vector3(12.5, 0, 20.5), Vector3(8.0, 5.0, 6.5), Color("8a3a2a"), Color("3e3a38"), rng)
 	for x: float in [-6.6, 6.6]:                     # fences between the yards
 		for k in range(14):
 			_box(near, Vector3(0.08, 1.0, 0.95), Vector3(x, 0.5, 11.5 + k), Color("eeeae0"))
-	_box(near, Vector3(2.2, 2.2, 2.6), Vector3(-15.2, 1.1, 14.0), Color("8a6a4a"))          # a shed
-	_roof(near, Vector3(2.5, 0.9, 2.9), Vector3(-15.2, 2.65, 14.0), Color("4a4440"))
+	_box(near, Vector3(2.2, 2.2, 2.6), Vector3(-11.8, 1.1, 13.6), Color("8a6a4a"))          # a shed (the creek's side of the yard is open)
+	_roof(near, Vector3(2.5, 0.9, 2.9), Vector3(-11.8, 2.65, 13.6), Color("4a4440"))
+	_creek(near)
 	for x: float in [9.0, 15.0]:                     # a washing line, a few things pegged out
 		_cyl(near, 0.05, 2.2, Vector3(x, 1.1, 14.5), Color("9a9a92"))
 	_box(near, Vector3(6.0, 0.02, 0.02), Vector3(12.0, 2.1, 14.5), Color("dddddd"))

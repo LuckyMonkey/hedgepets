@@ -37,6 +37,7 @@ const SEEDS := {
 	"persianivy": {"icon": "🟢", "price": 6, "sheet": "hedgepersianivy"},
 	"goldchild": {"icon": "💛", "price": 6, "sheet": "hedgegoldchild"},
 	"fig": {"icon": "🌀", "price": 4, "sheet": "hedgefig"},
+	"aster": {"icon": "💮", "price": 5, "sheet": "hedgeaster"},      # calico aster: the bees' late flowers
 }
 ## Things to put in the garden (🧺): bought with coins, placed with a tap, cleared with the shovel for half back.
 ## With 🧺 out, drag something you built to move it, tap it to turn it (arrange_*).

@@ -14,7 +14,11 @@ extends RefCounted
 ##   - Nothing is ever written during play: only tools/bake_cache.gd (BakeCache.recording = true) writes the file.
 
 const PATH := "res://assets/baked/garden.res"
-const GENERATORS := ["res://scripts/art/foliage_builder.gd", "res://scripts/art/hedge_anatomy.gd", "res://scripts/util/bake_cache.gd"]
+## Code whose output is cached but not fully described by its keys: the woods' tree patches are keyed by patch only
+## (woods.gd places, woods_trees.gd builds), the grass by its inputs but not its algorithm (garden.gd). A change to any
+## of these makes the editor ignore the bake (built live, with a warning) instead of reading stale geometry.
+const GENERATORS := ["res://scripts/art/foliage_builder.gd", "res://scripts/art/hedge_anatomy.gd", "res://scripts/util/bake_cache.gd",
+	"res://scripts/garden/garden.gd", "res://scripts/garden/woods.gd", "res://scripts/garden/woods_trees.gd"]
 
 static var recording := false
 static var _data: BakedData
@@ -22,6 +26,24 @@ static var _usable := -1          # -1 unknown, 0 no, 1 yes
 static var hits := 0
 static var _memory := {}           # this run's own results (never saved): a tuned pet reuses its unchanged parts
 static var misses := 0
+## Recording only: what each entry belongs to ("garden", "woods", "pet:Gerald"...) and which generator made it, for the
+## size manifest tools/bake_cache.gd writes (build/cache_manifest.json). Never shipped in the cache itself.
+static var label := ""
+static var labels := {}
+## Diagnostics (tools/cache_usage.gd): with `track` on, every key read from the baked data is noted in `touched`.
+static var track := false
+static var touched := {}
+## A composite build (a garden bush: its core mesh + its leaves, stored together under one key) doesn't record the
+## pieces it was made from: the game reads the composite, never the pieces (measured: tools/cache_usage.gd).
+static var _composite := 0
+
+
+static func begin_composite() -> void:
+	_composite += 1
+
+
+static func end_composite() -> void:
+	_composite -= 1
 
 
 ## Fingerprint of the generator sources, or "" where they can't be read (an exported game).
@@ -76,10 +98,21 @@ static func fetch(k: String) -> Variant:
 		misses += 1
 	else:
 		hits += 1
+		if track:
+			touched[k] = true
 	return v
 
 
 static func store(k: String, value: Variant) -> void:
+	if recording:
+		var gen := "?"
+		for f in get_stack().slice(1):
+			if not str(f["source"]).ends_with("bake_cache.gd"):
+				gen = "%s:%s" % [str(f["source"]).get_file().get_basename(), f["function"]]
+				break
+		labels[k] = [label, gen]
+	if recording and _composite > 0:
+		return                                           # a piece of a composite: the composite is what's kept
 	if recording and _ready_data():
 		_data.items[k] = value
 	elif not recording:

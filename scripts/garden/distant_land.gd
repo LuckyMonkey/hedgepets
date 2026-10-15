@@ -123,7 +123,10 @@ func height(x: float, z: float) -> float:
 	if out > 90.0:
 		return own
 	var t := smoothstep(0.0, 90.0, out)
-	return lerpf(_woods.height(clampf(mx, -62.0, 64.0), clampf(mz, -112.0, 28.0)) / SCALE - 0.03, own, t)
+	# under the woods themselves (out < 0) it sinks well below their ground, which is always drawn over it: the sky
+	# camera (the woods camera / SCALE) must never end up under it, or the sky goes dark (tools/sky_clip_check.gd)
+	var under := 0.03 + 0.5 * smoothstep(0.0, -12.0, out)
+	return lerpf(_woods.height(clampf(mx, -62.0, 64.0), clampf(mz, -112.0, 28.0)) / SCALE - under, own, t)
 
 
 func _own_height(x: float, z: float) -> float:
@@ -168,7 +171,10 @@ func _terrain(world: Node3D) -> void:
 	var rings: Array = []
 	var seg := 144
 	var radii: Array = [0.0]
-	var r := 3.0
+	var r := 0.25
+	while r < 8.0:                                    # dense across the woods (they reach ~7.5 out): it follows their ground
+		radii.append(r)
+		r += 0.25
 	while r < 520.0:
 		radii.append(r)
 		r *= 1.075

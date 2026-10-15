@@ -100,7 +100,9 @@ static func blob(radii: Vector3, shape: Variant = {}, rings := 14, segments := 2
 	var cached = BakeCache.fetch(k)
 	if cached != null:
 		return cached
+	BakeCache.begin_composite()                          # (the blob's entry is what's kept, not the mesh build inside it)
 	var m := HedgeAnatomy.build_mesh({"radii": radii, "shape": shape}, rings, segments)
+	BakeCache.end_composite()
 	BakeCache.store(k, m)
 	return m
 

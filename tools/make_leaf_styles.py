@@ -13,6 +13,8 @@ x -0.6..0.6, y -0.05..1.15, stalk at y = 0; see make_ivy_sprites.py):
     hedgebostonivy  glossy three-lobed, toothed leaves; cell 13 dark berries
     hedgecreeper    five leaflets from one point (Virginia creeper); cell 13 dark berries
     hedgevariegated ivy with a pale cream margin (the tone, not the tint: any palette shows it); cell 13 an umbel
+    hedgeaster      calico aster: slender branching stems of small narrow leaves; cell 13 a spray of tiny white
+                    daisies, their eyes yellow (fresh) to rose-purple (older) - painted in, not tinted
 
 Cells 0-7 leaves, 8-11 stems, 12/14/15 buds and berries. The fill is white (tinted by the pet's palette; the
 cell-13 bloom by profile.flower_color).
@@ -186,6 +188,16 @@ def sprig(kind, size, lean, rng):
             o = oval(0, y * size, 0.13 * size, 0.36 * size, ang, 40)
             o = [(x + 0.012 * math.sin(i * 2.3), yy) for i, (x, yy) in enumerate(o)]   # serrated
             polys.append(o)
+    elif kind == 'aster':
+        lines.append([(0, 0), (0.02, 0.5 * size), (-0.01, 1.0 * size)])
+        side = 1 if rng.random() < 0.5 else -1
+        lines.append([(0.01, 0.42 * size), (side * 0.3 * size, 0.85 * size)])                 # a side branch
+        for k, y in enumerate((0.18, 0.32, 0.5, 0.66, 0.82, 0.96)):
+            s = 1 if k % 2 else -1
+            polys.append(oval(0.01, y * size, 0.035 * size, 0.24 * size, s * rng.uniform(45, 65), 20))
+        for y in (0.62, 0.78):
+            t = (y - 0.42) / 0.43
+            polys.append(oval(side * 0.3 * size * t, y * size, 0.03 * size, 0.18 * size, -side * 50, 20))
     else:  # lavender
         for k in range(rng.randint(5, 7)):
             ang = rng.uniform(-35, 35)
@@ -193,8 +205,26 @@ def sprig(kind, size, lean, rng):
     return [[rot(p) for p in poly] for poly in polys], [[rot(p) for p in ln] for ln in lines]
 
 
+ASTER_HEADS = [(0.0, 0.9, 0.14), (-0.27, 0.76, 0.13), (0.27, 0.74, 0.13), (-0.12, 0.55, 0.12), (0.2, 0.47, 0.11),
+               (-0.36, 0.45, 0.1), (0.4, 0.98, 0.1)]
+
+
+def aster_eyes():
+    """The calico aster's eyes: (x, y, r, rgb) - yellow when the floret is fresh, rose-purple as it ages."""
+    tones = [(236, 200, 70), (226, 170, 64), (176, 74, 104), (236, 200, 70), (150, 60, 110), (214, 120, 90), (236, 200, 70)]
+    return [(x, y, r * 0.38, c) for (x, y, r), c in zip(ASTER_HEADS, tones)]
+
+
 def bloom(kind):
     """Cell 13: an acorn, a cone, or a sprig of small florets. Returns polygons (fill) and lines (ink)."""
+    if kind == 'aster':
+        polys, lines = [], [[(0, 0), (0, 0.5), (0, 0.86)]]
+        for x, y, r in ASTER_HEADS:
+            lines.append([(0, 0.4), (x, y)])
+            for i in range(13):                                # thin white rays round the eye
+                a = i * math.tau / 13
+                polys.append(oval(x + math.cos(a) * r * 0.3, y + math.sin(a) * r * 0.3, r * 0.15, r * 0.8, 90 - math.degrees(a), 14))
+        return polys, lines
     if kind == 'oak':
         nut = [(math.cos(t) * 0.17, 0.42 + math.sin(t) * 0.24) for t in [i / 40 * math.tau for i in range(40)]]
         cap = [(math.cos(t) * 0.21, 0.6 + math.sin(t) * 0.11) for t in [i / 40 * math.tau for i in range(20, 40)] + [0.0]]
@@ -280,7 +310,7 @@ def render(kind):
         else:
             size = rng.uniform(0.85, 1.0)
             lean = rng.uniform(-12, 12)
-            if kind in ('boxwood', 'willow', 'rose', 'lavender', 'creeper'):
+            if kind in ('boxwood', 'willow', 'rose', 'lavender', 'creeper', 'aster'):
                 polys, vlines = creeper_leaf(size, lean, rng) if kind == 'creeper' else sprig(kind, size, lean, rng)
                 for p in polys:
                     fd.polygon([px(x, y) for x, y in p], fill=255)
@@ -327,8 +357,14 @@ def render(kind):
                     depth = ip[x, y] / 255.0
                     edge = 1.0 - min(1.0, max(0.0, (depth - 0.8) / 0.08))
                     tone = tone * 0.68 + 0.5 * edge
+                if kind == 'aster' and index == 13:
+                    tone = 0.78 + 0.22 * tone                                   # white rays, only a little shading
                 v = int(255 * min(1.0, tone))
                 cp[x, y] = (v, v, v, a)
+        if kind == 'aster' and index == 13:                 # the eyes keep their own colour (the shader: fill.rgb)
+            d = ImageDraw.Draw(cell)
+            for x, y, r, c in aster_eyes():
+                d.ellipse([px(x - r, y + r, 1), px(x + r, y - r, 1)], fill=c + (255,))
         sheet.paste(cell, (index * CELL, 0))
         ink_rgba = Image.new('RGBA', (CELL, CELL), (255, 255, 255, 0))
         ink_rgba.putalpha(ink)

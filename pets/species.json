@@ -1461,5 +1461,46 @@
   ],
   "skin2": "d07a40",
   "eyes": 1.15
+ },
+ {
+  "name": "Patches",
+  "species": "calico cat",
+  "plan": "quadruped",
+  "plant": "aster",
+  "palette": "aster",
+  "wants": {
+   "notice": {
+    "cleared": 3
+   },
+   "visit": {
+    "aster_planted": 1
+   },
+   "resident": {
+    "aster_flowering": 2
+   }
+  },
+  "hints": [
+   "Something calico watches the bees from the gap in the fence.",
+   "Calico aster: she likes the little bees it brings.",
+   "Two asters in flower, humming with bees."
+  ],
+  "skin": "d88a42",
+  "skin2": "f4ede0",
+  "dark": "2a2422",
+  "ears": "pointy",
+  "snout": "short",
+  "tail": "thin",
+  "extras": [
+   "bib",
+   "blaze"
+  ],
+  "leg": 0.22,
+  "body": [
+   0.9,
+   0.85,
+   0.85
+  ],
+  "bloom": "fffaf4",
+  "flowering": 0.9
  }
 ]

@@ -43,7 +43,7 @@ func _cluster(kind: String, palette: String, seed: int) -> Dictionary:
 	var radii := Vector3(1.6, 1.25, 1.6) if kind != "pine" else Vector3(1.7, 0.7, 1.7)
 	var inner := Color(SpeciesBuilder.PALETTES[palette][6]).darkened(0.15)
 	var h: Node3D = garden._bush(Vector3.ZERO, radii, k["sheet"], SpeciesBuilder.palette_of(palette), inner, LEAF_SIZE, DENSITY, {"exponent": 2.0}, 0.0, Color(1.0, 0.98, 0.92), 7300 + seed)
-	var c := {"mass": (h.get_child(0) as MeshInstance3D).mesh, "leaves": (h.get_child(1) as MultiMeshInstance3D).multimesh, "inner": inner, "sheet": k["sheet"]}
+	var c := {"mass": (h.get_child(0) as MeshInstance3D).mesh, "leaves": (h.get_child(1) as MultiMeshInstance3D).multimesh, "buf": garden.last_leaves, "mass_scale": h.get_meta("mass_scale"), "inner": inner, "sheet": k["sheet"]}
 	h.queue_free()
 	_clusters[key] = c
 	return c
@@ -55,8 +55,26 @@ func _patch(p: Vector2) -> Dictionary:
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		# (keyed by patch only: bump the version whenever tree placement changes, or an old bake is used)
-		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(["woodstrees11", key])) != null}
+		_patches[key] = {"trunk": st, "mass": {}, "leaves": {}, "cached": BakeCache.fetch(BakeCache.key(_patch_key(key))) != null}
 	return _patches[key]
+
+
+## The patch's bake key. Bump the version whenever tree placement changes, or an old bake is used.
+func _patch_key(key: Vector2i) -> Array:
+	var parts: Array = ["woodstrees14", garden.foliage_precision(), key]
+	if mass_rebuilt():
+		parts.append("mass-rebuilt")
+	return parts
+
+
+## "rebuilt" (default) or "baked" (env HEDGEPETS_WOODS_MASS, or the project setting hedgepets/woods_mass): whether a
+## patch's mass mesh is kept in the bake, or rebuilt when the woods are built from the clusters' masses it copies
+## (the same SurfaceTool appends, in the same order: the same mesh, without storing ~16 MB of copies).
+static func mass_rebuilt() -> bool:
+	var v := OS.get_environment("HEDGEPETS_WOODS_MASS")
+	if v == "":
+		v = str(ProjectSettings.get_setting("hedgepets/woods_mass", "rebuilt"))
+	return v == "rebuilt"
 
 
 ## A tapered limb from a to b, its radius ra at a and rb at b, coloured c: added to the patch's trunk mesh.
@@ -78,22 +96,35 @@ func _limb(st: SurfaceTool, a: Vector3, b: Vector3, ra: float, rb: float, c: Col
 
 ## A cluster in the patch, at `at` (world, woods-local) with this scale: its dark mass always; its leaves if leafy.
 func _add_cluster(pt: Dictionary, c: Dictionary, at: Vector3, s: Vector3, yaw: float, with_leaves: bool) -> void:
+	var xf := _add_mass(pt, c, at, s, yaw, with_leaves)
+	if not with_leaves:
+		return
+	_add_leaves(pt, c, xf)
+
+
+## The cluster's dark mass, appended to the patch's mass mesh for its colour. Returns the cluster's transform.
+func _add_mass(pt: Dictionary, c: Dictionary, at: Vector3, s: Vector3, yaw: float, with_leaves: bool) -> Transform3D:
 	var xf := Transform3D(Basis.from_euler(Vector3(0, yaw, 0)).scaled(s), at)
 	var inner_key: String = (c["inner"] as Color).to_html(false)
 	if not pt["mass"].has(inner_key):
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		pt["mass"][inner_key] = [st, c["inner"]]
-	(pt["mass"][inner_key][0] as SurfaceTool).append_from(c["mass"], 0, xf * Transform3D(Basis().scaled(Vector3.ONE * (0.72 if with_leaves else 1.08)), Vector3.ZERO))   # leafy: a small core, the leaves make the shape
-	if not with_leaves:
-		return
+	(pt["mass"][inner_key][0] as SurfaceTool).append_from(c["mass"], 0, xf * Transform3D(Basis().scaled(c["mass_scale"] * (0.72 if with_leaves else 1.08)), Vector3.ZERO))   # leafy: a small core, the leaves make the shape
+	return xf
+
+
+func _add_leaves(pt: Dictionary, c: Dictionary, xf: Transform3D) -> void:
 	var mm: MultiMesh = c["leaves"]
 	var sheet: String = c["sheet"]
 	if not pt["leaves"].has(sheet):
 		pt["leaves"][sheet] = [mm.mesh, []]
 	var items: Array = pt["leaves"][sheet][1]
+	var b: PackedFloat32Array = c["buf"]                 # (not read back from the renderer: headless bakes have none)
 	for i in mm.instance_count:
-		items.append([xf * mm.get_instance_transform(i), mm.get_instance_color(i), mm.get_instance_custom_data(i)])
+		var o := i * 20
+		var ix := Transform3D(Basis(Vector3(b[o], b[o + 4], b[o + 8]), Vector3(b[o + 1], b[o + 5], b[o + 9]), Vector3(b[o + 2], b[o + 6], b[o + 10])), Vector3(b[o + 3], b[o + 7], b[o + 11]))
+		items.append([xf * ix, Color(b[o + 12], b[o + 13], b[o + 14], b[o + 15]), Color(b[o + 16], b[o + 17], b[o + 18], b[o + 19])])
 
 
 ## A tree of this kind at p (woods-local, on the ground).
@@ -167,6 +198,10 @@ func tree(kind: String, p: Vector3, rng: RandomNumberGenerator, leafy_ok: bool, 
 				_count_rejected(leaves)
 				return
 	if pt["cached"]:                                  # this patch is in the bake: planned (same numbers drawn), not built
+		if mass_rebuilt():                            # ...except its masses, copies of the clusters': noted, made in finish()
+			if not pt.has("mass_plan"):
+				pt["mass_plan"] = []
+			pt["mass_plan"].append_array(_clusters_plan)
 		return
 	for c: Array in _cones_plan:
 		_cone(st, c[0], c[1], c[2], c[3])
@@ -230,13 +265,24 @@ func _count_rejected(was_leafy: bool) -> void:
 ## Turn every patch into its meshes (from the bake when it has them) and put them in the woods.
 func finish() -> void:
 	var leaf_mats := {}
+	var rebuilt := mass_rebuilt()
 	for key: Vector2i in _patches:
+		await Slicer.tick(woods)                         # (a patch at a time: the woods build behind the garden)
 		var pt: Dictionary = _patches[key]
-		var ck := BakeCache.key(["woodstrees11", key])
+		var ck := BakeCache.key(_patch_key(key))
 		var cached = BakeCache.fetch(ck)
 		var made: Array
 		if cached != null:
 			made = cached
+			if rebuilt:                                  # the masses again, in the order they were baked
+				made = [cached[0]]
+				for c: Array in pt.get("mass_plan", []):   # (one patch's SurfaceTools at a time: a low peak)
+					_add_mass(pt, c[0], c[1], c[2], c[3], c[4])
+				pt.erase("mass_plan")
+				for ik in pt["mass"]:
+					made.append(["mass", (pt["mass"][ik][0] as SurfaceTool).commit(), pt["mass"][ik][1]])
+				made.append_array(cached.slice(1))
+				pt["mass"] = {}
 		else:
 			made = []
 			var st: SurfaceTool = pt["trunk"]
@@ -246,19 +292,16 @@ func finish() -> void:
 				var ms: SurfaceTool = pt["mass"][ik][0]
 				made.append(["mass", ms.commit(), pt["mass"][ik][1]])
 			for sheet in pt["leaves"]:
+				# as bytes, not a MultiMesh: a headless bake keeps no MultiMesh data (they'd be saved empty)
 				var items: Array = pt["leaves"][sheet][1]
-				var mm := MultiMesh.new()
-				mm.transform_format = MultiMesh.TRANSFORM_3D
-				mm.use_colors = true
-				mm.use_custom_data = true
-				mm.mesh = pt["leaves"][sheet][0]
-				mm.instance_count = items.size()
-				for i in items.size():
-					mm.set_instance_transform(i, items[i][0])
-					mm.set_instance_color(i, items[i][1])
-					mm.set_instance_custom_data(i, items[i][2])
-				made.append(["leaves", mm, sheet])
-			BakeCache.store(ck, made)
+				var full: bool = garden.foliage_precision() == "full"
+				var at := Vector3.ZERO
+				if not full:
+					for it: Array in items:
+						at += (it[0] as Transform3D).origin
+					at /= maxf(items.size(), 1)              # half precision about the patch's middle: millimetres
+				made.append(["leaves", garden.pack_leaves(items, at, full), sheet, items.size(), at])
+			BakeCache.store(ck, made.filter(func(m: Array) -> bool: return m[0] != "mass") if rebuilt else made)
 		for m: Array in made:
 			match m[0]:
 				"trunk":
@@ -275,8 +318,17 @@ func finish() -> void:
 					node.material_override = GardenProps.mat("treemass%s" % (m[2] as Color).to_html(false), m[2])
 					woods.add_child(node)
 				"leaves":
+					var mm := MultiMesh.new()
+					mm.transform_format = MultiMesh.TRANSFORM_3D
+					mm.use_colors = true
+					mm.use_custom_data = true
+					mm.mesh = garden._leaf_quad()
+					mm.instance_count = m[3]
+					if m[3] > 0:
+						mm.buffer = garden.unpack_leaves(m[1], m[3])
 					var node := MultiMeshInstance3D.new()
-					node.multimesh = m[1]
+					node.multimesh = mm
+					node.position = m[4]
 					if not leaf_mats.has(m[2]):
 						leaf_mats[m[2]] = garden._leaf_material(m[2])
 					node.material_override = leaf_mats[m[2]]

@@ -393,9 +393,11 @@ func _build_ground() -> void:
 	m.set_shader_parameter("detail", ImageTexture.create_from_image(detail))
 	m.set_shader_parameter("dapple", load("res://assets/sprites/dapple.png"))
 	# the lawn stops just behind the back fence: past it is the neighbourhood skybox (its own yards and street) - but
-	# the creek's woods, the trees east and the white house's own yard stand on real ground
-	for piece: Array in [[Vector2(-80, -80), Vector2(80, 11.5)], [Vector2(-80, 11.5), Vector2(-16.5, 30.0)],
-			[Vector2(12.0, 11.5), Vector2(80, 20.0)], [Vector2(-6.4, 11.5), Vector2(6.4, 26.0)]]:
+	# the creek's woods, the trees east and the white house's own yard stand on real ground. Real things are always
+	# drawn over the skybox, so no real ground may lie behind anything in it (next door's houses, sheds, trees): the
+	# pieces west and east stop short of next door's yards.
+	for piece: Array in [[Vector2(-80, -80), Vector2(80, 11.5)], [Vector2(-80, 11.5), Vector2(-18.0, 16.5)],
+			[Vector2(19.0, 11.5), Vector2(80, 14.0)], [Vector2(-6.4, 11.5), Vector2(6.4, 26.0)]]:
 		var lo: Vector2 = piece[0]
 		var hi: Vector2 = piece[1]
 		var plane := PlaneMesh.new()
@@ -432,18 +434,21 @@ func _bush(center: Vector3, radii: Vector3, sheet: String, palette: Dictionary, 
 	var seed := _rng.randi() if fixed_seed < 0 else fixed_seed     # (a fixed seed: the same leaves every time, bakeable)
 	var holder := Node3D.new()
 	add_child(holder)
-	# the mass and the leaves are pure functions of these inputs: read them from the bake cache when it has them
-	var parts: Array = ["bush", center, radii, sheet, palette, inner, leaf_size, density, shape, flowering, seed]
+	# The bake keeps the leaves as packed numbers (not a MultiMesh: a headless bake saves those empty) and the mass as
+	# its vertices and normals (HedgeAnatomy.grid_mesh puts back the same mesh). "full" (the default): exactly what the
+	# generators made. "half" (hedgepets/foliage_precision, an experiment): half-float leaves about the centre and one
+	# unit mass per shape scaled to the radii - about 4 mm off, smaller.
+	var full := foliage_precision() == "full"
+	var parts: Array = ["bush", center, radii, sheet, palette, inner, leaf_size, density, shape, flowering, seed, "f32" if full else "h16"]
 	if bloom != Color(1.0, 0.98, 0.92):
-		parts.append(bloom)                                  # (only then: the baked scenery keeps its keys)
+		parts.append(bloom)
+	var region := {"center": center, "radii": radii, "parent": "", "foliage": true, "density": density, "leaf_scale": 1.0,
+		"max_displacement": 0.2, "growth_up": 0.4, "material": "foliage", "shape": shape}
 	var k := BakeCache.key(parts)
 	var cached = BakeCache.fetch(k)
-	var mass_mesh: Mesh
-	var mm: MultiMesh
-	if cached != null:
-		mass_mesh = cached[0]
-		mm = cached[1]
-	else:
+	var hit: bool = cached != null
+	BakeCache.begin_composite()                          # (the parts of a bush are never kept on their own)
+	if not hit:
 		var p := CharacterArtProfile.new()
 		p.seed = seed
 		p.leaf_size = leaf_size
@@ -454,38 +459,105 @@ func _bush(center: Vector3, radii: Vector3, sheet: String, palette: Dictionary, 
 		p.palette = palette
 		p.anchors = {}
 		p.protected_zones = {}
-		p.regions = {
-			"BODY": {"center": center, "radii": radii, "parent": "", "foliage": true, "density": density, "leaf_scale": 1.0,
-				"max_displacement": 0.2, "growth_up": 0.4, "material": "foliage", "shape": shape},
-			"HEAD": {"center": Vector3(0, -100, 0), "radii": Vector3(0.1, 0.1, 0.1), "parent": "", "foliage": false},
-		}
-		mass_mesh = HedgeAnatomy.build_mesh(p.regions["BODY"], 16, 28)
+		p.regions = {"BODY": region, "HEAD": {"center": Vector3(0, -100, 0), "radii": Vector3(0.1, 0.1, 0.1), "parent": "", "foliage": false}}
+		var core: ArrayMesh = HedgeAnatomy.build_mesh(region, 16, 28) if full else null
 		var built := FoliageBuilder.build(p, "BODY", Vector3(0, -100, 0), Vector3(0.5, -0.8, 0.3).normalized())
 		var items: Array = built["items"]
-		mm = MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		mm.use_custom_data = true
-		var quad := QuadMesh.new()
-		quad.center_offset = Vector3(0, 0.5, 0)
-		mm.mesh = quad
-		mm.instance_count = items.size()
-		for i in range(items.size()):
-			mm.set_instance_transform(i, items[i][0])
-			mm.set_instance_color(i, items[i][1])
-			mm.set_instance_custom_data(i, items[i][2])
-		BakeCache.store(k, [mass_mesh, mm])
+		if full:
+			var arr := core.surface_get_arrays(0)
+			cached = [pack_leaves(items, Vector3.ZERO, true), items.size(), arr[Mesh.ARRAY_VERTEX], arr[Mesh.ARRAY_NORMAL]]
+		else:
+			cached = [pack_leaves(items, center, false), items.size()]
+	var mass_mesh: Mesh
+	if full:
+		mass_mesh = HedgeAnatomy.grid_mesh(cached[2], cached[3], 16, 28)
+	else:
+		mass_mesh = HedgeAnatomy.build_mesh({"center": Vector3.ZERO, "radii": Vector3.ONE, "shape": shape}, 16, 28)
+	BakeCache.end_composite()
+	if not hit:
+		BakeCache.store(k, cached)
+	var buf := unpack_leaves(cached[0], cached[1])
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.use_custom_data = true
+	mm.mesh = _leaf_quad()
+	mm.instance_count = cached[1]
+	if cached[1] > 0:
+		mm.buffer = buf
 	var mass := MeshInstance3D.new()
 	mass.mesh = mass_mesh
 	mass.position = center
-	mass.scale = Vector3.ONE * 0.96
+	mass.scale = Vector3.ONE * 0.96 if full else radii * 0.96
 	mass.material_override = GardenProps.mat("inner%s" % inner.to_html(), inner)
 	holder.add_child(mass)
 	var leaves := MultiMeshInstance3D.new()
 	leaves.multimesh = mm
+	if not full:
+		leaves.position = center
 	leaves.material_override = _leaf_material(sheet)
 	holder.add_child(leaves)
+	holder.set_meta("mass_scale", Vector3.ONE if full else radii)   # (woods_trees copies the mass into its patches)
+	last_leaves = buf                                    # (for woods_trees: the renderer can't give it back headless)
 	return holder
+
+
+static var _quad: QuadMesh
+## The leaf buffer of the last _bush built (not kept on the bush: that would hold a second copy of every leaf).
+var last_leaves := PackedFloat32Array()
+
+
+static func _leaf_quad() -> QuadMesh:
+	if _quad == null:
+		_quad = QuadMesh.new()
+		_quad.center_offset = Vector3(0, 0.5, 0)
+	return _quad
+
+
+## "full" (default) or "half": how foliage is kept in the bake (env HEDGEPETS_FOLIAGE_PRECISION, or the project
+## setting hedgepets/foliage_precision). Rebake after changing it: the cache keys include it.
+static func foliage_precision() -> String:
+	var v := OS.get_environment("HEDGEPETS_FOLIAGE_PRECISION")
+	if v == "":
+		v = str(ProjectSettings.get_setting("hedgepets/foliage_precision", "full"))
+	return "half" if v == "half" else "full"
+
+
+## Leaves [Transform3D, Color, Color custom] as a MultiMesh buffer (20 floats each), origins made relative to `origin`.
+## full: the floats themselves (PackedFloat32Array). half: half floats (PackedByteArray), an RGBAH image 5 pixels wide,
+## one row per leaf, so Godot converts it natively both ways.
+static func pack_leaves(items: Array, origin: Vector3, full: bool) -> Variant:
+	var f := PackedFloat32Array()
+	f.resize(items.size() * 20)
+	for i in range(items.size()):
+		var xf: Transform3D = items[i][0]
+		var c: Color = items[i][1]
+		var d: Color = items[i][2]
+		var b := xf.basis
+		var o := xf.origin - origin if not full else xf.origin
+		var j := i * 20
+		f[j] = b.x.x; f[j + 1] = b.y.x; f[j + 2] = b.z.x; f[j + 3] = o.x
+		f[j + 4] = b.x.y; f[j + 5] = b.y.y; f[j + 6] = b.z.y; f[j + 7] = o.y
+		f[j + 8] = b.x.z; f[j + 9] = b.y.z; f[j + 10] = b.z.z; f[j + 11] = o.z
+		f[j + 12] = c.r; f[j + 13] = c.g; f[j + 14] = c.b; f[j + 15] = c.a
+		f[j + 16] = d.r; f[j + 17] = d.g; f[j + 18] = d.b; f[j + 19] = d.a
+	if full:
+		return f
+	if items.is_empty():
+		return PackedByteArray()
+	var img := Image.create_from_data(5, items.size(), false, Image.FORMAT_RGBAF, f.to_byte_array())
+	img.convert(Image.FORMAT_RGBAH)
+	return img.get_data()
+
+
+static func unpack_leaves(data: Variant, count: int) -> PackedFloat32Array:
+	if data is PackedFloat32Array:
+		return data
+	if count == 0:
+		return PackedFloat32Array()
+	var img := Image.create_from_data(5, count, false, Image.FORMAT_RGBAH, data)
+	img.convert(Image.FORMAT_RGBAF)
+	return img.get_data().to_float32_array()
 
 
 func _build_backdrop() -> void:
@@ -510,6 +582,10 @@ func _build_backdrop() -> void:
 
 
 ## The creek's course (x for a given z), down the west side.
+## The real creek ends at the fence line; neighborhood.gd carries it on past next door in the skybox.
+const CREEK_END := 12.0
+
+
 func _creek_x(z: float) -> float:
 	return -17.0 + 1.5 * sin(z * 0.15)
 
@@ -534,7 +610,7 @@ func _surroundings() -> void:
 	var west := Node3D.new()
 	west.name = "Creekside"
 	add_child(west)
-	GardenProps.creek(self, _creek_x, -32.0, 24.0, 2.6)
+	GardenProps.creek(self, _creek_x, -32.0, CREEK_END, 2.6)   # (past the fence line it runs on in the skybox)
 	var bz: float = GATES["creek"]["peek"].z
 	GardenProps.footbridge(west, Vector3(_creek_x(bz) - 2.3, 0, bz), Vector3(_creek_x(bz) + 2.3, 0, bz), r)
 	for k in range(14):
@@ -542,10 +618,23 @@ func _surroundings() -> void:
 		if absf(z - bz) < 2.0:
 			continue
 		var side := 1.0 if r.randf() < 0.5 else -1.0
-		GardenProps.cattails(west, Vector3(_creek_x(z) + side * r.randf_range(1.2, 1.7), 0, z), r)
+		var cat := Vector3(_creek_x(z) + side * r.randf_range(1.2, 1.7), 0, z)
+		if z < CREEK_END:
+			GardenProps.cattails(west, cat, r)
+		else:                                            # (past the fence: made the same and dropped - the same numbers)
+			var dropped := Node3D.new()
+			GardenProps.cattails(dropped, cat, r)
+			dropped.free()
 	for k in range(12):
 		var z := r.randf_range(-26, 20)
-		GardenProps.rock(west, Vector3(_creek_x(z) + r.randf_range(-1.5, 1.5), 0, z), r.randf_range(0.2, 0.45), r)
+		var rock := Vector3(_creek_x(z) + r.randf_range(-1.5, 1.5), 0, z)
+		var size := r.randf_range(0.2, 0.45)
+		if z < CREEK_END:
+			GardenProps.rock(west, rock, size, r)
+		else:
+			var dropped := Node3D.new()
+			GardenProps.rock(dropped, rock, size, r)
+			dropped.free()
 	GardenProps.bake_static(west)
 	for k in range(4):
 		var pz := -20.0 + k * 11.0
@@ -677,6 +766,8 @@ func _tree_wall() -> void:
 		spots.append(Vector3(-18.0 + k * 9.0 + r.randf_range(-2.0, 2.0), 0, r.randf_range(26.0, 30.0)))
 	var palettes := [SpeciesBuilder.palette_of("autumn"), SpeciesBuilder.palette_of("green"), SpeciesBuilder.palette_of("crimson"), SpeciesBuilder.palette_of("golden")]
 	for at: Vector3 in spots:
+		var behind_houses := at.z > 24.0                  # (past next door: they go into the skybox, below)
+		var before := get_child_count()
 		var gate_path: bool = (absf(at.z - GATES["woods"]["peek"].z) < 3.0 and at.x < 26.0 and at.x > 9.0) \
 			or (absf(at.z - GATES["creek"]["peek"].z) < 3.0 and at.x < -18.0) or (at.x > -0.5 and at.x < 5.5 and at.z > -20.0)
 		if gate_path:
@@ -686,6 +777,12 @@ func _tree_wall() -> void:
 			_pine(at, h, true)
 		else:
 			_tree(at, h, palettes[r.randi() % palettes.size()], ["hedgeoak", "hedgemaple"][r.randi() % 2], true)
+		if behind_houses:                                 # real things draw over the skybox: these stand behind next door's
+			var made: Array = []                          # houses, so they're moved into it (built the same, same numbers)
+			for i in range(before, get_child_count()):
+				made.append(get_child(i))
+			for n: Node3D in made:
+				neighborhood.adopt(n)
 
 
 ## Past the back fence on the left: an old New England burying ground. Slate stones in uneven rows inside a low
@@ -711,6 +808,68 @@ func _burying_ground() -> void:
 	GardenProps.bake_static(ground)
 	for at: Vector3 in [Vector3(-1.4, 0, -11.6), Vector3(-2.2, 0, -11.9), Vector3(5.6, 0, -10.4)]:
 		_thing("pumpkin", GardenProps.pumpkin(self, at, r.randf_range(0.5, 0.75), r), Vector2(at.x, at.z), 0.5, 1)
+	# calico aster gone wild: along the old fence, inside the burying ground's wall, by the field wall
+	var wild := [Vector3(-6.4, 0, -10.6), Vector3(-9.6, 0, -10.4), Vector3(4.4, 0, -10.7), Vector3(6.5, 0, -9.2),
+		Vector3(7.0, 0, -6.6), Vector3(-3.0, 0, -13.3), Vector3(-8.6, 0, -13.4), Vector3(-14.2, 0, -13.6)]
+	for i in range(wild.size()):
+		aster_clump(self, wild[i], 4400 + i)
+		wild_asters.append(wild[i])
+
+
+## Calico aster, growing wild: loose clumps of slender stems 0.5-1.2 m tall under clouds of tiny white daisies (their
+## eyes yellow to rose-purple: hedgeaster.png). Three stems are grown once (fixed seeds: baked) and every clump is
+## copies of them, turned, leaned and sized: a clump costs no bake and no generation. Each leaf sways on its own.
+var _aster_stems: Array = []
+var wild_asters: Array = []                        # where the garden's clumps are (butterflies visit them)
+
+
+func aster_clump(parent: Node3D, at: Vector3, seed: int) -> Node3D:
+	if _aster_stems.is_empty():
+		var pal := SpeciesBuilder.palette_of("aster")
+		var inner := Color(SpeciesBuilder.PALETTES["aster"][6])
+		for k in range(3):
+			var h: float = [0.6, 0.9, 1.2][k]
+			var b := _bush(Vector3(0, h * 0.6, 0), Vector3(0.26, h * 0.4, 0.26), "hedgeaster", pal, inner, 0.3, 1.6, "egg", 1.0, Color("fffaf4"), 7300 + k)
+			b.get_child(0).visible = false               # no dark core: an aster is airy, slender stems under the leaves
+			var sr := RandomNumberGenerator.new()
+			sr.seed = 7310 + k
+			# the bloom: far more flowers than a bush gets - a cloud of sprays over the top (each card several daisies)
+			var buf := last_leaves.duplicate()
+			var n_leaves := buf.size() / 20
+			var n_flowers := 34 + k * 14
+			for j in range(n_flowers):
+				var d := Vector3(sr.randf_range(-1, 1), sr.randf_range(0.15, 1.0), sr.randf_range(-1, 1)).normalized()
+				var on := Vector3(0, h * 0.6, 0) + d * Vector3(0.26, h * 0.4, 0.26) * 1.05
+				var size := sr.randf_range(0.22, 0.3)
+				var tan := d.cross(Vector3.UP if absf(d.y) < 0.9 else Vector3.RIGHT).normalized().rotated(d, sr.randf() * TAU)
+				var xf := Transform3D(Basis(tan * size, d.cross(tan).normalized() * size, d * size), on - d.cross(tan).normalized() * size * 0.5)
+				var w := Color(1.0, 0.99, 0.96).lerp(Color(1.0, 0.95, 0.97), sr.randf())
+				buf.append_array([xf.basis.x.x, xf.basis.y.x, xf.basis.z.x, xf.origin.x, xf.basis.x.y, xf.basis.y.y, xf.basis.z.y, xf.origin.y,
+					xf.basis.x.z, xf.basis.y.z, xf.basis.z.z, xf.origin.z, w.r, w.g, w.b, 1.0, 13.0, sr.randf() * TAU, 0.7, 0.3])
+			var mm: MultiMesh = (b.get_child(1) as MultiMeshInstance3D).multimesh
+			mm.instance_count = n_leaves + n_flowers
+			mm.buffer = buf
+			for j in range(4):
+				var lean := Vector3(sr.randf_range(-12, 12), 0, sr.randf_range(-12, 12))
+				GardenProps.part(b, GardenProps.cyl(0.006, 0.011, h * 0.85, 4), GardenProps.mat("asterstem", Color("4a3a30")),
+					Vector3(sr.randf_range(-0.06, 0.06), h * 0.42, sr.randf_range(-0.06, 0.06)), lean, 0.0)
+			b.name = "AsterStem%d" % k
+			b.visible = false                            # (the originals stay hidden; clumps are their copies)
+			_aster_stems.append(b)
+	var r := RandomNumberGenerator.new()
+	r.seed = seed
+	var clump := Node3D.new()
+	clump.name = "WildAster"
+	clump.position = at
+	parent.add_child(clump, true)
+	for i in range(r.randi_range(3, 5)):
+		var s: Node3D = _aster_stems[r.randi() % 3].duplicate()
+		s.position = Vector3(r.randf_range(-0.6, 0.6), 0, r.randf_range(-0.6, 0.6))
+		s.rotation = Vector3(r.randf_range(-0.14, 0.14), r.randf() * TAU, r.randf_range(-0.14, 0.14))
+		s.scale = Vector3.ONE * r.randf_range(0.75, 1.0)
+		s.visible = true
+		clump.add_child(s)
+	return clump
 
 
 ## Fallen leaves lying on the ground everywhere, thickest under the trees (one MultiMesh of flat leaf cards).
@@ -872,6 +1031,7 @@ func _build_ambience() -> void:
 ## Where butterflies like to go: flowering plants, and a few fixed flowery patches.
 func butterfly_spots() -> Array:
 	var out: Array = [Vector3(-3, 0, 1), Vector3(3.5, 0, -2), Vector3(0, 0, 4)]
+	out.append_array(wild_asters.filter(func(a: Vector3) -> bool: return a.z > -11.0))   # the late nectar
 	if game != null:
 		for pl in game.plants:
 			if pl["stage"] >= 3:
@@ -1119,6 +1279,9 @@ func node_for(p: CharacterArtProfile) -> HedgePetNode:
 	var node := HedgePetNode.new()
 	node.name = "Pet_" + p.pet_name
 	add_child(node)
+	# compact cache profile: a visitor that isn't baked grows from its recipe in slices, hidden till whole (starting
+	# residents are built at once, during the load, as ever)
+	node.sliced = is_built and HedgePetNode.pets_baked() == "starters" and not p.starts_resident
 	node.setup(p)
 	node.scale = Vector3.ONE * PET_SCALE
 	node.rotation.y = _rng.randf_range(-PI, PI)

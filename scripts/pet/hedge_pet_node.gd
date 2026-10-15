@@ -43,6 +43,51 @@ var _materials := {}
 
 
 func setup(p: CharacterArtProfile) -> void:
+	_setup_body(p)                                       # (never yields for a normal pet: built at once, as always)
+
+
+## Lazy materialisation (the compact cache profile, hedgepets/pets_baked = "starters"): a visitor that isn't baked is
+## built from its recipe (its profile + seed: the same code, so the same pet) a slice at a time - a shared budget of a
+## few milliseconds a frame across every pet building - with its body hidden until it's whole. The node itself is made
+## at the usual moment with the usual random draws, so nothing about when or where it turns up changes.
+var sliced := false
+var building := false
+var _pending_plant := ""
+signal materialized
+static var _budget_frame := -1
+static var _budget_used := 0
+const SLICE_BUDGET_US := 6000
+
+
+## "starters" (compact: only starting pets baked, visitors built lazily) or "all" (baseline: every pet baked).
+static func pets_baked() -> String:
+	var env := OS.get_environment("HEDGEPETS_PETS_BAKED")
+	if env != "":
+		return env
+	return str(ProjectSettings.get_setting("hedgepets/pets_baked", "all"))
+
+
+static var _t_last := 0
+
+
+## A slice point: time since the last one (this frame, any pet) counts against the budget; over it, wait a frame.
+func _slice() -> void:
+	if not sliced or not is_inside_tree():
+		return
+	var now := Time.get_ticks_usec()
+	var f := Engine.get_process_frames()
+	if f != _budget_frame:
+		_budget_frame = f
+		_budget_used = 0
+	elif _t_last > 0:
+		_budget_used += now - _t_last
+	_t_last = now
+	if _budget_used > SLICE_BUDGET_US:
+		await get_tree().process_frame
+		_t_last = Time.get_ticks_usec()
+
+
+func _setup_body(p: CharacterArtProfile) -> void:
 	profile = p
 	for child in get_children():
 		if child.name != "ContactShadow" and not child is CPUParticles3D:   # the garden's shadow; a leaf burst in flight
@@ -57,18 +102,34 @@ func setup(p: CharacterArtProfile) -> void:
 	pet = Node3D.new()
 	pet.name = "Pet"
 	add_child(pet)
+	if sliced:
+		building = true
+		pet.visible = false                              # whole or not at all
 	head = Node3D.new()
 	head.name = "Head"
 	head.position = profile.regions["HEAD"]["center"]
 	pet.add_child(head)
-	_build_regions()
+	await _build_regions()
 	_build_face()
-	rebuild_foliage()
+	await rebuild_foliage()
+	if sliced:
+		sliced = false                                   # from now on it's an ordinary pet (regrafts build at once)
+		building = false
+		pet.visible = true
+		set_detail(detail, true)
+		if _pending_plant != "":
+			var plant := _pending_plant
+			_pending_plant = ""
+			set_plant(plant, false)
+		materialized.emit()
 
 
 ## Regrow this pet in another plant (SpeciesBuilder.PLANTS): new leaves, palette and bloom; same shape and face.
 ## Animated (default): the old leaves fall away in a little burst, the pet squashes, and the new plant grows in.
 func set_plant(plant: String, animate := true) -> void:
+	if building:                                         # still growing from its recipe: this plant when it's done
+		_pending_plant = plant
+		return
 	if not animate or Motion.speed <= 0.0 or not is_inside_tree():
 		_regrow(plant)
 		return
@@ -349,6 +410,7 @@ func _ellipsoid(parent: Node3D, center: Vector3, radii: Vector3, kind: String, o
 
 func _build_regions() -> void:
 	for name in profile.regions:
+		await _slice()
 		var r: Dictionary = profile.regions[name]
 		var parent: Node3D = head if (name == "HEAD" or r.get("parent", "") == "HEAD") else pet
 		var center: Vector3 = Vector3.ZERO if name == "HEAD" else r["center"]
@@ -571,6 +633,7 @@ func rebuild_foliage() -> void:
 		var r: Dictionary = profile.regions[region_name]
 		if not r.get("foliage", false):
 			continue
+		await _slice()
 		var built := FoliageBuilder.build(profile, region_name, head_c, key_dir)
 		var parent: Node3D = head if (region_name == "HEAD" or r.get("parent", "") == "HEAD") else pet
 		var items: Array = built["items"]
@@ -740,6 +803,8 @@ func _leaf_param(name: String, value: Variant) -> void:
 ## Smooth: the leaves of the new level grow in / shrink away (scripts/anim/motion.gd). instant = true for captures.
 func set_detail(level: String, instant := false) -> void:
 	detail = level
+	if building:                                         # (applied when it's whole: _setup_body ends with set_detail)
+		return
 	var l: Dictionary = profile.lod[level]
 	var goal := Vector3(float(l["leaves"]), float(l["scale"]), float(l["ink"]))
 	if instant or Motion.speed <= 0.0 or leaves_mat == null:
@@ -793,7 +858,7 @@ func life_state() -> Dictionary:
 
 
 func _process(delta: float) -> void:
-	if profile == null:
+	if profile == null or building:                      # (still growing from its recipe, hidden: nothing to animate)
 		return
 	time += delta
 	joy = maxf(0.0, joy - delta * 0.55)

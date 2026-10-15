@@ -495,6 +495,32 @@ func _build_land() -> void:
 func _build_trees() -> void:
 	await _trees(_brng)                                  # trees are code-driven entities (never compiled): the base map is
 	_willows(_brng)                                      # what's compiled; willows sway: always built live
+	_asters()
+
+
+## Calico aster in the sunny spots along the trails (garden.aster_clump: copies of three stems), just off the tread.
+## Its own numbers, so nothing else in the woods moves.
+func _asters() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 5150
+	var next := 8.0
+	for e in _paths:
+		if e.get("stub", false):
+			continue
+		var pts: PackedVector3Array = e["pts"]
+		var run := 0.0
+		for i in range(1, pts.size()):
+			run += pts[i - 1].distance_to(pts[i])
+			if run < next:
+				continue
+			next = run + r.randf_range(10.0, 18.0)
+			var d := Vector2(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z).normalized()
+			var side := 1.0 if r.randf() < 0.5 else -1.0
+			var p := Vector2(pts[i].x, pts[i].z) + d.orthogonal() * side * r.randf_range(2.0, 2.6)
+			if _near_trail(p, 1.5):                      # (soft and leafy: brushing past one is fine, like the ferns)
+				continue
+			garden.aster_clump(self, Vector3(p.x, height(p.x, p.y) - 0.05, p.y), r.randi())
+		next -= run
 
 
 func _build_undergrowth() -> void:
@@ -591,14 +617,17 @@ func _build_nursery() -> void:
 	cam.near = 0.08
 	_pail = GardenProps.paint_bucket(self, Vector3.ZERO, 0.0)
 	_pail.visible = false
-	var way: Dictionary = _way_from("fork", "nursery")
-	var e: Dictionary = _paths[int(way["edge"])]
-	var pts: PackedVector3Array = e["pts"] if e["a"] == "fork" else _reversed(e["pts"])
-	var arrive_dir := pts[pts.size() - 1] - pts[maxi(0, pts.size() - 6)]
-	arrive_dir.y = 0.0
+	# it stands on the side of its clearing away from both its trails (the fork's, the pines'): not on a trail, not up
+	# the slope to the pine flats behind, and in front of you when you arrive (_nursery_heading)
+	var away := Vector3.ZERO
+	for way: Dictionary in _labels["nursery"]:
+		away -= (way["dir"] as Vector3)
+	away.y = 0.0
+	if away.length() < 0.1:
+		away = (_labels["nursery"][0]["dir"] as Vector3).cross(Vector3.UP)
 	nursery = preload("res://scripts/garden/nursery.gd").new()
 	add_child(nursery)
-	nursery.setup(self, node_pos("nursery"), arrive_dir.normalized())
+	nursery.setup(self, node_pos("nursery"), away.normalized())
 	_place_finds()
 
 
@@ -980,7 +1009,7 @@ func _trees(rng: RandomNumberGenerator) -> void:
 			if t != Vector2.INF:                                 # (not by the way home: no blazes on that)
 				blaze = Vector3(t.x - p.x, 0, t.y - p.y).normalized()
 		maker.tree(kind, Vector3(p.x, height(p.x, p.y), p.y), rng, _near_trail(p, maker.LEAFY_REACH), blaze)
-	maker.finish()
+	await maker.finish()
 	set_meta("trees_rejected", maker.rejected)
 
 
@@ -2325,6 +2354,7 @@ func _step_walk(delta: float) -> void:
 		_settle(pts[pts.size() - 1])
 		Telemetry.event("trail", {"to": _at})
 		if _at == "nursery":
+			_goal_yaw = _heading_of(nursery.basis.z)    # turn to face her bench as you come in
 			nursery.arrive()
 
 

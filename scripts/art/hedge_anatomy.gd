@@ -101,8 +101,6 @@ static func build_mesh(region: Dictionary, rings := 24, segments := 48) -> Array
 static func _build_mesh_live(region: Dictionary, rings := 24, segments := 48) -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
-	var uvs := PackedVector2Array()
-	var indices := PackedInt32Array()
 	for i in range(rings + 1):
 		var v := float(i) / float(rings)
 		var phi := v * PI
@@ -113,18 +111,35 @@ static func _build_mesh_live(region: Dictionary, rings := 24, segments := 48) ->
 			var p := shape_point(region, Vector3.ZERO, d)
 			verts.append(p)
 			normals.append(shape_normal(region, Vector3.ZERO, p))
-			uvs.append(Vector2(u, v))
-	for i in range(rings):
-		for j in range(segments):
-			var a := i * (segments + 1) + j
-			var b := a + segments + 1
-			indices.append_array([a, b, a + 1, b, b + 1, a + 1])   # clockwise = front faces outward (Godot)
+	return grid_mesh(verts, normals, rings, segments)
+
+
+static var _grids := {}
+
+
+## A region mesh from its vertices and normals: the uvs and triangles are the same for every mesh of this grid size,
+## so a bake keeps only the vertices and normals (garden._bush) and this puts back exactly the same mesh.
+static func grid_mesh(verts: PackedVector3Array, normals: PackedVector3Array, rings: int, segments: int) -> ArrayMesh:
+	var gk := Vector2i(rings, segments)
+	if not _grids.has(gk):
+		var uvs := PackedVector2Array()
+		var indices := PackedInt32Array()
+		for i in range(rings + 1):
+			var v := float(i) / float(rings)
+			for j in range(segments + 1):
+				uvs.append(Vector2(float(j) / float(segments), v))
+		for i in range(rings):
+			for j in range(segments):
+				var a := i * (segments + 1) + j
+				var b := a + segments + 1
+				indices.append_array([a, b, a + 1, b, b + 1, a + 1])   # clockwise = front faces outward (Godot)
+		_grids[gk] = [uvs, indices]
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_TEX_UV] = uvs
-	arrays[Mesh.ARRAY_INDEX] = indices
+	arrays[Mesh.ARRAY_TEX_UV] = _grids[gk][0]
+	arrays[Mesh.ARRAY_INDEX] = _grids[gk][1]
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
