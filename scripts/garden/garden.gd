@@ -335,6 +335,7 @@ func _build_world() -> void:
 	sun.shadow_blur = 2.5
 	sun.shadow_opacity = 0.72                          # tree shade, not a hole in the lawn
 	sun.directional_shadow_max_distance = 60.0
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS   # 4 splits drew every caster twice more, unseen
 	sun.rotation_degrees = Vector3(-33.0, -38.0, 0.0)
 	add_child(sun)
 	var fill := DirectionalLight3D.new()

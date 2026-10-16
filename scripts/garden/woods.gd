@@ -551,6 +551,7 @@ func _build_sky() -> void:
 	sun.light_energy = 1.15
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 40.0
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS   # (as the garden's: same look, far fewer draws)
 	sun.basis = Basis.looking_at(-to_sun, Vector3.UP)
 	add_child(sun)
 	var env := Environment.new()

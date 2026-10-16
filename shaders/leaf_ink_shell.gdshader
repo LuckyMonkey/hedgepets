@@ -39,13 +39,16 @@ void vertex() {
 	float to_body = length(world - body_center) / body_radius;
 	vec3 n = normalize(world - (to_head < to_body ? head_center : body_center));
 	v_rim = 1.0 - abs(dot(n, normalize(CAMERA_POSITION_WORLD - world)));
+	if (v_rim * strength < 0.74) {
+		VERTEX = vec3(0.0);                               // facing you: no shell, so no pixels to run and throw away
+	}
 }
 
 void fragment() {
 	near_fade_discard(VERTEX, FRAGCOORD.xy);
 	float cell = floor(v_cell + 0.5);
 	float shape = texture(leaf_sheet, vec2((cell + UV.x) / cells, UV.y * 0.5)).a;
-	if (shape < 0.45 || v_rim * strength < 0.74) {
+	if (shape < 0.45) {
 		discard;
 	}
 	ALBEDO = mix(ink_color, vec3(0.30, 0.38, 0.22), 0.25);   // ink, softened toward the foliage

@@ -20,8 +20,8 @@ uniform float pool_strength = 0.10;       // watercolour pooling: slow pigment v
 
 varying float v_cell;
 varying float v_twist;
-varying float v_rim;
-varying vec3 v_world;
+varying float v_pool;                     // per leaf (all from its origin): computed once per vertex, not per pixel
+varying float v_ink_amount;
 
 #include "res://shaders/leaf_common.gdshaderinc"
 
@@ -32,13 +32,16 @@ void vertex() {
 	float keep = clamp((lod_keep - INSTANCE_CUSTOM.w) / 0.25 + 1.0, 0.0, 1.0);
 	VERTEX *= keep * keep * (3.0 - 2.0 * keep);
 	vec3 world = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-	v_world = world;
 	VERTEX.xy *= lod_scale;
 	v_twist = leaf_deform(VERTEX, UV, INSTANCE_CUSTOM, world, TIME, gust);
+	// watercolour pooling: pigment gathers and thins in slow patches
+	float pool = sin(world.x * 1.7 + world.z * 1.1) * sin(world.y * 2.3 - world.x * 0.7);
+	v_pool = 1.0 + pool * pool_strength;
 	// how edge-on this leaf is to the camera: leaves on the silhouette get the strong ink
 	vec3 leaf_normal = normalize((MODEL_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
 	vec3 to_camera = normalize(CAMERA_POSITION_WORLD - world);
-	v_rim = 1.0 - abs(dot(leaf_normal, to_camera));
+	float silhouette = smoothstep(0.55, 0.92, 1.0 - abs(dot(leaf_normal, to_camera)));
+	v_ink_amount = mix(interior_ink * detail_ink, silhouette_ink, silhouette);
 }
 
 void fragment() {
@@ -55,13 +58,9 @@ void fragment() {
 	// leaves: the tint shaped by the sprite's tone (strong: a lit middle, darker edges, pale veins); the flower cell
 	// carries its own colours (white petals, a yellow eye), tinted by the profile's flower colour
 	vec3 albedo = cell > 12.5 && cell < 13.5 ? COLOR.rgb * fill.rgb : COLOR.rgb * mix(1.0, fill.r, 0.8);
-	// watercolour pooling: pigment gathers and thins in slow patches
-	float pool = sin(v_world.x * 1.7 + v_world.z * 1.1) * sin(v_world.y * 2.3 - v_world.x * 0.7);
-	albedo *= 1.0 + pool * pool_strength;
+	albedo *= v_pool;
 	albedo = mix(albedo, albedo + vec3(0.07, 0.08, 0.04), v_twist * 0.6);   // the paler underside as it turns
-	float silhouette = smoothstep(0.55, 0.92, v_rim);
-	float ink_amount = mix(interior_ink * detail_ink, silhouette_ink, silhouette);
-	albedo = mix(albedo, ink_color, ink * ink_amount);
+	albedo = mix(albedo, ink_color, ink * v_ink_amount);
 	ALBEDO = albedo;
 	NORMAL_MAP = texture(leaf_normals, uv_fill).rgb;
 	NORMAL_MAP_DEPTH = 0.8;
