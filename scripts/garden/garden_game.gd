@@ -523,12 +523,25 @@ func favourite(node: HedgePetNode) -> Dictionary:
 var _away_for := 0.0                # seconds since the last visit (0 on a first visit)
 
 
-func _restore_gift(icon: String, at: Vector3, value: int) -> void:
+## Something to tap for coins (a gift here, a trinket in the woods): the same size on screen however far the camera
+## is (at the garden's distance a 30 cm emoji was a speck among the leaf litter), a pale halo so it reads on grass and
+## in the dark woods, drawn over the grass and leaves. `size`: its height in metres at 1 m from the camera.
+static func pickup_label(icon: String, size := 0.07) -> Label3D:
 	var l := Label3D.new()
 	l.text = icon
 	l.font_size = 64
-	l.pixel_size = 0.005
+	l.outline_size = 14
+	l.outline_modulate = Color(1.0, 0.97, 0.84, 0.85)
+	l.fixed_size = true
+	l.pixel_size = size / 64.0
+	l.no_depth_test = true
+	l.render_priority = 10
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	return l
+
+
+func _restore_gift(icon: String, at: Vector3, value: int) -> void:
+	var l := pickup_label(icon)
 	l.position = at + Vector3(0, 0.25, 0)
 	garden.add_child(l)
 	gifts.append({"at": at, "node": l, "value": value, "age": 1.0})
@@ -547,11 +560,7 @@ func _welcome_back() -> void:
 ## A happy resident leaves something behind: tap it to collect.
 func _drop_gift(node: HedgePetNode) -> void:
 	var g: Array = GIFTS.pick_random()
-	var l := Label3D.new()
-	l.text = g[0]
-	l.font_size = 64
-	l.pixel_size = 0.005
-	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	var l := pickup_label(g[0])
 	var at := node.position + Vector3(randf_range(-0.5, 0.5), 0.0, randf_range(0.3, 0.7))
 	l.position = at + Vector3(0, 1.1, 0)
 	garden.add_child(l)

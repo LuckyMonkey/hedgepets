@@ -1928,19 +1928,14 @@ func _find_look(h: Node3D, kind: String, rng: RandomNumberGenerator) -> void:
 				var o := Vector3((k - 1) * 0.05, 0, rng.randf_range(-0.03, 0.03))
 				GardenProps.part(h, GardenProps.cyl(0.004, 0.006, 0.34, 4), GardenProps.mat("seedstem", Color("8a8a5a")), o + Vector3(0, 0.17, 0), Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(-8, 8)), 0.0)
 				GardenProps.part(h, GardenProps.blob(Vector3(0.035, 0.05, 0.035), "pebble"), GardenProps.mat("seedhead", Color("cfc29a")), o + Vector3(0, 0.36, 0), Vector3.ZERO, 0.0)
-	if FINDS[kind]["what"] != "junk":                    # a glint, so small things can be found at night
-		var g := MeshInstance3D.new()
-		var dot := SphereMesh.new()
-		dot.radius = 0.025
-		dot.height = 0.05
-		dot.radial_segments = 6
-		dot.rings = 3
-		g.mesh = dot
-		var m := StandardMaterial3D.new()
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.albedo_color = Color("fff0c0")
-		g.material_override = m
-		g.position = Vector3(0, 0.22, 0)
+	if FINDS[kind]["what"] != "junk":                    # a glint, so small things can be found (a can is 12 cm; the woods are dark)
+		var g := Label3D.new()
+		g.text = "✨"
+		g.font_size = 64
+		g.fixed_size = true                               # the same size on screen near or far
+		g.pixel_size = 0.08 / 64.0
+		g.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		g.position = Vector3(0, 0.3, 0)
 		g.name = "Glint"
 		h.add_child(g)
 
@@ -2211,11 +2206,7 @@ func _tend_trinkets(delta: float) -> void:
 	var g: Array = garden.game.GIFTS.pick_random()
 	var c := node_pos(_at)
 	var p := _off_trail(c + Vector3.FORWARD.rotated(Vector3.UP, randf() * TAU) * randf_range(2.2, 3.6), 0.6)
-	var l := Label3D.new()
-	l.text = g[0]
-	l.font_size = 64
-	l.pixel_size = 0.006
-	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	var l: Label3D = garden.game.pickup_label(g[0], 0.11)
 	l.position = p + Vector3(0, 0.3, 0)
 	add_child(l)
 	Motion.appear(l, Vector3.ONE, Motion.FAST)
@@ -2411,10 +2402,11 @@ func _process(delta: float) -> void:
 	for h: Node3D in _willows_sway:                      # the willows' strands, swaying
 		var ph: float = h.get_meta("phase")
 		h.rotation = Vector3(sin(_t * 0.6 + ph) * 0.035, 0, cos(_t * 0.45 + ph * 1.3) * 0.035)
-	for f: Dictionary in _finds:                         # glints twinkle
-		var g: Node3D = f["node"].get_node_or_null("Glint")
+	for f: Dictionary in _finds:                         # glints twinkle, around where you stand (not specks from every place)
+		var g: Label3D = f["node"].get_node_or_null("Glint")
 		if g != null:
-			g.visible = sin(_t * 2.1 + f["node"].position.x * 3.0) > 0.55
+			g.visible = f["at"] == _at
+			g.modulate.a = 0.55 + 0.45 * sin(_t * 2.1 + f["node"].position.x * 3.0)
 	for f: Node3D in _fireflies:
 		var ph: float = f.get_meta("phase")
 		f.position = f.get_meta("home") + Vector3(sin(_t * 0.5 + ph), sin(_t * 0.8 + ph * 2.0) * 0.4, cos(_t * 0.4 + ph)) * 0.6
