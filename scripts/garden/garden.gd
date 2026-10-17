@@ -580,6 +580,7 @@ func _build_backdrop() -> void:
 	for at: Vector3 in [Vector3(8.5, 0.0, -6.5), Vector3(-9.5, 0.0, -6.8)]:
 		_bush(at + Vector3(0, 0.15, 0), Vector3(1.3, 0.5, 1.1), "hedgeivy", autumn, Color("7a5332"), 0.45, 0.9, "dome")
 		_thing("leaf_pile", get_child(get_child_count() - 1), Vector2(at.x, at.z), 1.4, 3)
+	_merge_limbs()
 
 
 ## The creek's course (x for a given z), down the west side.
@@ -774,10 +775,12 @@ func _tree_wall() -> void:
 		if gate_path:
 			continue
 		var h := r.randf_range(15.0, 22.0)
+		_limbs_loose = behind_houses
 		if r.randf() < 0.45:
 			_pine(at, h, true)
 		else:
 			_tree(at, h, palettes[r.randi() % palettes.size()], ["hedgeoak", "hedgemaple"][r.randi() % 2], true)
+		_limbs_loose = false
 		if behind_houses:                                 # real things draw over the skybox: these stand behind next door's
 			var made: Array = []                          # houses, so they're moved into it (built the same, same numbers)
 			for i in range(before, get_child_count()):
@@ -925,14 +928,114 @@ func _leaf_litter() -> void:
 ## A limb from a to b (a tapered cylinder with an ink hull).
 func _limb(a: Vector3, b: Vector3, r0: float, r1: float, m: Material) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
-	node.mesh = GardenProps.cyl(r1, r0, a.distance_to(b), 8)
+	node.mesh = GardenProps.cyl(r1, r0, a.distance_to(b), clampi(int(round(r0 * 24.0)) + 4, 6, 14))   # sides by thickness
 	var y := (b - a).normalized()
 	var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
 	node.transform = Transform3D(Basis(x, y, x.cross(y)), (a + b) * 0.5)
 	node.material_override = m
 	node.material_overlay = GardenProps.hull(0.02)
-	add_child(node)
+	if _limbs_loose:                                     # (trees going into the skybox: neighborhood.adopt takes them whole)
+		add_child(node)
+		return node
+	var c := Vector2i(floori((a.x + b.x) * 0.5 / LIMB_CELL), floori((a.z + b.z) * 0.5 / LIMB_CELL))
+	if not _limb_patches.has(c):
+		var patch := Node3D.new()
+		patch.name = "Limbs_%d_%d" % [c.x, c.y]
+		add_child(patch)
+		_limb_patches[c] = patch
+	_limb_patches[c].add_child(node)
 	return node
+
+
+## Limbs never move: once the trees are up, each patch becomes one mesh per bark (~440 cylinders -> ~20 meshes; each
+## limb was a draw, its ink hull a second, and both again in every shadow split). Patches keep frustum culling.
+const LIMB_CELL := 24.0
+var _limb_patches := {}
+var _limbs_loose := false
+
+
+func _merge_limbs() -> void:
+	for patch: Node3D in _limb_patches.values():
+		GardenProps.bake_static(patch)
+	_limb_patches.clear()
+	_merge_crowns()
+
+
+## Tree crowns never move either: per patch, the dark masses become one mesh per colour and the leaves one MultiMesh
+## per sheet (the leaf buffers joined: in "full" precision every leaf is already in garden space). Same leaves, same
+## shader; ~300 crowns -> a few dozen draws.
+const CROWN_CELL := 10.0                          # smaller than the limbs': crowns are most of the primitives, so they cull finer
+var _crown_patches := {}                          # cell -> [[holder, leaf buffer], ...]
+
+
+func _crown(holder: Node3D, at: Vector3) -> void:
+	if _limbs_loose or foliage_precision() != "full":
+		return
+	var c := Vector2i(floori(at.x / CROWN_CELL), floori(at.z / CROWN_CELL))
+	if not _crown_patches.has(c):
+		_crown_patches[c] = []
+	_crown_patches[c].append([holder, last_leaves])
+
+
+## A crown's dark core at half resolution (16 x 28 grid -> 8 x 14: every other point of the same surface). It sits
+## inside the leaves; only glimpses of it show, so the quarter of the triangles looks the same.
+func _coarse(m: Mesh) -> Mesh:
+	var a := m.surface_get_arrays(0)
+	var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+	var n: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+	if v.size() != 17 * 29:
+		return m
+	var cv := PackedVector3Array()
+	var cn := PackedVector3Array()
+	for i in range(0, 17, 2):
+		for j in range(0, 29, 2):
+			cv.append(v[i * 29 + j])
+			cn.append(n[i * 29 + j])
+	return HedgeAnatomy.grid_mesh(cv, cn, 8, 14)
+
+
+func _merge_crowns() -> void:
+	for c: Vector2i in _crown_patches:
+		var masses := {}                              # material -> SurfaceTool
+		var leaves := {}                              # material -> PackedFloat32Array
+		for item: Array in _crown_patches[c]:
+			var holder: Node3D = item[0]
+			var mass: MeshInstance3D = holder.get_child(0)
+			var key: Material = mass.material_override
+			if not masses.has(key):
+				masses[key] = SurfaceTool.new()
+				(masses[key] as SurfaceTool).begin(Mesh.PRIMITIVE_TRIANGLES)
+			(masses[key] as SurfaceTool).append_from(_coarse(mass.mesh), 0, holder.transform * mass.transform)
+			var lm: Material = (holder.get_child(1) as MultiMeshInstance3D).material_override
+			if not leaves.has(lm):
+				leaves[lm] = PackedFloat32Array()
+			leaves[lm].append_array(item[1])
+			remove_child(holder)
+			holder.queue_free()
+		var patch := Node3D.new()
+		patch.name = "Crowns_%d_%d" % [c.x, c.y]
+		add_child(patch)
+		for key: Material in masses:
+			var mi := MeshInstance3D.new()
+			mi.mesh = (masses[key] as SurfaceTool).commit()
+			mi.material_override = key
+			patch.add_child(mi)
+		for lm: Material in leaves:
+			var buf: PackedFloat32Array = leaves[lm]
+			if buf.is_empty():
+				continue
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.use_colors = true
+			mm.use_custom_data = true
+			mm.mesh = _leaf_quad()
+			mm.instance_count = buf.size() / 20
+			mm.buffer = buf
+			var node := MultiMeshInstance3D.new()
+			node.multimesh = mm
+			node.material_override = lm
+			patch.add_child(node)
+	_crown_patches.clear()
 
 
 ## A big broadleaf tree: a leaning trunk, a few branches forking up and out, a leaf clump at each branch end.
@@ -956,8 +1059,8 @@ func _tree(at: Vector3, height: float, palette: Dictionary, sheet := "hedgeoak",
 		var twig := to + Vector3(cos(a + 0.8) * 0.9, 0.7, sin(a + 0.8) * 0.9)
 		_limb(to, twig, 0.08, 0.03, bark)
 		var r := _rng.randf_range(1.6, 2.3) * grow
-		_bush(to + Vector3(0, 0.6, 0), Vector3(r, r * 0.72, r), sheet, palette, Color(palette["deep_forest"]).darkened(0.2), leaf, dens, "egg")
-	_bush(top + Vector3(0, 2.6, 0) * grow, Vector3(2.6, 2.0, 2.6) * grow, sheet, palette, Color(palette["deep_forest"]).darkened(0.2), leaf * 1.06, dens, "egg")
+		_crown(_bush(to + Vector3(0, 0.6, 0), Vector3(r, r * 0.72, r), sheet, palette, Color(palette["deep_forest"]).darkened(0.2), leaf, dens, "egg"), at)
+	_crown(_bush(top + Vector3(0, 2.6, 0) * grow, Vector3(2.6, 2.0, 2.6) * grow, sheet, palette, Color(palette["deep_forest"]).darkened(0.2), leaf * 1.06, dens, "egg"), at)
 	if not far:
 		_crowns.append(top + Vector3(0, 1.5, 0))
 	obstacles.append([Vector2(at.x, at.z), 1.0])
@@ -974,8 +1077,8 @@ func _pine(at: Vector3, height: float, far := false) -> void:
 		var y := lerpf(height * 0.28, height * 0.9, t)
 		var r := lerpf(3.0, 0.9, t) * height / 12.0 * _rng.randf_range(0.82, 1.12)
 		var off := Vector3(_rng.randf_range(-0.35, 0.35), _rng.randf_range(-0.3, 0.3), _rng.randf_range(-0.35, 0.35))
-		_bush(at + Vector3(0, y, 0) + off, Vector3(r, r * _rng.randf_range(0.48, 0.62), r * _rng.randf_range(0.85, 1.0)), "hedgepine", pine, Color("1d3326"), 1.25 if far else 0.8, 0.35 if far else 0.55,
-			{"exponent": 2.0, "taper": -0.75, "taper_axis": "y", "flat_bottom": 0.5})
+		_crown(_bush(at + Vector3(0, y, 0) + off, Vector3(r, r * _rng.randf_range(0.48, 0.62), r * _rng.randf_range(0.85, 1.0)), "hedgepine", pine, Color("1d3326"), 1.25 if far else 0.8, 0.35 if far else 0.55,
+			{"exponent": 2.0, "taper": -0.75, "taper_axis": "y", "flat_bottom": 0.5}), at)
 	obstacles.append([Vector2(at.x, at.z), 0.7])
 
 
@@ -1075,7 +1178,7 @@ func _build_props() -> void:
 	# places to hide: a paint bucket by the gate, a big pot, the old well, the burrow behind the corner tree
 	_thing("bucket", GardenProps.paint_bucket(self, Vector3(5.2, 0, 7.0), 30.0), Vector2(5.2, 7.0), 0.4, 0, false)
 	_thing("planter", GardenProps.pot_upright(self, Vector3(-3.6, 0, -7.6)), Vector2(-3.6, -7.6), 0.55, 0, false)
-	_thing("well", GardenProps.stone_well(self, Vector3(-7.4, 0, -8.8), r), Vector2(-7.4, -8.8), 1.15, 0, false)
+	_thing("well", GardenProps.bake_static(GardenProps.stone_well(self, Vector3(-7.4, 0, -8.8), r)), Vector2(-7.4, -8.8), 1.15, 0, false)
 	_thing("burrow", GardenProps.burrow(self, BURROW_AT, 20.0, r), Vector2(BURROW_AT.x, BURROW_AT.z), 0.9, 0, false)
 	for at: Array in [[Vector3(-9.0, 0, -5.8), 0.55], [Vector3(-8.2, 0, -5.2), 0.35], [Vector3(10.2, 0, 3.4), 0.7], [Vector3(9.3, 0, 4.2), 0.4], [Vector3(0.5, 0, 7.6), 0.45]]:
 		_thing("rock", GardenProps.rock(self, at[0], at[1], r), Vector2(at[0].x, at[0].z), float(at[1]) + 0.4, 1)

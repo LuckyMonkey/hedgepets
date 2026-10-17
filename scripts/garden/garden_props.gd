@@ -70,6 +70,8 @@ static func hull(width: float) -> ShaderMaterial:
 
 static func part(parent: Node3D, mesh: Mesh, material: Material, pos: Vector3, rot_deg := Vector3.ZERO, outline := 0.012) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
+	if mesh is TorusMesh and (mesh as TorusMesh).rings == 64:
+		_torus_detail(mesh)
 	node.mesh = mesh
 	node.material_override = material
 	node.position = pos
@@ -78,6 +80,13 @@ static func part(parent: Node3D, mesh: Mesh, material: Material, pos: Vector3, r
 		node.material_overlay = hull(outline)
 	parent.add_child(node)
 	return node
+
+
+## A torus left at Godot's default is 64 x 32 = 4096 triangles, a whole pet's head for a bucket's rim. Sized instead:
+## around by its radius, the tube by its thickness (a rim 20 x 6, the tire 28 x 10).
+static func _torus_detail(t: TorusMesh) -> void:
+	t.rings = clampi(int(round(t.outer_radius * 40.0)) + 8, 12, 32)
+	t.ring_segments = clampi(int(round((t.outer_radius - t.inner_radius) * 60.0)) + 5, 5, 12)
 
 
 static func box(size: Vector3) -> BoxMesh:
@@ -92,10 +101,15 @@ static func cyl(r_top: float, r_bottom: float, h: float, seg := 10) -> CylinderM
 	c.bottom_radius = r_bottom
 	c.height = h
 	c.radial_segments = seg
+	c.rings = 0                                          # straight or tapered sides: rings between the caps add nothing
 	return c
 
 
-static func blob(radii: Vector3, shape: Variant = {}, rings := 14, segments := 24) -> ArrayMesh:
+static func blob(radii: Vector3, shape: Variant = {}, rings := -1, segments := -1) -> ArrayMesh:
+	if rings < 0:                                        # by size (HedgeAnatomy.detail): ~0.35 m and up keep 12 x 24
+		var d := HedgeAnatomy.detail(radii, 0.35, 24, 8)
+		rings = d.x
+		segments = d.y
 	var k := BakeCache.key(["blob", radii, shape, rings, segments])
 	var cached = BakeCache.fetch(k)
 	if cached != null:
@@ -417,7 +431,7 @@ static func _wall_stone(r: Node3D, at: Vector3, radii: Vector3, yaw: float, rng:
 		grey = grey.lerp(Color("b8b29e"), 0.5)                   # lichen
 	if cap and rng.randf() < 0.4:
 		grey = grey.lerp(moss, 0.55)                             # moss on the cap
-	var stone := part(r, blob(q, {"exponent": 2.7, "flat_bottom": 0.75}, 8, 12), mat("wall%d" % int(grey.r * 100 + grey.g * 10), grey),
+	var stone := part(r, blob(q, {"exponent": 2.7, "flat_bottom": 0.75}, 6, 10), mat("wall%d" % int(grey.r * 100 + grey.g * 10), grey),
 		at, Vector3(rng.randf_range(-3, 3), yaw, rng.randf_range(-3, 3)), 0.008)
 	stone.name = "Stone"
 

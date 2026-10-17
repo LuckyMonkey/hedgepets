@@ -87,6 +87,15 @@ static func shape_normal(region: Dictionary, c: Vector3, p: Vector3) -> Vector3:
 
 
 ## A mesh of the region's primitive, centred on its own origin (place it at the region centre).
+## How finely to build a primitive of these radii: segments grow with the square root of its size, so a head, a
+## pumpkin and a pebble all read equally smooth on screen instead of each getting the same mesh. `full` is the size
+## that gets `most` segments; rings are half the segments. One rule for pets and garden props alike.
+static func detail(radii: Vector3, full: float, most: int, least: int) -> Vector2i:
+	var r := maxf(radii.x, maxf(radii.y, radii.z))
+	var seg := clampi(int(round(most * sqrt(r / full) / 2.0)) * 2, least, most)
+	return Vector2i(seg / 2, seg)
+
+
 static func build_mesh(region: Dictionary, rings := 24, segments := 48) -> ArrayMesh:
 	# pure function of its inputs: the bake cache has the garden's and the pets' meshes ready (util/bake_cache.gd)
 	var k := BakeCache.key(["mesh", region, rings, segments])

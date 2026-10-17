@@ -291,4 +291,61 @@ func _build(root: Node3D) -> void:
 	for k in range(7):                                # the hills, blue with distance (the fog does that)
 		_blob(far, rng.randf_range(80.0, 140.0), Vector3(-450.0 + k * 150.0, -30.0, rng.randf_range(330.0, 420.0)), Color("6a7a5a"), 0.5)
 	for g: Node3D in [near, street, far]:
-		GardenProps.bake_static(g)                     # one mesh per material per group
+		_bake_painted(g)
+		GardenProps.bake_static(g)                     # (whatever isn't plain paint: one mesh per material)
+
+
+## The plain-paint parts of a group (every _m colour) as ONE mesh, the colour carried per vertex: dozens of colours
+## were dozens of draws, every frame the skybox renders. Same colours (sRGB vertex colour = the albedo it replaces).
+func _bake_painted(g: Node3D) -> void:
+	var painted := {}
+	for m: StandardMaterial3D in _mats.values():
+		painted[m] = true
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
+	var index := PackedInt32Array()
+	var inv := g.global_transform.affine_inverse()
+	for mi: MeshInstance3D in g.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null or not painted.has(mi.material_override) or mi.material_overlay != null:
+			continue
+		var xf: Transform3D = inv * mi.global_transform
+		var nb := xf.basis.inverse().transposed()
+		var c: Color = (mi.material_override as StandardMaterial3D).albedo_color
+		for surf in range(mi.mesh.get_surface_count()):
+			var a := mi.mesh.surface_get_arrays(surf)
+			var base := verts.size()
+			for v: Vector3 in a[Mesh.ARRAY_VERTEX]:
+				verts.append(xf * v)
+				colors.append(c)
+			for n: Vector3 in a[Mesh.ARRAY_NORMAL]:
+				normals.append((nb * n).normalized())
+			var idx = a[Mesh.ARRAY_INDEX]
+			if idx == null or (idx as PackedInt32Array).is_empty():
+				for k in range((a[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()):
+					index.append(base + k)
+			else:
+				for k: int in idx:
+					index.append(base + k)
+		mi.get_parent().remove_child(mi)
+		mi.queue_free()
+	if verts.is_empty():
+		return
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = index
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true
+	m.roughness = 1.0
+	m.metallic_specular = 0.0
+	var out := MeshInstance3D.new()
+	out.name = "Painted"
+	out.mesh = mesh
+	out.material_override = m
+	g.add_child(out)

@@ -39,6 +39,8 @@ func setup(g: Node3D, color: Color, at: Vector3) -> void:
 	var cap := CapsuleMesh.new()
 	cap.radius = 0.012
 	cap.height = 0.09
+	cap.radial_segments = 6                              # a body a few pixels long (the default is 3456 triangles)
+	cap.rings = 2
 	body.mesh = cap
 	body.material_override = dark
 	body.rotation_degrees = Vector3(0, 0, 90)

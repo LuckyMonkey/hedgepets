@@ -391,10 +391,14 @@ func _hull(width: float) -> ShaderMaterial:
 	return hull
 
 
+const PET_FULL := 0.75                        # a head this size keeps the full 24 x 48 mesh (HedgeAnatomy.detail)
+
+
 ## A region's own primitive (scripts/art/hedge_anatomy.gd): bean, cushion, paddle, dome... at a centre.
 func _primitive(parent: Node3D, region: Dictionary, center: Vector3, kind: String, outline := 0.0, scale := 1.0) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
-	node.mesh = HedgeAnatomy.build_mesh(region)
+	var d := HedgeAnatomy.detail(region["radii"], PET_FULL, 48, 12)
+	node.mesh = HedgeAnatomy.build_mesh(region, d.x, d.y)
 	node.position = center
 	node.scale = Vector3.ONE * scale
 	node.material_override = _mat(kind, region)
@@ -452,7 +456,8 @@ const PATCH_SHELLS := 9
 
 
 func _build_patch(name: String, r: Dictionary, parent: Node3D, center: Vector3, shells := PATCH_SHELLS, colour := Color(0, 0, 0, 0), scale := 1.0) -> void:
-	var mesh := HedgeAnatomy.build_mesh(r)
+	var d := HedgeAnatomy.detail(r["radii"], PET_FULL, 48, 12)
+	var mesh := HedgeAnatomy.build_mesh(r, d.x, d.y)
 	var radii: Vector3 = r["radii"]
 	var size := (radii.x + radii.y + radii.z) / 3.0
 	var tint: Color = colour if colour.a > 0.0 else r.get("tint_color", patch_tint(profile))
