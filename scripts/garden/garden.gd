@@ -1070,6 +1070,7 @@ func _build_props() -> void:
 	# the ordinary stuff: a woodpile against the pine, the one chair standing alone in the grass, a brush pile
 	_thing("woodpile", GardenProps.woodpile(self, Vector3(-8.3, 0, -5.6), 20.0, r), Vector2(-8.3, -5.6), 1.1, 0, false)
 	_thing("chair", GardenProps.chair_upright(self, Vector3(1.8, 0, 2.8), -150.0), Vector2(1.8, 2.8), 0.9, 2, false)
+	_thing("ironing_board", GardenProps.bake_static(GardenProps.ironing_board(self, Vector3(-4.4, 0, 5.4), 115.0)), Vector2(-4.4, 5.4), 0.7, 0, false)
 	_thing("brush_pile", GardenProps.brush_pile(self, Vector3(5.6, 0, -8.6), r), Vector2(5.6, -8.6), 1.2, 0, false)
 	# places to hide: a paint bucket by the gate, a big pot, the old well, the burrow behind the corner tree
 	_thing("bucket", GardenProps.paint_bucket(self, Vector3(5.2, 0, 7.0), 30.0), Vector2(5.2, 7.0), 0.4, 0, false)

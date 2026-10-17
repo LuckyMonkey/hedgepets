@@ -937,6 +937,27 @@ static func chair_upright(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
 	return r
 
 
+## An ironing board somebody carried out and never carried back: faded cover, rusty X legs, the iron still on its
+## rest. Nine primitives, three materials; garden.gd bakes it into one mesh per material.
+static func ironing_board(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
+	var r := root(parent, "IroningBoard", at, yaw)
+	var board := Node3D.new()
+	board.rotation_degrees = Vector3(2.5, 0, -1.5)            # the lawn isn't level
+	r.add_child(board)
+	var cover := mat("ironcover", Color("b7c4c2"), 0.95)
+	part(board, box(Vector3(0.8, 0.04, 0.38)), cover, Vector3(-0.15, 0.86, 0))
+	part(board, cyl(0.19, 0.19, 0.04, 16), cover, Vector3(0.25, 0.86, 0)).scale = Vector3(2.0, 1, 1)   # the nose
+	var legs := rust_mat()
+	for side: float in [-1.0, 1.0]:                           # the X, one U-frame each way, seen as two rods
+		for z: float in [-0.12, 0.12]:
+			part(board, cyl(0.014, 0.014, 1.05, 6), legs, Vector3(-0.05, 0.42, z), Vector3(0, 0, side * 38.4), 0.006)
+	part(board, box(Vector3(0.04, 0.1, 0.3)), legs, Vector3(-0.62, 0.86, 0), Vector3.ZERO, 0.006)   # the iron rest
+	var iron := mat("wire", Color("4a4e50"))
+	part(board, box(Vector3(0.24, 0.05, 0.12)), iron, Vector3(-0.58, 0.94, 0), Vector3(0, 0, 70), 0.008)
+	part(board, box(Vector3(0.05, 0.12, 0.04)), iron, Vector3(-0.53, 0.98, 0), Vector3(0, 0, 70), 0.008)
+	return r
+
+
 ## A woodpile stacked against a tree: split logs in rows, a little untidy, bark out.
 static func woodpile(parent: Node3D, at: Vector3, yaw: float, rng: RandomNumberGenerator) -> Node3D:
 	var r := root(parent, "Woodpile", at, yaw)
