@@ -6,7 +6,7 @@ render_mode diffuse_lambert_wrap, specular_disabled;
 uniform sampler2D macro : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D detail : filter_linear_mipmap, repeat_enable;
 uniform float detail_scale = 0.55;       // detail repeats per world unit
-uniform float detail_strength = 0.6;
+uniform float detail_strength = 0.85;    // (most of the lawn is this texture now; 3D tufts only in the long grass)
 // afternoon light through the canopy: soft sunflecks drifting slowly as the leaves overhead move
 uniform sampler2D dapple : filter_linear_mipmap, repeat_enable;
 uniform float dapple_strength = 0.8;

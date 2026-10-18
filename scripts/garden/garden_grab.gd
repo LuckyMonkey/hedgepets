@@ -14,6 +14,8 @@ extends Node
 ##   MEND   hold on a broken thing (the sprinkler, a run of the back fence) and it gets fixed over a few seconds:
 ##          a ring fills, no pulling, no hurry. The sprinkler stands up and works (sprays in slow sweeps now and
 ##          then, watering plants within reach); the fence stands straight again (the gap becomes a gate).
+##   RAKE   press on a drift of fallen leaves (nothing else there) and drag: the leaves sweep along under your hand
+##          and heap up where you gather them (scripts/garden/fallen_leaves.gd). Just for the pleasure of it.
 ##   FIX    the tipped lawn chair rights itself when you yank it free. The rusty grill scrubs clean if you work it in
 ##          circles while you hold it; a clean grill sells for more.
 ##
@@ -55,6 +57,9 @@ var ring: Control
 var _mending = null                 # {kind, ...} being mended under your hand
 var _mend := 0.0
 const MEND_SECONDS := 3.0
+var _raking := false
+var _rake_at := Vector3.INF
+var _raked := 0
 var _spray: CPUParticles3D
 var _spray_t := 0.0
 
@@ -113,6 +118,11 @@ func begin(screen: Vector2) -> bool:
 		return true
 	var t = _thing_near(Vector2(g.x, g.z))
 	if t == null:
+		if garden.fallen != null and garden.fallen.rakeable(g):
+			_raking = true
+			_rake_at = g
+			_raked = 0
+			return true
 		return false
 	held = t
 	active = false
@@ -125,6 +135,12 @@ func begin(screen: Vector2) -> bool:
 
 
 func move(screen: Vector2) -> void:
+	if _raking:
+		var g: Vector3 = garden.ground_point(screen)
+		if g != Vector3.INF:
+			_raked += garden.fallen.rake(_rake_at, g)
+			_rake_at = g
+		return
 	if held == null:
 		return
 	_pointer = screen
@@ -141,6 +157,9 @@ func move(screen: Vector2) -> void:
 
 ## Let go. False if this was really a tap (never dragged): the garden treats it as one.
 func end(screen: Vector2) -> bool:
+	if _raking:
+		_raking = false
+		return _raked > 0                                 # pressed and let go on the leaves: still a tap
 	if _mending != null:
 		var used := _mend > 0.08
 		_mending = null

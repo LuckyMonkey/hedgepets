@@ -308,10 +308,17 @@ func _flower_node(region_name: String, dir: Vector3) -> Node3D:
 
 ## The eye: a soft vertical oval, deep brown-black and only gently glossy, with one crisp almost-white dot of light
 ## and a tiny second one, both on the same side (as if lit from one direction). No whites, no blurred sheen.
+const EYE_POP := 0.22                          # eyes stand this much (x eye size) proud of the face, over the leaves
+const EYE_PULL := 1.1                         # and draw this far (x eye size) toward the camera (pet_eye.gdshader)
+
+
 func _build_eye(holder: Node3D, name: String, _nose_side: float) -> void:
 	var s := profile.eye_size
+	holder.position += holder.basis.z * s * EYE_POP
 	var eye := _ellipsoid(holder, Vector3(0, 0, -s * 0.28), Vector3(s * 0.88, s * 1.12, s * 0.55), "eye", 0.035 * s / 0.155)
 	eye.name = name
+	if eye.material_overlay is ShaderMaterial:
+		(eye.material_overlay as ShaderMaterial).set_shader_parameter("pull", s * EYE_PULL)
 	var lit := -1.0 if holder.basis.x.z >= 0.0 else 1.0
 	var r := Vector3(s * 0.88, s * 1.12, s * 0.55)
 	for dot: Array in [[Vector2(-0.26 * lit, 0.34), 0.2], [Vector2(0.2 * lit, -0.3), 0.075]]:
@@ -352,13 +359,16 @@ func _mat(kind: String, region := {}) -> Material:
 			m.albedo_color = profile.palette["muted_ivy"].darkened(0.15) if region.get("foliage", false) else profile.palette["muted_ivy"]
 		"ear_inner":
 			m.albedo_color = profile.palette["muted_ivy"].darkened(0.18)
-		"eye":
-			m.albedo_color = Color("1a120c")
-			m.roughness = 0.6                               # only gently glossy: the dots do the shining
-			m.metallic_specular = 0.25
-		"glint":
-			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			m.albedo_color = Color("f8f4ea")                 # a crisp, solid, almost-white dot
+		"eye", "glint":                                  # drawn over the leaves round the face (pet_eye.gdshader)
+			var e := ShaderMaterial.new()
+			e.shader = preload("res://shaders/pet_eye.gdshader")
+			e.set_shader_parameter("albedo", Color("1a120c") if kind == "eye" else Color("f8f4ea"))   # glint: crisp, almost white
+			e.set_shader_parameter("roughness_value", 0.6)  # only gently glossy: the dots do the shining
+			e.set_shader_parameter("specular_value", 0.25)
+			e.set_shader_parameter("glow", 0.0 if kind == "eye" else 1.0)
+			e.set_shader_parameter("pull", profile.eye_size * EYE_PULL)
+			_materials[key] = e
+			return e
 		"nose":
 			m.albedo_color = Color("2e2018")
 			m.roughness = 0.32                            # a glossy nose

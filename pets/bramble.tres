@@ -161,4 +161,4 @@ inner_mass = Color(0.164, 0.2572549, 0.14149019, 1)
 ink_color = Color(0.10980392, 0.13333334, 0.07450981, 1)
 silhouette_ink = 1.0
 interior_ink = 0.6
-eye_size = 0.092
+eye_size = 0.108

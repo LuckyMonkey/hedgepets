@@ -833,14 +833,14 @@ func aster_clump(parent: Node3D, at: Vector3, seed: int) -> Node3D:
 		var inner := Color(SpeciesBuilder.PALETTES["aster"][6])
 		for k in range(3):
 			var h: float = [0.6, 0.9, 1.2][k]
-			var b := _bush(Vector3(0, h * 0.6, 0), Vector3(0.26, h * 0.4, 0.26), "hedgeaster", pal, inner, 0.3, 1.6, "egg", 1.0, Color("fffaf4"), 7300 + k)
+			var b := _bush(Vector3(0, h * 0.6, 0), Vector3(0.26, h * 0.4, 0.26), "hedgeaster", pal, inner, 0.3, 1.2, "egg", 1.0, Color("fffaf4"), 7300 + k)
 			b.get_child(0).visible = false               # no dark core: an aster is airy, slender stems under the leaves
 			var sr := RandomNumberGenerator.new()
 			sr.seed = 7310 + k
 			# the bloom: far more flowers than a bush gets - a cloud of sprays over the top (each card several daisies)
 			var buf := last_leaves.duplicate()
 			var n_leaves := buf.size() / 20
-			var n_flowers := 34 + k * 14
+			var n_flowers := 26 + k * 10
 			for j in range(n_flowers):
 				var d := Vector3(sr.randf_range(-1, 1), sr.randf_range(0.15, 1.0), sr.randf_range(-1, 1)).normalized()
 				var on := Vector3(0, h * 0.6, 0) + d * Vector3(0.26, h * 0.4, 0.26) * 1.05
@@ -853,30 +853,70 @@ func aster_clump(parent: Node3D, at: Vector3, seed: int) -> Node3D:
 			var mm: MultiMesh = (b.get_child(1) as MultiMeshInstance3D).multimesh
 			mm.instance_count = n_leaves + n_flowers
 			mm.buffer = buf
+			var stems := SurfaceTool.new()
+			stems.begin(Mesh.PRIMITIVE_TRIANGLES)
 			for j in range(4):
 				var lean := Vector3(sr.randf_range(-12, 12), 0, sr.randf_range(-12, 12))
-				GardenProps.part(b, GardenProps.cyl(0.006, 0.011, h * 0.85, 4), GardenProps.mat("asterstem", Color("4a3a30")),
-					Vector3(sr.randf_range(-0.06, 0.06), h * 0.42, sr.randf_range(-0.06, 0.06)), lean, 0.0)
-			b.name = "AsterStem%d" % k
-			b.visible = false                            # (the originals stay hidden; clumps are their copies)
-			_aster_stems.append(b)
+				var foot := Vector3(sr.randf_range(-0.06, 0.06), h * 0.42, sr.randf_range(-0.06, 0.06))
+				stems.append_from(GardenProps.cyl(0.006, 0.011, h * 0.85, 4), 0, Transform3D(Basis.from_euler(lean * PI / 180.0), foot))
+			_aster_stems.append({"buf": buf, "stems": stems.commit(), "leaves": (b.get_child(1) as MultiMeshInstance3D).material_override})
+			remove_child(b)                              # (only its numbers are kept: clumps are built from them)
+			b.queue_free()
 	var r := RandomNumberGenerator.new()
 	r.seed = seed
 	var clump := Node3D.new()
 	clump.name = "WildAster"
 	clump.position = at
 	parent.add_child(clump, true)
+	# 3-5 stems, each a copy of one of the three: their leaves joined into one MultiMesh and their stalks into one
+	# mesh, so a clump is two draws (it was ~20: every copy had its own leaves and four stalks)
+	var buf := PackedFloat32Array()
+	var stalks := SurfaceTool.new()
+	stalks.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var leaf_mat: Material = null
 	for i in range(r.randi_range(3, 5)):
-		var s: Node3D = _aster_stems[r.randi() % 3].duplicate()
-		s.position = Vector3(r.randf_range(-0.6, 0.6), 0, r.randf_range(-0.6, 0.6))
-		s.rotation = Vector3(r.randf_range(-0.14, 0.14), r.randf() * TAU, r.randf_range(-0.14, 0.14))
-		s.scale = Vector3.ONE * r.randf_range(0.75, 1.0)
-		s.visible = true
-		clump.add_child(s)
+		var proto: Dictionary = _aster_stems[r.randi() % 3]
+		var pos := Vector3(r.randf_range(-0.6, 0.6), 0, r.randf_range(-0.6, 0.6))
+		var rot := Vector3(r.randf_range(-0.14, 0.14), r.randf() * TAU, r.randf_range(-0.14, 0.14))
+		var xf := Transform3D(Basis.from_euler(rot).scaled(Vector3.ONE * r.randf_range(0.75, 1.0)), pos)
+		buf.append_array(_moved_leaves(proto["buf"], xf))
+		stalks.append_from(proto["stems"], 0, xf)
+		leaf_mat = proto["leaves"]
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.use_custom_data = true
+	mm.mesh = _leaf_quad()
+	mm.instance_count = buf.size() / 20
+	mm.buffer = buf
+	var leaves := MultiMeshInstance3D.new()
+	leaves.multimesh = mm
+	leaves.material_override = leaf_mat
+	clump.add_child(leaves)
+	var stalk := MeshInstance3D.new()
+	stalk.mesh = stalks.commit()
+	stalk.material_override = GardenProps.mat("asterstem", Color("4a3a30"))
+	clump.add_child(stalk)
 	return clump
 
 
+## A leaf buffer (MultiMesh layout, 20 floats a leaf) with every leaf moved by xf.
+static func _moved_leaves(src: PackedFloat32Array, xf: Transform3D) -> PackedFloat32Array:
+	var out := src.duplicate()
+	for o in range(0, src.size(), 20):
+		var t := xf * Transform3D(Basis(Vector3(src[o], src[o + 4], src[o + 8]), Vector3(src[o + 1], src[o + 5], src[o + 9]),
+			Vector3(src[o + 2], src[o + 6], src[o + 10])), Vector3(src[o + 3], src[o + 7], src[o + 11]))
+		var b := t.basis
+		out[o] = b.x.x; out[o + 1] = b.y.x; out[o + 2] = b.z.x; out[o + 3] = t.origin.x
+		out[o + 4] = b.x.y; out[o + 5] = b.y.y; out[o + 6] = b.z.y; out[o + 7] = t.origin.y
+		out[o + 8] = b.x.z; out[o + 9] = b.y.z; out[o + 10] = b.z.z; out[o + 11] = t.origin.z
+	return out
+
+
 ## Fallen leaves lying on the ground everywhere, thickest under the trees (one MultiMesh of flat leaf cards).
+var fallen: MultiMeshInstance3D                  # the leaves on the ground (scripts/garden/fallen_leaves.gd)
+
+
 func _leaf_litter() -> void:
 	var image := Assets.image("res://assets/sprites/hedgemaple.png")
 	var tex := ImageTexture.create_from_image(image.get_region(Rect2i(0, 0, 160 * 8, 160)))
@@ -890,10 +930,6 @@ func _leaf_litter() -> void:
 	m.metallic_specular = 0.0
 	var quad := PlaneMesh.new()
 	quad.size = Vector2(1, 1)
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.mesh = quad
 	var sources: Array = _crowns.duplicate()
 	sources.append(Vector3(-12.0, 0, -20.0))
 	var items: Array = []
@@ -913,16 +949,9 @@ func _leaf_litter() -> void:
 		var s := _rng.randf_range(0.22, 0.4)
 		var b := Basis.from_euler(Vector3(_rng.randf_range(-0.25, 0.25), _rng.randf() * TAU, _rng.randf_range(-0.25, 0.25))).scaled(Vector3(s, s, s))
 		items.append([Transform3D(b, p + Vector3(0, 0.015 + _rng.randf() * 0.02, 0)), (colors.pick_random() as Color).darkened(_rng.randf() * 0.15)])
-	mm.instance_count = items.size()
-	for i in range(items.size()):
-		mm.set_instance_transform(i, items[i][0])
-		mm.set_instance_color(i, items[i][1])
-	var node := MultiMeshInstance3D.new()
-	node.multimesh = mm
-	node.material_override = m
-	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.name = "LeafLitter"
-	add_child(node)
+	fallen = preload("res://scripts/garden/fallen_leaves.gd").new()   # they stay, more land, ✋ rakes them
+	fallen.setup(self, m, quad, items, sources)
+	add_child(fallen)
 
 
 ## A limb from a to b (a tapered cylinder with an ink hull).
@@ -1227,7 +1256,7 @@ func _build_grass() -> void:
 	# them from the startup cache (with the RNG's state after them) instead of placing ~31k one by one. The editor
 	# always places them live, so a change here shows at once; the bake (tools/bake_cache.gd) records them.
 	var cached := BakeCache.recording or BakeCache.live_salt() == ""
-	var key := BakeCache.key(["grass", 2, _rng.state, _grass_inputs()])
+	var key := BakeCache.key(["grass", 4, _rng.state, _grass_inputs()])
 	var hit = BakeCache.fetch(key) if cached else null
 	if hit is Array:
 		mm.instance_count = int(hit[0])
@@ -1256,7 +1285,10 @@ func _build_grass() -> void:
 		var s := _rng.randf_range(0.32, 0.6) * (1.5 if cell == 11 else (1.25 if cell >= 8 else 1.0))   # ankle-high to a pet
 		var t := Transform3D(Basis.from_euler(Vector3(0, _rng.randf_range(0, TAU), 0)).scaled(Vector3(s, s, s)), Vector3(x, 0, z))
 		var tint := Color("86a050").lerp(Color("a9ad62"), _rng.randf() * 0.6).darkened(_rng.randf() * 0.12)
-		items.append([t, tint, Color(float(cell), _rng.randf_range(0, TAU), 0, 0)])
+		var custom := Color(float(cell), _rng.randf_range(0, TAU), 0, 0)
+		var keep := _tuft_kept(x, z, cell)               # (after every draw: the RNG ends where it always did)
+		if keep > 0.0:
+			items.append([t.scaled_local(Vector3(keep, keep, keep)), tint, custom])
 	_grass_edges(items)
 	# one buffer in MultiMesh's own layout (a transform's three rows, then colour, then custom data: 20 floats each),
 	# made here rather than read back from the GPU, so the cache holds real data even when baked headless
@@ -1328,7 +1360,34 @@ func _grass_edges(items: Array) -> void:
 		var s := _rng.randf_range(0.5, 0.85)                     # long grass
 		var t := Transform3D(Basis.from_euler(Vector3(_rng.randf_range(-0.12, 0.12), _rng.randf_range(0, TAU), _rng.randf_range(-0.12, 0.12))).scaled(Vector3(s, s * _rng.randf_range(1.0, 1.4), s)), Vector3(p.x, 0, p.y))
 		var tint := Color("7e9a4a").lerp(Color("b0a860"), _rng.randf() * 0.7).darkened(_rng.randf() * 0.1)
-		items.append([t, tint, Color(float(cell), _rng.randf_range(0, TAU), 0, 0)])
+		var custom := Color(float(cell), _rng.randf_range(0, TAU), 0, 0)
+		if _hash01(p.x, p.y) < 0.35:                     # the long grass at the fences: a third as many, still a band
+			items.append([t, tint, custom])
+
+
+## The lawn is a texture (shaders/lawn.gdshader); 3D tufts only where grass grows long: patches the mower misses,
+## round the things in the yard, a few flowers. 0 = not here, else the tuft's scale (patch grass grows taller).
+var _tall_noise: FastNoiseLite
+
+
+func _tuft_kept(x: float, z: float, cell: int) -> float:
+	if _tall_noise == null:
+		_tall_noise = FastNoiseLite.new()
+		_tall_noise.seed = 4242
+		_tall_noise.frequency = 0.16
+	var patch := _tall_noise.get_noise_2d(x, z)
+	if patch > 0.08:
+		return 1.2 + clampf(patch - 0.08, 0.0, 0.3) * 1.6           # taller toward the middle of a patch
+	for t in things:
+		if t["kind"] != "stick" and Vector2(x, z).distance_to(t["at"]) < float(t["radius"]) + 0.55:
+			return 1.1
+	if cell >= 8 and cell <= 10:
+		return 1.0 if _hash01(x, z) < 0.45 else 0.0
+	return 1.0 if _hash01(x, z) < 0.05 else 0.0
+
+
+static func _hash01(x: float, z: float) -> float:
+	return fposmod(sin(x * 127.1 + z * 311.7) * 43758.5453, 1.0)
 
 
 func _blocked(p: Vector2, margin: float) -> bool:
