@@ -283,6 +283,7 @@ func _build_sounds() -> void:
 
 var neighborhood: Node                            # scripts/garden/neighborhood.gd: the street, the houses, the town (skybox)
 var hideouts: Node
+var perches: Node                                 # small birds hop up onto things (perches.gd)
 var den: Node                                     # scripts/garden/den.gd: the room under the burrow (built on first visit)
 var woods: Node                                   # scripts/garden/woods.gd: the trails over the footbridge
 
@@ -292,6 +293,10 @@ func _start_game() -> void:
 	hideouts.name = "Hideouts"
 	add_child(hideouts)
 	hideouts.setup(self)
+	perches = preload("res://scripts/garden/perches.gd").new()
+	perches.name = "Perches"
+	add_child(perches)
+	perches.setup(self)
 	den = preload("res://scripts/garden/den.gd").new()
 	add_child(den)
 	den.setup(self)
@@ -1465,6 +1470,8 @@ func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 	var w: Dictionary = _wander[node]
 	if w["mode"] == "carried":
 		return                                           # in the bucket: only uncarry() lets it out
+	if w.get("perch") != null:
+		perches.release(node, w)                         # off its perch (or not going to it after all)
 	var was: String = w["mode"]
 	w["mode"] = mode
 	var g: Dictionary = GATES[w.get("gate", "fence")]
@@ -1511,6 +1518,8 @@ func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 ## Into the bucket (🪣): out of the garden's hands until uncarry().
 func carry(node: HedgePetNode) -> void:
 	var w: Dictionary = _wander[node]
+	if w.get("perch") != null:
+		perches.release(node, w)
 	w["mode"] = "carried"
 	w["following"] = false
 	node.set_sleeping(false)
@@ -1542,7 +1551,7 @@ var _next_bloom := 90.0
 func _process(delta: float) -> void:
 	for node in pets:
 		_walk(node, delta)
-		if node.visible:
+		if node.visible and not perches.up_there(_wander[node]):
 			_separate(node, delta)
 	_notice_pointer()
 	if not _shafts.is_empty():
@@ -1574,6 +1583,9 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 	if w["mode"] in ["hiding", "hidden", "emerging"]:
 		hideouts.tend(node, w, delta)                    # climbing in / tucked away / climbing out
 		return
+	if perches.up_there(w):
+		perches.tend(node, w, delta)                     # hopping up / sitting on top of something / hopping down
+		return
 	var to: Vector3 = w["target"] - node.position
 	to.y = 0.0
 	if to.length() < 0.15:
@@ -1594,6 +1606,9 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 			return
 		if w["mode"] == "to_hide":
 			hideouts.enter(node, w["hideout"])
+			return
+		if w["mode"] == "to_perch":
+			perches.hop_up(node, w)
 			return
 		w["wait"] = float(w["wait"]) - delta
 		if node.sleeping:
@@ -1629,6 +1644,8 @@ func _walk(node: HedgePetNode, delta: float) -> void:
 		if float(w["wait"]) <= 0.0 and free and _rng.randf() < 0.15 and _curl_up(node, w):
 			return
 		if float(w["wait"]) <= 0.0 and free and _rng.randf() < 0.12 and hideouts.go_hide(node, w):
+			return
+		if float(w["wait"]) <= 0.0 and free and perches.go_perch(node, w):
 			return
 		if float(w["wait"]) <= 0.0:
 			var fav: Dictionary = game.favourite(node) if game != null and _rng.randf() < 0.55 else {}
@@ -1700,7 +1717,7 @@ func colliders(skip: Variant = null, with_pets := true, with_things := true) -> 
 			continue
 		out.append([t["at"], float(t["radius"]) * 0.8])
 	for n in pets:
-		if with_pets and n.visible and n != skip:
+		if with_pets and n.visible and n != skip and not perches.up_there(_wander[n]):
 			out.append([Vector2(n.position.x, n.position.z), pet_radius(n)])
 	return out
 
