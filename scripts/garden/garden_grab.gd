@@ -69,7 +69,7 @@ func setup(g: Node3D, gm: Node, ui: CanvasLayer) -> void:
 	game = gm
 	for t in garden.things:
 		_init_thing(t)
-	var at := Vector3(3.2, 0, 7.6)
+	var at := Vector3(1.7, 0, 7.9)               # beside the wheelbarrow (3.2, 7.4), not in it
 	garden._thing("barrel", GardenProps.trash_barrel(garden, at, 200.0), Vector2(at.x, at.z), 0.6, 0, false)
 	barrel = garden.things[-1]
 	_tag = Label3D.new()
