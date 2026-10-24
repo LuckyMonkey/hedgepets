@@ -18,6 +18,19 @@ static func image(path: String) -> Image:
 	return img
 
 
+static var _mipmapped := {}
+
+
+## A sheet as a mipmapped texture, made once and shared by everything that draws it. Every pet used to decode its
+## plant's sheet and normal map and mipmap them on the CPU (~25 ms a pet, in the frame it turned up). Read-only.
+static func mipmapped(path: String) -> ImageTexture:
+	if not _mipmapped.has(path):
+		var img := image(path)
+		img.generate_mipmaps()
+		_mipmapped[path] = ImageTexture.create_from_image(img)
+	return _mipmapped[path]
+
+
 
 ## In a browser there are no system fonts to fall back on, so emoji (the toolbar, gifts, emotes) would be boxes.
 ## The web build adds a colour emoji font (Twemoji, assets/fonts/emoji, see docs/CREDITS.md) behind the default

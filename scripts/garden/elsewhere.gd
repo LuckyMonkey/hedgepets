@@ -87,6 +87,8 @@ func enter() -> void:
 	set_process(true)
 	set_process_unhandled_input(true)
 	_arrive()
+	for k in range(3):                                   # first frames drawn under the dark veil: shaders compile (the
+		await get_tree().process_frame                   # web's slow first draw) before the fade, not during it
 	create_tween().tween_property(_veil, "color:a", 0.0, 0.45)
 
 
@@ -106,6 +108,10 @@ var _pre_done := 0.0
 func prebuild() -> void:
 	if _built or _prebuilding:
 		return
+	if not ProjectSettings.get_setting("hedgepets/woods_prebuild", false):
+		return                                           # off: some steps are 50-180 ms in one piece (a tree patch, the
+		                                                 # merge), and they landed as hitches while you played in the
+		                                                 # garden. The woods build behind their own card when you go.
 	_prebuilding = true
 	var steps := build_steps()
 	Slicer.active = true
@@ -148,11 +154,14 @@ func _build_staged() -> void:
 	var card: CanvasLayer = preload("res://scripts/garden/loading_card.gd").new()
 	card.note = loading_note()
 	add_child(card)
+	Slicer.active = true                                 # big slices: you're waiting, but the card still moves
+	Slicer.budget_us = 40000
 	for i in steps.size():
 		card.stage(str(steps[i][0]), float(i) / steps.size())
 		await get_tree().process_frame                     # let the card draw before the work
 		await get_tree().process_frame
-		(steps[i][1] as Callable).call()
+		await (steps[i][1] as Callable).call()
+	Slicer.active = false
 	card.finish()
 
 

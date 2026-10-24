@@ -75,6 +75,8 @@ Keep it that way.
   - Doc: `docs/FILMMAKER.md`.
 - **Golden regression:** `tools/golden_capture.gd` + `tools/image_compare.py` against `tests/baseline/f72b9bd`.
   Never update the baseline silently. Doc: `docs/VISUAL_REGRESSION.md`.
+- **Hitches:** `tools/hitch_trace.gd` (where the frame goes, which step hangs; see the 2026-10-24 section of
+  `docs/PERFORMANCE_BASELINE.md`). The woods build behind their card on the way in, not in the background.
 - **Benchmarks:** `tools/bench_world.sh` (procedural / cached; `--gpu` for frame times).
   Docs: `docs/PERFORMANCE_BASELINE.md`, `docs/MAP_COMPILATION_BENCHMARK.md`.
 - **Offscreen Godot runs always take `--audio-driver Dummy`**, or the soundscape plays through the owner's speakers.

@@ -501,8 +501,13 @@ static func patch_tint(p: CharacterArtProfile) -> Color:
 	return Color.from_hsv(fposmod(base.h + 0.035, 1.0), base.s * 0.78, minf(1.0, base.v * 1.12))
 
 
-## Engraved crosshatch for a paddle tail: warm wood with a restrained diamond pattern.
+## Engraved crosshatch for a paddle tail: warm wood with a restrained diamond pattern (painted once, shared).
+static var _engraved: Texture2D
+
+
 func _engraved_texture() -> Texture2D:
+	if _engraved != null:
+		return _engraved
 	var img := Image.create(128, 128, false, Image.FORMAT_RGB8)
 	for y in range(128):
 		for x in range(128):
@@ -515,7 +520,8 @@ func _engraved_texture() -> Texture2D:
 				c = Color("3a2416")
 			img.set_pixel(x, y, c)
 	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
+	_engraved = ImageTexture.create_from_image(img)
+	return _engraved
 
 
 # ------------------------------------------------------------------ the face (head-local anchors)
@@ -624,14 +630,10 @@ func rebuild_foliage() -> void:
 	foliage_nodes.clear()
 	cluster_debug.clear()
 	if leaves_mat == null:
-		var image := Assets.image("res://assets/sprites/%s.png" % profile.leaf_sheet)
-		var normals := Assets.image("res://assets/sprites/%s_n.png" % profile.leaf_sheet)
-		image.generate_mipmaps()
-		normals.generate_mipmaps()
 		leaves_mat = ShaderMaterial.new()
 		leaves_mat.shader = load("res://shaders/leaf.gdshader")
-		leaves_mat.set_shader_parameter("leaf_sheet", ImageTexture.create_from_image(image))
-		leaves_mat.set_shader_parameter("leaf_normals", ImageTexture.create_from_image(normals))
+		leaves_mat.set_shader_parameter("leaf_sheet", Assets.mipmapped("res://assets/sprites/%s.png" % profile.leaf_sheet))
+		leaves_mat.set_shader_parameter("leaf_normals", Assets.mipmapped("res://assets/sprites/%s_n.png" % profile.leaf_sheet))
 		shell_mat = ShaderMaterial.new()
 		shell_mat.shader = load("res://shaders/leaf_ink_shell.gdshader")
 		shell_mat.set_shader_parameter("leaf_sheet", leaves_mat.get_shader_parameter("leaf_sheet"))

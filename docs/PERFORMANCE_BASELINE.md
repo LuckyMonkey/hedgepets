@@ -67,3 +67,32 @@ was busy on the same desktop, so the spread is wide; ranges are given, not best 
 - Time spent per subsystem (profiler): scripts vs rendering vs audio.
 - The web build: load time, first-visit shader compile (about 19 s per `docs/MOBILE.md`), memory.
 - Mobile browser and native export.
+
+## 2026-10-24: hitches moved behind cards (`tools/hitch_trace.gd`)
+
+The owner reported stutter, and stalls in the wrong places: during play instead of behind loading cards. Measured
+headless (CPU only) with `tools/hitch_trace.gd`, which turns off headless Godot's ~6.9 ms per-frame sleep. **Earlier
+headless ms/frame numbers, `garden_fps.gd` included, were mostly that sleep.**
+
+| Where | Before | After |
+|---|---|---|
+| Garden, 40 s after load (woods prebuilding in the background) | max **183 ms**, many 30-70 ms frames | max **7.4 ms** (prebuild off) |
+| Walking into the woods (already built) | **~390 ms** one frame, at the start of the fade-in | ~120 ms, under the dark veil |
+| Woods built on the way in | the card froze for each whole step | 40 ms slices, the card moves (~1.6 s here) |
+| A pet's build (visitor, wild) | 24-40 ms (+ CPU mipmaps of its leaf sheets) | 8-11 ms rebuild, 17-28 ms first |
+| `garden._process`, 6 residents | 3.3 ms | ~1.2 ms |
+
+What changed:
+- **Woods prebuild is off by default** (`hedgepets/woods_prebuild`, project setting, default false). Some build steps
+  are 50-180 ms in one piece (a tree patch, the static merge), so a 5 ms Slicer budget can't hide them. The woods
+  build behind their own card when you walk in (`elsewhere._build_staged`, now sliced at 40 ms).
+- **Leaf sheets are shared**: `Assets.mipmapped(path)` decodes and mipmaps a sheet once. Each pet used to do it for
+  its own copy (~25 ms). The paddle tail's crosshatch is painted once too.
+- **Pets' colliders**: trunks, walls and things are gathered once a frame (`garden._walk_colliders`), with a
+  bounding-box reject. Same circles, same order, so the same pushes.
+- **Under the veil**: `elsewhere.enter()` draws 3 frames before the fade-in, so first-draw shader compiles (the web's
+  slow part) happen in the dark.
+
+Pixel checks: the garden golden views and the orbit are pixel-exact against HEAD. The woods views differ only by the
+wild pets' positions (they're 3 frames further along). Tried and dropped: building every post-load pet in slices. It
+left "still building" pets that regrafting and pointer-noticing don't expect (`yard_check`, `life_check` failed).

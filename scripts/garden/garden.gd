@@ -420,14 +420,10 @@ func _build_ground() -> void:
 func _leaf_material(sheet: String) -> ShaderMaterial:
 	if _leaf_mats.has(sheet):
 		return _leaf_mats[sheet]
-	var image := Assets.image("res://assets/sprites/%s.png" % sheet)
-	var normals := Assets.image("res://assets/sprites/%s_n.png" % sheet)
-	image.generate_mipmaps()
-	normals.generate_mipmaps()
 	var m := ShaderMaterial.new()
 	m.shader = load("res://shaders/leaf.gdshader")
-	m.set_shader_parameter("leaf_sheet", ImageTexture.create_from_image(image))
-	m.set_shader_parameter("leaf_normals", ImageTexture.create_from_image(normals))
+	m.set_shader_parameter("leaf_sheet", Assets.mipmapped("res://assets/sprites/%s.png" % sheet))
+	m.set_shader_parameter("leaf_normals", Assets.mipmapped("res://assets/sprites/%s_n.png" % sheet))
 	m.set_shader_parameter("interior_ink", 0.2)
 	m.set_shader_parameter("silhouette_ink", 0.5)
 	m.set_shader_parameter("near_fade", GardenProps.NEAR_FADE)
@@ -1722,15 +1718,47 @@ func colliders(skip: Variant = null, with_pets := true, with_things := true) -> 
 	return out
 
 
+## colliders(node) for the pets' walk, every frame, as packed centres and radii: the trunks, walls and things are
+## gathered once a frame (they were gathered again for each pet, twice), the other pets after them - the same circles
+## in the same order, so the same pushes.
+var _solid_frame := -1
+var _solid_at := PackedVector2Array()
+var _solid_r := PackedFloat64Array()
+
+
+func _walk_colliders(node: HedgePetNode) -> Array:
+	var f := Engine.get_process_frames()
+	if f != _solid_frame:
+		_solid_frame = f
+		_solid_at.clear()
+		_solid_r.clear()
+		for c in colliders(null, false):
+			_solid_at.append(c[0])
+			_solid_r.append(float(c[1]))
+	var at := _solid_at.duplicate()
+	var r := _solid_r.duplicate()
+	for n in pets:
+		if n.visible and n != node and not perches.up_there(_wander[n]):
+			at.append(Vector2(n.position.x, n.position.z))
+			r.append(pet_radius(n))
+	return [at, r]
+
+
 ## Walk around whatever is ahead instead of into it: each nearby solid in front pushes the heading sideways.
 func _steer(node: HedgePetNode, want: Vector3) -> Vector3:
 	var p := Vector2(node.position.x, node.position.z)
 	var w2 := Vector2(want.x, want.z)
 	var avoid := Vector2.ZERO
 	var pr := pet_radius(node)
-	for c in colliders(node):
-		var off: Vector2 = p - c[0]
-		var gap := off.length() - float(c[1]) - pr
+	var cs := _walk_colliders(node)
+	var at: PackedVector2Array = cs[0]
+	var rs: PackedFloat64Array = cs[1]
+	for i in at.size():
+		var off: Vector2 = p - at[i]
+		var reach: float = rs[i] + pr + 1.4
+		if absf(off.x) > reach or absf(off.y) > reach:
+			continue                                   # (far off: the gap below is over 1.4 anyway)
+		var gap := off.length() - rs[i] - pr
 		if gap > 1.4 or off.length() < 0.001:
 			continue
 		if w2.dot(-off.normalized()) <= 0.0:
@@ -1749,9 +1777,15 @@ func _separate(node: HedgePetNode, delta: float) -> void:
 	var p := Vector2(node.position.x, node.position.z)
 	var pr := pet_radius(node)
 	var push := Vector2.ZERO
-	for c in colliders(node):
-		var off: Vector2 = p - c[0]
-		var depth := float(c[1]) + pr - off.length()
+	var cs := _walk_colliders(node)
+	var at: PackedVector2Array = cs[0]
+	var rs: PackedFloat64Array = cs[1]
+	for i in at.size():
+		var off: Vector2 = p - at[i]
+		var reach: float = rs[i] + pr
+		if absf(off.x) >= reach or absf(off.y) >= reach:
+			continue                                   # (not touching: depth below would be <= 0)
+		var depth: float = rs[i] + pr - off.length()
 		if depth > 0.0:
 			push += (off.normalized() if off.length() > 0.001 else Vector2.RIGHT) * depth
 	if push != Vector2.ZERO:
