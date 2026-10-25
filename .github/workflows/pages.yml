@@ -21,11 +21,12 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Install Godot 4.7.2
+      - name: Install Godot 4.7.2 and Web export templates
         uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.7.2
           use-dotnet: false
+          include-templates: true
 
       - name: Export Web build
         run: |
