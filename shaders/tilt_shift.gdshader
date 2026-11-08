@@ -10,6 +10,7 @@ uniform float max_blur = 7.0;          // pixels at the edges
 uniform float saturation = 1.18;
 uniform float contrast = 1.05;
 uniform float vignette = 0.18;
+uniform float quality_mix = 1.0;
 
 const vec2 TAPS[12] = vec2[](
 	vec2(-0.326, -0.406), vec2(-0.840, -0.074), vec2(-0.696, 0.457), vec2(-0.203, 0.621),
@@ -34,5 +35,5 @@ void fragment() {
 	c = (c - 0.5) * contrast + 0.5;
 	vec2 v = SCREEN_UV - 0.5;
 	c *= 1.0 - vignette * dot(v, v) * 2.0;
-	COLOR = vec4(c, 1.0);
+	COLOR = vec4(mix(texture(screen, SCREEN_UV).rgb, c, quality_mix), 1.0);
 }

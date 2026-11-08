@@ -68,6 +68,45 @@ was busy on the same desktop, so the spread is wide; ranges are given, not best 
 - The web build: load time, first-visit shader compile (about 19 s per `docs/MOBILE.md`), memory.
 - Mobile browser and native export.
 
+## 2026-11-08: browser/mobile render safety pass
+
+The measured weak-GPU baseline for this pass was the Intel HD 5000 / 720×1280 SubViewport run from the performance
+brief: garden **~120 ms/frame, 1100 draws, 860k primitives** and woods **~145 ms/frame, 1885 draws, 3.13M
+primitives**. With directional shadows disabled it fell to **~17–24 ms / 353 draws / 243k primitives** in the
+garden and **~99 ms / 1180 draws / 1.78M primitives** in the woods. A post-change renderer run is still pending in
+this environment because the changed generator fingerprint forces the full live cache bake before timing.
+
+The shipped changes are:
+
+- Garden hedge leaf cards and woods leaves never enter the shadow map. Large static forms retain one short
+  orthogonal shadow split (28 m in the garden, 24 m in the woods); lawn dapple and contact blobs preserve the soft
+  miniature shade outside it.
+- Woods trunk, crown-mass and leaf patch nodes are independently distance culled at 82 m, 72 m and 48 m. The near
+  trail view is unchanged; far detail resolves into the existing haze and merged crown masses.
+- The `Quality` autoload watches half-second median frame samples. After two seconds over 22 ms it eases through
+  0.75× and 0.6× 3D scale, then eases the tilt-shift mix off and disables remaining dynamic shadows. Recovery waits
+  five seconds below 15 ms. Web canvas DPR is capped at 2.
+
+Run `tools/render_cost.gd` with an X display after the cache bake to record the after numbers. It intentionally does
+not use GPU timer queries because Mesa stops drawing after a short period on the target hardware.
+
+## 2026-11-08: round 2
+
+The real-display measurement after round 1 was **garden ~1050 draws / 770k primitives**; with live directional
+shadows disabled it was **~350 draws / 243k primitives**. The original comparison was garden **1100 / 860k** and
+woods **1885 / 3.13M**, with woods at **1180 / 1.78M** when shadows were disabled. This environment has no X11 or
+Wayland display, so round-2 GPU draw/primitive numbers could not be collected here; the headless renderer reports zero
+for those counters and is not a valid substitute.
+
+Round 2 removes the live sun shadow maps entirely. `tools/bake_shadows.gd` creates deterministic garden and woods
+shadow atlases under `assets/baked/`, and the lawn, grass, woods ground, path and litter materials multiply them at
+the same soft 0.72 opacity. The atlas is intentionally low-resolution and blurred by linear filtering to preserve
+the painted miniature look; pets retain their live contact blobs.
+
+Woods static geometry is now grouped into 24 m proximity chunks. Chunks within 43 m of the camera remain visible;
+walking changes visibility only, never rebuilds geometry. `tools/render_cost.gd` disables the adaptive `Quality`
+autoload while measuring so scale/tilt-shift fallback cannot hide the renderer cost.
+
 ## 2026-10-24: hitches moved behind cards (`tools/hitch_trace.gd`)
 
 The owner reported stutter, and stalls in the wrong places: during play instead of behind loading cards. Measured

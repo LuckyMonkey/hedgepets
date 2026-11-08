@@ -10,6 +10,9 @@ uniform float detail_strength = 0.85;    // (most of the lawn is this texture no
 // afternoon light through the canopy: soft sunflecks drifting slowly as the leaves overhead move
 uniform sampler2D dapple : filter_linear_mipmap, repeat_enable;
 uniform float dapple_strength = 0.8;
+uniform sampler2D shadow_map : source_color, filter_linear_mipmap;
+uniform vec4 shadow_bounds = vec4(-32.0, -20.0, 32.0, 24.0);
+uniform float shadow_strength = 0.72;
 varying vec3 world;
 
 void vertex() {
@@ -25,6 +28,8 @@ void fragment() {
 	float d2 = texture(dapple, world.xz * 0.09 - vec2(TIME * 0.004, -TIME * 0.005) + vec2(0.37, 0.11)).r;
 	float fleck = smoothstep(0.25, 0.75, d1 * 0.65 + d2 * 0.55);
 	vec3 light = mix(vec3(0.8, 0.84, 0.88), vec3(1.16, 1.07, 0.88), fleck);   // cool shade, warm sun
-	ALBEDO = base * grain * 1.08 * mix(vec3(1.0), light, dapple_strength);
+	vec2 shadow_uv = (world.xz - shadow_bounds.xy) / (shadow_bounds.zw - shadow_bounds.xy);
+	float baked_shadow = texture(shadow_map, clamp(shadow_uv, vec2(0.0), vec2(1.0))).r;
+	ALBEDO = base * grain * 1.08 * mix(vec3(1.0), light, dapple_strength) * mix(1.0 - shadow_strength, 1.0, baked_shadow);
 	ROUGHNESS = 1.0;
 }

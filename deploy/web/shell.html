@@ -131,7 +131,7 @@ const engine = new Engine(GODOT_CONFIG);
 		frame.style.height = (h + 2 * bezel) + 'px';
 		frame.style.marginTop = (top - bottom) + 'px';
 		document.body.classList.toggle('narrow', !phone && window.innerWidth < w + 2 * bezel + 2 * 300);
-		const dpr = Math.min(window.devicePixelRatio || 1, 3);
+		const dpr = Math.min(window.devicePixelRatio || 1, 2);
 		const pw = Math.round(w * dpr);
 		const ph = Math.round(h * dpr);
 		if (canvas.width !== pw || canvas.height !== ph) {

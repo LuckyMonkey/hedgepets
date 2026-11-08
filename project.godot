@@ -14,6 +14,10 @@ boot_splash/image="res://assets/ui/splash.png"
 boot_splash/stretch_mode=1
 boot_splash/use_filter=true
 
+[autoload]
+
+Quality="*res://scripts/quality.gd"
+
 [display]
 
 window/size/viewport_width=1080

@@ -7,6 +7,9 @@ uniform sampler2D grass_sheet : source_color, filter_linear_mipmap;
 uniform float cells = 12.0;
 uniform sampler2D dapple : filter_linear_mipmap, repeat_enable;   // the same sunflecks as the lawn
 uniform float dapple_strength = 0.8;
+uniform sampler2D shadow_map : source_color, filter_linear_mipmap;
+uniform vec4 shadow_bounds = vec4(-32.0, -20.0, 32.0, 24.0);
+uniform float shadow_strength = 0.72;
 varying vec3 v_fleck;                     // the sunfleck tint at the tuft's root (per tuft: read once per vertex)
 varying float v_cell;
 
@@ -19,6 +22,8 @@ void vertex() {
 	float d2 = textureLod(dapple, world.xz * 0.09 - vec2(TIME * 0.004, -TIME * 0.005) + vec2(0.37, 0.11), 0.0).r;
 	float fleck = smoothstep(0.25, 0.75, d1 * 0.65 + d2 * 0.55);
 	v_fleck = mix(vec3(1.0), mix(vec3(0.8, 0.84, 0.88), vec3(1.16, 1.07, 0.88), fleck), dapple_strength);
+	vec2 shadow_uv = (world.xz - shadow_bounds.xy) / (shadow_bounds.zw - shadow_bounds.xy);
+	v_fleck *= mix(1.0 - shadow_strength, 1.0, texture(shadow_map, clamp(shadow_uv, vec2(0.0), vec2(1.0))).r);
 	float sway = sin(TIME * 1.6 + INSTANCE_CUSTOM.y + world.x * 0.35) * 0.08 + sin(TIME * 0.6 + world.z * 0.2) * 0.05;
 	VERTEX.x += sway * tip * tip;
 }

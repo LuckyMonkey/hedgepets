@@ -336,11 +336,14 @@ func _build_world() -> void:
 	sun = DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.87, 0.68)                 # afternoon: low, warm, long shadows
 	sun.light_energy = 0.72
-	sun.shadow_enabled = true
+	sun.shadow_enabled = false
 	sun.shadow_blur = 2.5
 	sun.shadow_opacity = 0.72                          # tree shade, not a hole in the lawn
-	sun.directional_shadow_max_distance = 60.0
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS   # 4 splits drew every caster twice more, unseen
+	# Static foliage is deliberately not a shadow caster (see _bush below). Keep one short split for
+	# the large trunks, fence and house: the contact blobs and the lawn's painted dapple carry the soft
+	# miniature shade farther out without paying for two complete caster passes.
+	sun.directional_shadow_max_distance = 28.0
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	sun.rotation_degrees = Vector3(-33.0, -38.0, 0.0)
 	add_child(sun)
 	var fill := DirectionalLight3D.new()
@@ -398,6 +401,8 @@ func _build_ground() -> void:
 	m.set_shader_parameter("macro", ImageTexture.create_from_image(img))
 	m.set_shader_parameter("detail", ImageTexture.create_from_image(detail))
 	m.set_shader_parameter("dapple", load("res://assets/sprites/dapple.png"))
+	m.set_shader_parameter("shadow_map", _baked_shadow("res://assets/baked/shadows_garden.png"))
+	m.set_shader_parameter("shadow_bounds", Vector4(-32.0, -20.0, 32.0, 24.0))
 	# the lawn stops just behind the back fence: past it is the neighbourhood skybox (its own yards and street) - but
 	# the creek's woods, the trees east and the white house's own yard stand on real ground. Real things are always
 	# drawn over the skybox, so no real ground may lie behind anything in it (next door's houses, sheds, trees): the
@@ -495,6 +500,9 @@ func _bush(center: Vector3, radii: Vector3, sheet: String, palette: Dictionary, 
 	holder.add_child(mass)
 	var leaves := MultiMeshInstance3D.new()
 	leaves.multimesh = mm
+	# Alpha-tested leaf cards are the dominant shadow-map cost on WebGL/mobile. The lawn shader's
+	# fixed dapple and the tree masses retain the same broad, soft shade impression.
+	leaves.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if not full:
 		leaves.position = center
 	leaves.material_override = _leaf_material(sheet)
@@ -1230,6 +1238,8 @@ func _build_grass() -> void:
 	m.shader = load("res://shaders/grass.gdshader")
 	m.set_shader_parameter("grass_sheet", ImageTexture.create_from_image(image))
 	m.set_shader_parameter("dapple", load("res://assets/sprites/dapple.png"))
+	m.set_shader_parameter("shadow_map", _baked_shadow("res://assets/baked/shadows_garden.png"))
+	m.set_shader_parameter("shadow_bounds", Vector4(-32.0, -20.0, 32.0, 24.0))
 	# a tuft = two crossed quads
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -1369,6 +1379,14 @@ func _grass_edges(items: Array) -> void:
 ## The lawn is a texture (shaders/lawn.gdshader); 3D tufts only where grass grows long: patches the mower misses,
 ## round the things in the yard, a few flowers. 0 = not here, else the tuft's scale (patch grass grows taller).
 var _tall_noise: FastNoiseLite
+
+
+func _baked_shadow(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	var image := Image.create(1, 1, false, Image.FORMAT_RGB8)
+	image.fill(Color.WHITE)
+	return ImageTexture.create_from_image(image)
 
 
 func _tuft_kept(x: float, z: float, cell: int) -> float:

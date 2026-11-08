@@ -111,6 +111,16 @@ var _walking: Dictionary = {}         # {pts, s, len, to}
 var _press := Vector2.INF
 var _moved := false
 var _t := 0.0
+var _stream_chunks := {}
+var _stream_last := Vector3.INF
+
+
+func _baked_shadow(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	var image := Image.create(1, 1, false, Image.FORMAT_RGB8)
+	image.fill(Color.WHITE)
+	return ImageTexture.create_from_image(image)
 var _fireflies: Array = []
 var followers: Array = []             # HedgePetNode, in walking order
 var _carried: HedgePetNode = null
@@ -426,6 +436,45 @@ func _merge_static() -> void:
 			batch.append(n)
 	set_meta("merged", await GardenProps.merge_static(self, batch, 16.0))
 	set_meta("merged_from", batch.size())
+	_stream_prepare()
+
+
+## Static woods geometry is grouped by its 24 m map cell. Only the cells around the current clearing are drawn;
+## nothing is rebuilt while walking, so entering a new cell is a visibility change rather than a hitch.
+func _stream_prepare() -> void:
+	var keep := {cam: true, land: true, nursery: true, campfire: true, _ui: true}
+	for n in get_children():
+		if keep.has(n) or n is Camera3D or n is DirectionalLight3D or n is WorldEnvironment:
+			continue
+		if not n is GeometryInstance3D:
+			continue
+		var g := n as GeometryInstance3D
+		var box := g.get_aabb()
+		if maxf(box.size.x, box.size.z) > 40.0:
+			continue
+		var c: Vector3 = box.get_center() + n.position
+		var key := Vector2i(floori(c.x / 24.0), floori(c.z / 24.0))
+		if not _stream_chunks.has(key):
+			var chunk := Node3D.new()
+			chunk.name = "StreamChunk_%d_%d" % [key.x, key.y]
+			chunk.set_meta("stream_key", key)
+			add_child(chunk)
+			_stream_chunks[key] = chunk
+		n.reparent(_stream_chunks[key], true)
+	_stream_update(true)
+
+
+func _stream_update(force := false) -> void:
+	if _stream_chunks.is_empty() or cam == null:
+		return
+	var at := cam.position
+	if not force and at.distance_squared_to(_stream_last) < 1.0:
+		return
+	_stream_last = at
+	for key: Vector2i in _stream_chunks:
+		var chunk: Node3D = _stream_chunks[key]
+		var centre := Vector3((key.x + 0.5) * 24.0, at.y, (key.y + 0.5) * 24.0)
+		chunk.visible = Vector2(at.x, at.z).distance_to(Vector2(centre.x, centre.z)) < 43.0
 
 
 func _static_meshes_only(n: Node) -> bool:
@@ -549,9 +598,9 @@ func _build_sky() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color("ffe4b8")
 	sun.light_energy = 1.15
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 40.0
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS   # (as the garden's: same look, far fewer draws)
+	sun.shadow_enabled = false
+	sun.directional_shadow_max_distance = 24.0
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	sun.basis = Basis.looking_at(-to_sun, Vector3.UP)
 	add_child(sun)
 	var env := Environment.new()
@@ -883,11 +932,13 @@ func _ground(rng: RandomNumberGenerator) -> void:
 				st.add_vertex(cell[0])
 	st.generate_normals()
 	var m := StandardMaterial3D.new()
-	m.vertex_color_use_as_albedo = true
-	m.roughness = 1.0
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://shaders/woods_ground.gdshader")
+	sm.set_shader_parameter("shadow_map", _baked_shadow("res://assets/baked/shadows_woods.png"))
+	sm.set_shader_parameter("shadow_bounds", Vector4(-64.0, -116.0, 44.0, 24.0))
 	var node := MeshInstance3D.new()
 	node.mesh = st.commit()
-	node.material_override = m
+	node.material_override = sm
 	add_child(node)
 
 
@@ -923,10 +974,11 @@ func _ribbon(pts: PackedVector3Array, faint: bool) -> void:
 					st.add_vertex(q[0])
 		prev = row
 	st.generate_normals()
-	var m := StandardMaterial3D.new()
-	m.vertex_color_use_as_albedo = true
-	m.roughness = 1.0
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/woods_ground.gdshader")
+	m.set_shader_parameter("shadow_map", _baked_shadow("res://assets/baked/shadows_woods.png"))
+	m.set_shader_parameter("shadow_bounds", Vector4(-64.0, -116.0, 44.0, 24.0))
+	m.set_shader_parameter("cull_disabled", true)
 	var node := MeshInstance3D.new()
 	node.mesh = st.commit()
 	node.material_override = m
@@ -1206,9 +1258,10 @@ func _multimesh(mesh: Mesh, items: Array) -> void:
 	for i in items.size():
 		mm.set_instance_transform(i, items[i][0])
 		mm.set_instance_color(i, items[i][1])
-	var m := StandardMaterial3D.new()
-	m.vertex_color_use_as_albedo = true
-	m.roughness = 1.0
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/woods_ground.gdshader")
+	m.set_shader_parameter("shadow_map", _baked_shadow("res://assets/baked/shadows_woods.png"))
+	m.set_shader_parameter("shadow_bounds", Vector4(-64.0, -116.0, 44.0, 24.0))
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
 	node.material_override = m
@@ -2371,6 +2424,7 @@ func facing() -> Dictionary:
 
 
 func _process(delta: float) -> void:
+	_stream_update()
 	_t += delta
 	if not _walking.is_empty():
 		_step_walk(delta)

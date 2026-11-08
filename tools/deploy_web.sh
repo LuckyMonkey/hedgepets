@@ -10,6 +10,7 @@ if [ -f world/woods.compile ]; then                     # opt-in: ship the compi
     --script tools/compile_woods.gd 2>&1 | grep -E "compiled woods|built from it" || true
 fi
 echo "== bake the startup cache (always before an export)"
+godot --headless --audio-driver Dummy --path . --script tools/bake_shadows.gd | grep -E "baked shadows|shadow"
 godot --headless --path . --script tools/bake_cache.gd | grep -E "round trip|cache file"
 echo "== export the Web preset"
 rm -rf build/web && mkdir -p build/web
