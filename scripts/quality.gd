@@ -46,8 +46,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not enabled:
 		return
-	if _root == null or not is_instance_valid(_root) or _root != get_tree().current_scene:
-		_root = get_tree().current_scene
+	var garden := _find_garden()
+	if _root == null or not is_instance_valid(_root) or _root != garden:
+		_root = garden
 		_sample.clear()
 		_sample_time = 0.0
 		_bad = 0.0
@@ -110,7 +111,7 @@ func set_tier(value: Variant) -> void:
 
 func apply_current() -> void:
 	if _root == null or not is_instance_valid(_root):
-		_root = get_tree().current_scene
+		_root = _find_garden()
 	_apply_tier()
 	if _root != null and _root.find_child("Grass", true, false) != null and _root.find_child("TiltShift", true, false) != null:
 		_applied = true
@@ -131,9 +132,11 @@ func _apply_tier() -> void:
 			_set_tilt(1.0)
 			_set_grass(0.72)
 		LOW:
-			view.scaling_3d_scale = 0.75
+			# On Compatibility/WebGL at phone-window sizes the upscale pass costs more than the
+			# reduced 3D raster workload. Low saves geometry and post-processing instead.
+			view.scaling_3d_scale = 1.0
 			_set_shadows(false)
-			_set_tilt(0.82)
+			_set_tilt(0.0)
 			_set_grass(0.45)
 	for node in _all(_root):
 		if node.has_method("quality_tier_changed"):
@@ -241,3 +244,13 @@ func _all(node: Node) -> Array:
 	for child in node.get_children():
 		out.append_array(_all(child))
 	return out
+
+
+func _find_garden() -> Node:
+	var grouped := get_tree().get_nodes_in_group("hedgepets_garden")
+	if not grouped.is_empty():
+		return grouped[0]
+	var scene := get_tree().current_scene
+	if scene != null and scene.is_in_group("hedgepets_garden"):
+		return scene
+	return null

@@ -5,14 +5,13 @@ extends SceneTree
 ## Self-test first: a populated MultiMesh baked headless must be caught (it saves empty - the missing-leaves bug).
 ##   godot --headless --audio-driver Dummy --path . --script tools/foliage_bake_check.gd
 ## Exit 1 on any problem.
-const V := preload("res://tools/foliage_validate.gd")
-
-
 func _init() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
+	# Defer this load until project singletons exist; Godot 4.7 parses its garden dependency too early otherwise.
+	var validator = load("res://tools/foliage_validate.gd")
 	var fails := 0
 	# 1. the self-test: the regression this guards against must fail the validator
 	var mm := MultiMesh.new()
@@ -25,7 +24,7 @@ func _run() -> void:
 	var tmp := "user://foliage_probe.res"
 	ResourceSaver.save(probe, tmp, ResourceSaver.FLAG_COMPRESS)
 	var probe_back := ResourceLoader.load(tmp, "", ResourceLoader.CACHE_MODE_IGNORE) as BakedData
-	var caught: Array = V.check(probe_back)["problems"]
+	var caught: Array = validator.check(probe_back)["problems"]
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
 	print("%s self-test: a populated MultiMesh in a bake is rejected (%d problem(s))" % ["PASS" if caught.size() > 0 else "FAIL", caught.size()])
 	if caught.is_empty():
@@ -36,7 +35,7 @@ func _run() -> void:
 		print("FAIL cannot load %s" % BakeCache.PATH)
 		quit(1)
 		return
-	var r := V.check(data)
+	var r: Dictionary = validator.check(data)
 	for p in (r["problems"] as Array).slice(0, 20):
 		print("FAIL ", p)
 	fails += (r["problems"] as Array).size()

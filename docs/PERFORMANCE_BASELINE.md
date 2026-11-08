@@ -135,6 +135,51 @@ exports both artifacts. The test resource-only pack was 3.6 MB before compressio
 shadow contribution was softened to keep
 the centre of the lawn closer to the live-shadow comparison.
 
+## 2026-11-08: round 5
+
+The round-4 real-window probe found that Low still submitted 851k woods primitives (Medium: 865k), and its 0.75 3D
+scale was slower in the small Compatibility window (22.8 ms versus 14.9 ms, with machine noise). Low now keeps a
+1.0 scale and bypasses the tilt-shift sampling entirely. Its savings come from geometry: a 20 m stream radius,
+shorter trunk/crown/leaf ranges, and 18% distant leaf-card density (55% only within 14 m). Leaf patches are stored
+around their own authored origins, so renderer range and frustum culling no longer see every full-precision patch at
+the trailhead. Quality changes recurse into streamed chunks and find a nested garden through the
+`hedgepets_garden` group instead of assuming it is the current scene.
+
+`tools/tier_primitives.gd` is the display-independent guard. It embeds the garden under a harness scene, applies all
+three tiers through the group lookup, and counts visible geometry plus MultiMesh instances using streamed-parent
+visibility and authored ranges. The regenerated compiled woods measured:
+
+| Tier | Estimated visible triangles | Visible leaf instances | Visible leaf patches |
+|---|---:|---:|---:|
+| Low | **331,643** | **17,445** | 10 |
+| Medium | 418,255 | 60,751 | 10 |
+| High | 1,161,999 | 180,387 | 35 |
+
+The guard requires Low to stay below 400k triangles and below 30% of Medium's visible leaf instances. A real-window
+`tools/tier_cost.gd` rerun remains the authoritative GPU timing and submitted-primitive measurement.
+
+### LightmapGI investigation
+
+Godot 4.7's [Compatibility renderer](https://docs.godotengine.org/en/4.7/engine_details/architecture/internal_rendering_architecture.html),
+including Web exports, can display [LightmapGI](https://docs.godotengine.org/en/4.7/classes/class_lightmapgi.html)
+data baked on another renderer. Baking itself is editor-only and uses RenderingDevice/Vulkan compute (Forward+ or
+Mobile, or a temporary RD while an editor uses Compatibility). It is not available in an exported game or the
+[Web editor](https://docs.godotengine.org/en/4.7/tutorials/editor/using_the_web_editor.html). This machine cannot run
+that path: its headless display driver exposes only the dummy renderer, X11/Wayland are unavailable, and `xvfb-run`
+is not installed. There is no command-line lightmap bake mode.
+
+The current woods are also not bake-ready. Their procedural ArrayMesh and PrimitiveMesh surfaces have no UV2 unwrap,
+are not marked for static baked GI, and are assembled into `world/woods_compiled.scn` by a headless tool. PrimitiveMesh
+surfaces cannot be baked directly. LightmapGI therefore cannot replace `tools/bake_shadows.gd` without a new offline
+mesh/UV2 pipeline. Texture cost is unmeasured until that exists; for scale, one uncompressed RGBA8 1024² page is 4 MiB
+and a 2048² page is 16 MiB before any extra directional/shadowmask data or pack compression. That is material beside
+the round-4 3.6 MB woods resource pack.
+
+Decision: keep the small deterministic woods shadow atlas. The next safe experiment is an offline pilot on a
+Vulkan-capable editor machine: convert one 24 m static chunk to UV2-unwrapped ArrayMeshes, mark it static GI, bake a
+low-density 1024-page lightmap, export it to Compatibility/Web, and compare captures, frame cost, and compressed
+`woods.pck` size. Scale it beyond one chunk only if the Web result is stable and adds no more than about 4 MB.
+
 ## 2026-10-24: hitches moved behind cards (`tools/hitch_trace.gd`)
 
 The owner reported stutter, and stalls in the wrong places: during play instead of behind loading cards. Measured

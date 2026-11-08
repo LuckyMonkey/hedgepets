@@ -295,12 +295,14 @@ func finish() -> void:
 				# as bytes, not a MultiMesh: a headless bake keeps no MultiMesh data (they'd be saved empty)
 				var items: Array = pt["leaves"][sheet][1]
 				var full: bool = garden.foliage_precision() == "full"
-				var at := Vector3.ZERO
-				if not full:
-					for it: Array in items:
-						at += (it[0] as Transform3D).origin
-					at /= maxf(items.size(), 1)              # half precision about the patch's middle: millimetres
-				made.append(["leaves", garden.pack_leaves(items, at, full), sheet, items.size(), at])
+				var centre := Vector3.ZERO
+				for it: Array in items:
+					centre += (it[0] as Transform3D).origin
+				centre /= maxf(items.size(), 1)
+				# Keep every patch around its own origin. Besides improving half-float precision, this gives
+				# renderer distance/frustum culling the real patch position instead of the woods origin.
+				var at := centre
+				made.append(["leaves", garden.pack_leaves(items, at, full), sheet, items.size(), at, centre - at])
 			BakeCache.store(ck, made.filter(func(m: Array) -> bool: return m[0] != "mass") if rebuilt else made)
 		for m: Array in made:
 			match m[0]:
@@ -339,6 +341,7 @@ func finish() -> void:
 						leaf_mats[m[2]] = garden._leaf_material(m[2])
 					node.material_override = leaf_mats[m[2]]
 					node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+					node.set_meta("woods_local_centre", m[5] if m.size() > 5 else Vector3.ZERO)
 					# Leaf cards are the largest primitive pool in the woods. They are only detail on
 					# trees the player can meaningfully see; the merged dark masses carry the far read.
 					node.visibility_range_end = 36.0

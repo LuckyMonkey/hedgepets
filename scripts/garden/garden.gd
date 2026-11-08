@@ -118,6 +118,7 @@ const BUILD_STEPS := [
 
 
 func _ready() -> void:
+	add_to_group("hedgepets_garden")
 	if OS.has_feature("web") and str(JavaScriptBridge.eval("location.search")).contains("viewer"):
 		get_tree().change_scene_to_file.call_deferred("res://main3d.tscn")   # /hedgepets/?viewer: the pet viewer
 		return
@@ -544,7 +545,7 @@ static func pack_leaves(items: Array, origin: Vector3, full: bool) -> Variant:
 		var c: Color = items[i][1]
 		var d: Color = items[i][2]
 		var b := xf.basis
-		var o := xf.origin - origin if not full else xf.origin
+		var o := xf.origin - origin
 		var j := i * 20
 		f[j] = b.x.x; f[j + 1] = b.y.x; f[j + 2] = b.z.x; f[j + 3] = o.x
 		f[j + 4] = b.x.y; f[j + 5] = b.y.y; f[j + 6] = b.z.y; f[j + 7] = o.y

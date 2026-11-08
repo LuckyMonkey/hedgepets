@@ -19,7 +19,7 @@ const vec2 TAPS[12] = vec2[](
 
 void fragment() {
 	float d = abs(SCREEN_UV.y - focus_center);
-	float amount = smoothstep(focus_width, focus_width + falloff, d);
+	float amount = smoothstep(focus_width, focus_width + falloff, d) * quality_mix;
 	vec2 radius = SCREEN_PIXEL_SIZE * max_blur * amount;
 	vec3 c = texture(screen, SCREEN_UV).rgb;
 	if (amount > 0.01) {

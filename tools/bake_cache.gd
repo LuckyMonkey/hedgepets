@@ -1,7 +1,5 @@
 extends SceneTree
 
-const FoliageValidate := preload("res://tools/foliage_validate.gd")
-
 ## Rebuild res://assets/baked/garden.res: build the garden once while recording every foliage mass / leaf set and
 ## every stone mesh, save it, read it back and check every entry round-trips exactly, then time a cached startup.
 ## Run after changing the foliage / anatomy code or the garden's scenery, and before every export.
@@ -57,6 +55,8 @@ func _manifest(data: BakedData, file_bytes: int, foliage: Dictionary) -> void:
 
 
 func _run() -> void:
+	# Load after the project singletons exist; a top-level preload parses the garden before autoloads on Godot 4.7.
+	var foliage_validate = load("res://tools/foliage_validate.gd")
 	OS.set_environment("HEDGEPETS_FRESH", "1")
 	Motion.speed = 0.0
 	BakeCache.reset()
@@ -81,7 +81,7 @@ func _run() -> void:
 		n.queue_free()
 	print("built all %d pets live in %d ms" % [CharacterArtProfile.roster().size(), Time.get_ticks_msec() - t1])
 	var recorded: BakedData = BakeCache._data
-	var src := FoliageValidate.check(recorded)          # the leaves as the generators made them
+	var src: Dictionary = foliage_validate.check(recorded) # the leaves as the generators made them
 	var err := BakeCache.save()
 	print("recorded %d entries in a live build of %d ms; saved %s: %s" % [recorded.items.size(), live_ms, BakeCache.PATH, error_string(err)])
 	g.queue_free()
@@ -94,7 +94,7 @@ func _run() -> void:
 			bad += 1
 	print("round trip: %d / %d entries identical" % [recorded.items.size() - bad, recorded.items.size()])
 	# a successful bake isn't a complete one: the foliage must really be in the file
-	var got := FoliageValidate.check(back)
+	var got: Dictionary = foliage_validate.check(back)
 	for p in (src["problems"] + got["problems"]).slice(0, 20):
 		print("FOLIAGE PROBLEM: ", p)
 	var foliage_ok: bool = (src["problems"] as Array).is_empty() and (got["problems"] as Array).is_empty() \
