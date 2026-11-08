@@ -23,6 +23,7 @@ extends Elsewhere
 const ORIGIN := Vector3(0, -300, 0)             # far below everything: nothing of the garden is ever in view
 const EYE := 1.5
 const WALK_SPEED := 5.0
+const STREAM_RADIUS := 33.0
 const NODES := {
 	"trailhead": {"at": Vector2(0, 0), "lift": 0.0, "name": "The trailhead"},
 	"fork": {"at": Vector2(2, -24), "lift": 1.5, "name": "The mossy fork"},
@@ -474,7 +475,7 @@ func _stream_update(force := false) -> void:
 	for key: Vector2i in _stream_chunks:
 		var chunk: Node3D = _stream_chunks[key]
 		var centre := Vector3((key.x + 0.5) * 24.0, at.y, (key.y + 0.5) * 24.0)
-		chunk.visible = Vector2(at.x, at.z).distance_to(Vector2(centre.x, centre.z)) < 43.0
+		chunk.visible = Vector2(at.x, at.z).distance_to(Vector2(centre.x, centre.z)) < STREAM_RADIUS
 
 
 func _static_meshes_only(n: Node) -> bool:

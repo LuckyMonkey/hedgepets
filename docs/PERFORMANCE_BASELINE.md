@@ -107,6 +107,18 @@ Woods static geometry is now grouped into 24 m proximity chunks. Chunks within 4
 walking changes visibility only, never rebuilds geometry. `tools/render_cost.gd` disables the adaptive `Quality`
 autoload while measuring so scale/tilt-shift fallback cannot hide the renderer cost.
 
+## 2026-11-08: round 3
+
+The display measurement after round 2 was garden **466 draws / 305k primitives / ~20 ms** and woods **1094 draws /
+1.03M primitives / ~72 ms**. Round 3 aligns the offline atlas projection with each scene's actual directional-light
+travel vector, and includes the garden's authored props alongside trees and crowns. The woods proximity radius is now
+33 m; merged trunks, crown masses, and leaf cards resolve at 68 m, 58 m, and 36 m respectively. The near clearing
+remains unchanged while distant cells and leaf detail disappear into the existing haze.
+
+The configured offscreen capture could not produce PNGs in this environment because Godot's headless dummy renderer
+returns no SubViewport texture; the woods, clipping, and yard checks all pass. A real-display capture remains the visual
+verification path for the next deployment.
+
 ## 2026-10-24: hitches moved behind cards (`tools/hitch_trace.gd`)
 
 The owner reported stutter, and stalls in the wrong places: during play instead of behind loading cards. Measured
