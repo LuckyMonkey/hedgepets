@@ -314,12 +314,14 @@ func finish() -> void:
 					# Each patch is a culling unit. The near clearing remains unchanged, while distant
 					# trunks disappear into the existing blue haze instead of filling the frame.
 					node.visibility_range_end = 68.0
+					node.set_meta("woods_lod_kind", "trunk")
 					woods.add_child(node)
 				"mass":
 					var node := MeshInstance3D.new()
 					node.mesh = m[1]
 					node.material_override = GardenProps.mat("treemass%s" % (m[2] as Color).to_html(false), m[2])
 					node.visibility_range_end = 58.0
+					node.set_meta("woods_lod_kind", "mass")
 					woods.add_child(node)
 				"leaves":
 					var mm := MultiMesh.new()
@@ -340,4 +342,5 @@ func finish() -> void:
 					# Leaf cards are the largest primitive pool in the woods. They are only detail on
 					# trees the player can meaningfully see; the merged dark masses carry the far read.
 					node.visibility_range_end = 36.0
+					node.set_meta("woods_lod_kind", "leaves")
 					woods.add_child(node)

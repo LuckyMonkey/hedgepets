@@ -1929,6 +1929,7 @@ func _build_tilt_shift() -> void:
 	m.shader = load("res://shaders/tilt_shift.gdshader")
 	rect.material = m
 	layer.add_child(rect)
+	Quality.apply_current()
 
 
 # ------------------------------------------------------------------ input: pan, zoom, tap a pet

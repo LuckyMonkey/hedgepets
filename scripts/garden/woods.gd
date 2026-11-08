@@ -24,6 +24,8 @@ const ORIGIN := Vector3(0, -300, 0)             # far below everything: nothing 
 const EYE := 1.5
 const WALK_SPEED := 5.0
 const STREAM_RADIUS := 33.0
+const STREAM_RADIUS_LOW := 25.0
+const STREAM_RADIUS_HIGH := 72.0
 const NODES := {
 	"trailhead": {"at": Vector2(0, 0), "lift": 0.0, "name": "The trailhead"},
 	"fork": {"at": Vector2(2, -24), "lift": 1.5, "name": "The mossy fork"},
@@ -332,6 +334,11 @@ var _compiled: Node                    # the instanced compiled scene while buil
 var compiled_used := false
 
 
+func enter() -> void:
+	await WoodsPack.ensure()
+	await super.enter()
+
+
 static func source_stamp() -> String:
 	var all := ""
 	for path in SOURCES:
@@ -438,6 +445,7 @@ func _merge_static() -> void:
 	set_meta("merged", await GardenProps.merge_static(self, batch, 16.0))
 	set_meta("merged_from", batch.size())
 	_stream_prepare()
+	quality_tier_changed(Quality.tier_name())
 
 
 ## Static woods geometry is grouped by its 24 m map cell. Only the cells around the current clearing are drawn;
@@ -475,7 +483,33 @@ func _stream_update(force := false) -> void:
 	for key: Vector2i in _stream_chunks:
 		var chunk: Node3D = _stream_chunks[key]
 		var centre := Vector3((key.x + 0.5) * 24.0, at.y, (key.y + 0.5) * 24.0)
-		chunk.visible = Vector2(at.x, at.z).distance_to(Vector2(centre.x, centre.z)) < STREAM_RADIUS
+		chunk.visible = Vector2(at.x, at.z).distance_to(Vector2(centre.x, centre.z)) < _stream_radius()
+
+
+func quality_tier_changed(tier: String) -> void:
+	set_meta("quality_tier", tier)
+	_stream_update(true)
+	for node in get_children():
+		if not node is GeometryInstance3D:
+			continue
+		var kind := str(node.get_meta("woods_lod_kind", ""))
+		if kind == "leaves":
+			node.visibility_range_end = _leaf_range(tier)
+		elif kind == "mass":
+			node.visibility_range_end = 120.0 if tier == "high" else 58.0
+		elif kind == "trunk":
+			node.visibility_range_end = 140.0 if tier == "high" else 68.0
+
+
+func _stream_radius() -> float:
+	match str(get_meta("quality_tier", "medium")):
+		"low": return STREAM_RADIUS_LOW
+		"high": return STREAM_RADIUS_HIGH
+	return STREAM_RADIUS
+
+
+func _leaf_range(tier: String) -> float:
+	return 120.0 if tier == "high" else 28.0 if tier == "low" else 36.0
 
 
 func _static_meshes_only(n: Node) -> bool:

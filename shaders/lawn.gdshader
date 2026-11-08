@@ -12,7 +12,7 @@ uniform sampler2D dapple : filter_linear_mipmap, repeat_enable;
 uniform float dapple_strength = 0.8;
 uniform sampler2D shadow_map : source_color, filter_linear_mipmap;
 uniform vec4 shadow_bounds = vec4(-32.0, -20.0, 32.0, 24.0);
-uniform float shadow_strength = 0.72;
+uniform float shadow_strength = 0.45;
 varying vec3 world;
 
 void vertex() {

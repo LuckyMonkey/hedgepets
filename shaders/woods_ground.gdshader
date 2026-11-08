@@ -3,7 +3,7 @@ render_mode diffuse_lambert_wrap, specular_disabled;
 
 uniform sampler2D shadow_map : source_color, filter_linear_mipmap;
 uniform vec4 shadow_bounds = vec4(-64.0, -116.0, 44.0, 24.0);
-uniform float shadow_strength = 0.72;
+uniform float shadow_strength = 0.55;
 varying vec3 world;
 
 void vertex() {

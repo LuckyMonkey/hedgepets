@@ -154,7 +154,8 @@ func setup(g: Node3D) -> void:
 	Telemetry.start()
 	var here := pet_state.values().filter(func(s) -> bool: return s != "away").size()
 	Telemetry.event("session", {"touch": DisplayServer.is_touchscreen_available(), "w": garden.get_viewport().get_visible_rect().size.x,
-		"back_after_h": snappedf(_away_for / 3600.0, 0.1), "coins": coins, "here": here, "plants": plants.size()})                              # again once the toolbar is laid out (the chip finds its tool)
+		"back_after_h": snappedf(_away_for / 3600.0, 0.1), "coins": coins, "here": here, "plants": plants.size(),
+		"detail": Quality.tier_name(), "detail_bench_ms": snappedf(Quality.benchmark_value(), 0.1)})                 # again once the toolbar is laid out (the chip finds its tool)
 	if _away_for > 6.0 * 3600.0:
 		_welcome_back()
 	else:
@@ -1963,4 +1964,3 @@ func _load() -> void:
 	for name in saved:
 		if pet_state.has(name):
 			pet_state[name] = saved[name]
-

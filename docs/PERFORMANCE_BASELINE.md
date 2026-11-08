@@ -119,6 +119,22 @@ The configured offscreen capture could not produce PNGs in this environment beca
 returns no SubViewport texture; the woods, clipping, and yard checks all pass. A real-display capture remains the visual
 verification path for the next deployment.
 
+## 2026-11-08: round 4
+
+Detail is now an invisible three-tier choice. High restores full 3D scale, long woods visibility, distant leaf cards,
+full grass, tilt-shift, and live directional shadows; Medium is the round-3 balance; Low uses a 0.75 3D scale, shorter
+woods radius, fewer leaves, and reduced grass. The initial choice uses the adapter/CPU, then a fixed startup frame
+sample refines it. The result is cached in `user://settings.cfg` for 14 days per GPU and is corrected only after long
+hysteresis windows. `?detail=low|medium|high` and desktop `-- --detail=...` are hidden test overrides. The selected
+tier and benchmark median are included in the existing `session` telemetry event.
+
+The Web export now omits the compiled woods scene and woods atlas from the first pack and ships a separate `woods.pck`.
+On first entry the Web build downloads it to the browser's persistent user filesystem and loads it with
+`ProjectSettings.load_resource_pack`; desktop/editor builds continue using `res://` directly. The deployment script
+exports both artifacts. The test resource-only pack was 3.6 MB before compression by the web server. The baked garden
+shadow contribution was softened to keep
+the centre of the lawn closer to the live-shadow comparison.
+
 ## 2026-10-24: hitches moved behind cards (`tools/hitch_trace.gd`)
 
 The owner reported stutter, and stalls in the wrong places: during play instead of behind loading cards. Measured
