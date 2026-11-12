@@ -1,0 +1,152 @@
+{
+	"display": "headless",
+	"live_hitches": [
+		{
+			"moving": false,
+			"ms": 133.3,
+			"tags": [
+				"pet_build:Bramble:3.2ms",
+				"pet_build:Clover:0.1ms",
+				"pet_build:Gerald:52.4ms",
+				"pet_build:Hazel:0.1ms",
+				"pet_build:Juniper:0.2ms",
+				"pet_build:Smudge:0.1ms",
+				"pet_part:Bramble/BODY",
+				"pet_part:Bramble/FEET",
+				"pet_part:Bramble/HEAD",
+				"pet_part:Bramble/TAIL",
+				"pet_part:Clover/BODY",
+				"pet_part:Gerald/BODY",
+				"pet_part:Gerald/EARS",
+				"pet_part:Gerald/FEET",
+				"pet_part:Gerald/HEAD",
+				"pet_part:Gerald/MUZZLE",
+				"pet_part:Gerald/TAIL",
+				"pet_part:Gerald/foliage_BODY",
+				"pet_part:Gerald/foliage_EARS",
+				"pet_part:Gerald/foliage_HEAD",
+				"pet_part:Hazel/BODY",
+				"pet_part:Juniper/BODY",
+				"pet_part:Smudge/BODY",
+				"sky"
+			]
+		},
+		{
+			"moving": false,
+			"ms": 145.2,
+			"tags": [
+				"allocation:10.5ms",
+				"pet_build:Bramble",
+				"pet_build:Clover",
+				"pet_build:Hazel",
+				"pet_build:Juniper",
+				"pet_build:Smudge",
+				"sky"
+			]
+		}
+	],
+	"phases": {
+		"back_first": {
+			"frames": 300,
+			"max_ms": 7.43,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.85,
+			"p95_ms": 4.72,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"back_second": {
+			"frames": 300,
+			"max_ms": 6.96,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.74,
+			"p95_ms": 4.11,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"fast_first": {
+			"frames": 120,
+			"max_ms": 5.82,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.85,
+			"p95_ms": 3.93,
+			"slow": [],
+			"tags": {
+				"sky": 120
+			}
+		},
+		"fast_second": {
+			"frames": 120,
+			"max_ms": 9.0,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.91,
+			"p95_ms": 4.51,
+			"slow": [],
+			"tags": {
+				"sky": 120
+			}
+		},
+		"idle_first": {
+			"frames": 300,
+			"max_ms": 12.56,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.46,
+			"p95_ms": 6.12,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"idle_second": {
+			"frames": 300,
+			"max_ms": 3.75,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 1.96,
+			"p95_ms": 3.03,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"slow_first": {
+			"frames": 420,
+			"max_ms": 34.26,
+			"over33": 1,
+			"over50": 0,
+			"p50_ms": 2.66,
+			"p95_ms": 5.9,
+			"slow": [],
+			"tags": {
+				"allocation": 1,
+				"first_draw": 5,
+				"pet_build": 22,
+				"pet_part": 55,
+				"sky": 420
+			}
+		},
+		"slow_second": {
+			"frames": 420,
+			"max_ms": 5.99,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.78,
+			"p95_ms": 3.82,
+			"slow": [],
+			"tags": {
+				"sky": 420
+			}
+		}
+	},
+	"renderer": "",
+	"size": "Vector2(1080, 1920)"
+}

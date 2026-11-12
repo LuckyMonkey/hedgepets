@@ -85,6 +85,8 @@ func _run() -> void:
 	# the burrow gate: a burrowing pet arrives as a face in the doorway, climbs out, later goes home down it
 	var digger: CharacterArtProfile = garden.roster.filter(func(p) -> bool: return garden.gate_for(p) == "burrow")[0]
 	var dn: HedgePetNode = game._node(digger)
+	if dn.building:                                    # visitors build in slices now, hidden till whole (as in play)
+		await dn.materialized
 	garden.set_pet_mode(dn, "peek")
 	var dw: Dictionary = garden._wander[dn]
 	var burrow: Dictionary = garden.hideouts.spot_of("burrow")

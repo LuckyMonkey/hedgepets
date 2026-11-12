@@ -152,6 +152,8 @@ func _run() -> void:
 	garden.set_process(true)
 	game.pet_state["Clover"] = "resident"
 	var clover: HedgePetNode = game._node(garden.roster.filter(func(p) -> bool: return p.pet_name == "Clover")[0])
+	if clover.building:                                # visitors build in slices now, hidden till whole (as in play)
+		await clover.materialized
 	garden.set_pet_mode(clover, "roam", true)
 	for k in range(3):
 		game._tend_contraband("Clover")

@@ -17,6 +17,7 @@ extends MiniatureSky
 
 
 var _clouds: Array = []
+var _cloud_tick := 0.0
 var _noise: FastNoiseLite
 var _hills: FastNoiseLite
 var _forest_noise: FastNoiseLite
@@ -81,9 +82,14 @@ func setup(woods: Node3D, to_sun: Vector3, compiled_world: Node3D = null) -> voi
 	_clouds_build(world)
 
 
-func _tick(_delta: float) -> void:
+func _tick(delta: float) -> bool:
+	_cloud_tick += delta
+	if _cloud_tick < 1.0 / 12.0:                       # sub-pixel cloud drift does not need a full miniature redraw
+		return false
+	_cloud_tick = fmod(_cloud_tick, 1.0 / 12.0)
 	for c: Node3D in _clouds:                         # the clouds drift
 		c.position.x = c.get_meta("x0") + fmod(_t * 0.35 + c.get_meta("ph"), 120.0) - 60.0
+	return true
 
 
 func _environment() -> Environment:

@@ -44,6 +44,7 @@ func _ready() -> void:
 	_benchmarking = _override == "" and remembered < 0 and OS.get_environment("HEDGEPETS_FRESH") == ""
 
 func _process(delta: float) -> void:
+	HitchLog.frame(delta, _find_garden())
 	if not enabled:
 		return
 	var garden := _find_garden()

@@ -56,7 +56,7 @@ var _pending_plant := ""
 signal materialized
 static var _budget_frame := -1
 static var _budget_used := 0
-const SLICE_BUDGET_US := 6000
+const SLICE_BUDGET_US := 1500
 
 
 ## "starters" (compact: only starting pets baked, visitors built lazily) or "all" (baseline: every pet baked).
@@ -74,11 +74,13 @@ static var _t_last := 0
 func _slice() -> void:
 	if not sliced or not is_inside_tree():
 		return
+	HitchLog.tag("pet_build:" + profile.pet_name)
 	var now := Time.get_ticks_usec()
 	var f := Engine.get_process_frames()
 	if f != _budget_frame:
 		_budget_frame = f
 		_budget_used = 0
+		_t_last = now
 	elif _t_last > 0:
 		_budget_used += now - _t_last
 	_t_last = now
@@ -110,7 +112,9 @@ func _setup_body(p: CharacterArtProfile) -> void:
 	head.position = profile.regions["HEAD"]["center"]
 	pet.add_child(head)
 	await _build_regions()
-	_build_face()
+	await _slice()
+	await _build_face()
+	await _slice()
 	await rebuild_foliage()
 	if sliced:
 		sliced = false                                   # from now on it's an ordinary pet (regrafts build at once)
@@ -425,6 +429,7 @@ func _ellipsoid(parent: Node3D, center: Vector3, radii: Vector3, kind: String, o
 func _build_regions() -> void:
 	for name in profile.regions:
 		await _slice()
+		HitchLog.tag("pet_part:%s/%s" % [profile.pet_name, name])
 		var r: Dictionary = profile.regions[name]
 		var parent: Node3D = head if (name == "HEAD" or r.get("parent", "") == "HEAD") else pet
 		var center: Vector3 = Vector3.ZERO if name == "HEAD" else r["center"]
@@ -433,24 +438,27 @@ func _build_regions() -> void:
 		if name == "FEET":
 			var lift: float = r["radii"].y * float(HedgeAnatomy._shape(r).get("flat_bottom", 1.0))
 			for f in profile.feet:
+				await _slice()
 				var foot := _primitive(pet, r, f + Vector3(0, lift, 0), kind, outline)
 				foot.name = "FOOT"
 				# little toes along the front of each foot
 				var rr: Vector3 = r["radii"]
 				for k in range(int(r.get("toes", 0))):
+					await _slice()
 					var z := (float(k) / maxf(1.0, float(r.get("toes", 1)) - 1.0) - 0.5) * rr.z * 1.1
 					var toe := {"radii": rr * Vector3(0.3, 0.42, 0.26), "shape": {"exponent": 2.0, "flat_bottom": 0.4}}
 					_primitive(foot, toe, Vector3(rr.x * 0.86, -rr.y * 0.35, z), kind, outline * 0.7)
 			continue
 		if r.has("surface"):
-			_build_patch(name, r, parent, center)
+			await _build_patch(name, r, parent, center)
 			continue
 		if kind == "inner":
 			# the mass under the leaves is dense moss too (a few short shells), so a gap reads as moss, not skin
-			_build_patch(name, r, parent, center, 3, profile.inner_mass.lightened(0.4), 0.97)
+			await _build_patch(name, r, parent, center, 3, profile.inner_mass.lightened(0.4), 0.97)
 			continue
 		var sides := [1.0, -1.0] if r.get("mirror", false) else [1.0]
 		for side: float in sides:
+			await _slice()
 			var node := _primitive(parent, r, center * Vector3(1, 1, side), kind, outline, 0.97 if r.get("foliage", false) else 1.0)
 			node.name = name
 			var rot: Vector3 = r.get("rotation", Vector3.ZERO)
@@ -466,13 +474,16 @@ const PATCH_SHELLS := 9
 
 
 func _build_patch(name: String, r: Dictionary, parent: Node3D, center: Vector3, shells := PATCH_SHELLS, colour := Color(0, 0, 0, 0), scale := 1.0) -> void:
+	await _slice()
 	var d := HedgeAnatomy.detail(r["radii"], PET_FULL, 48, 12)
 	var mesh := HedgeAnatomy.build_mesh(r, d.x, d.y)
+	await _slice()
 	var radii: Vector3 = r["radii"]
 	var size := (radii.x + radii.y + radii.z) / 3.0
 	var tint: Color = colour if colour.a > 0.0 else r.get("tint_color", patch_tint(profile))
 	var sides := [1.0, -1.0] if r.get("mirror", false) else [1.0]
 	for side: float in sides:
+		await _slice()
 		var holder := Node3D.new()
 		holder.name = name
 		holder.position = center * Vector3(1, 1, side)
@@ -481,6 +492,7 @@ func _build_patch(name: String, r: Dictionary, parent: Node3D, center: Vector3, 
 		holder.scale = Vector3.ONE * scale
 		parent.add_child(holder)
 		for k in range(shells + 1):
+			await _slice()
 			var m := ShaderMaterial.new()
 			m.shader = preload("res://shaders/moss_patch.gdshader")
 			m.set_shader_parameter("layer", float(k) / shells)
@@ -535,6 +547,7 @@ func _build_face() -> void:
 	var f: Dictionary = profile.features
 	# eyes: dark, round, a little oversized, like ceramic or ink; one restrained highlight; an ink rim
 	for name in ["EYE_LEFT", "EYE_RIGHT"]:
+		await _slice()
 		if not profile.anchors.has(name):
 			continue
 		var holder := Node3D.new()
@@ -548,8 +561,10 @@ func _build_face() -> void:
 		_build_eye(holder, name, Vector3.RIGHT.dot(holder.basis.x))
 		eyes.append(holder)
 	if profile.anchors.has("NOSE"):
+		await _slice()
 		_ellipsoid(head, _anchor("NOSE"), f.get("nose", Vector3(0.1, 0.08, 0.12)), "nose", 0.012)
 	if profile.anchors.has("MOUTH"):
+		await _slice()
 		var nose := _anchor("NOSE")
 		var mouth := _anchor("MOUTH")
 		var w: float = f.get("nose", Vector3(0.1, 0.08, 0.12)).z
@@ -569,6 +584,7 @@ func _build_face() -> void:
 					pts.append(mouth + Vector3(0.0, (1.0 - t * t) * -w * 0.25 + w * 0.2, t * w * 1.3))
 				_stroke(pts)
 	if f.get("teeth", false) and profile.anchors.has("TEETH"):
+		await _slice()
 		var w2: float = f.get("nose", Vector3(0.1, 0.08, 0.12)).z
 		for side: float in [1.0, -1.0]:
 			var tooth := MeshInstance3D.new()
@@ -581,6 +597,7 @@ func _build_face() -> void:
 			tooth.material_overlay = _hull(0.008)
 	if f.get("cheeks", false):
 		for name in ["CHEEK_LEFT", "CHEEK_RIGHT"]:
+			await _slice()
 			if not profile.anchors.has(name):
 				continue
 			var cheek := MeshInstance3D.new()
@@ -651,17 +668,20 @@ func rebuild_foliage() -> void:
 		if not r.get("foliage", false):
 			continue
 		await _slice()
+		HitchLog.tag("pet_part:%s/foliage_%s" % [profile.pet_name, region_name])
 		var built := FoliageBuilder.build(profile, region_name, head_c, key_dir)
+		await _slice()
 		var parent: Node3D = head if (region_name == "HEAD" or r.get("parent", "") == "HEAD") else pet
 		var items: Array = built["items"]
 		if r.get("mirror", false):
 			items = _with_mirror(items, r)
 		elif r.has("rotation"):
 			items = _rotated(items, r, 1.0)
-		_add_multimesh(parent, items, region_name)
+		await _add_multimesh(parent, items, region_name)
 		for c in built["clusters"]:
 			cluster_debug.append({"position": c["position"], "parent": parent, "normal": c["normal"], "color": c["color"]})
-	_add_multimesh(pet, _tendrils(), "TENDRILS")
+	await _slice()
+	await _add_multimesh(pet, _tendrils(), "TENDRILS")
 	for f in extra_flowers:
 		_flower_node(f[0], f[1])
 	set_detail(detail, true)
@@ -706,8 +726,12 @@ func _add_multimesh(parent: Node3D, items: Array, label: String) -> void:
 	mm.use_colors = true
 	mm.use_custom_data = true
 	mm.mesh = quad
+	await _slice()
 	mm.instance_count = items.size()
+	await _slice()
 	for i in range(items.size()):
+		if i % 128 == 0:
+			await _slice()
 		mm.set_instance_transform(i, items[i][0])
 		mm.set_instance_color(i, items[i][1])
 		mm.set_instance_custom_data(i, items[i][2])

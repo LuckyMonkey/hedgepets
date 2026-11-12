@@ -60,12 +60,17 @@ func _unfade(m: Material) -> Material:
 	return _unfaded[m]
 
 
-func _tick(_delta: float) -> void:
+func _tick(_delta: float) -> bool:
 	var s: DirectionalLight3D = host.sun
 	if s != null:                                     # the garden's sun, wherever the hour has put it
-		_sun.basis = s.global_basis
-		_sun.light_color = s.light_color
-		_sun.light_energy = s.light_energy
+		var changed := not _sun.basis.is_equal_approx(s.global_basis) or not _sun.light_color.is_equal_approx(s.light_color) \
+			or not is_equal_approx(_sun.light_energy, s.light_energy)
+		if changed:
+			_sun.basis = s.global_basis
+			_sun.light_color = s.light_color
+			_sun.light_energy = s.light_energy
+		return changed
+	return false
 
 
 func _m(c: Color) -> StandardMaterial3D:
@@ -211,16 +216,17 @@ func _build(root: Node3D) -> void:
 		for i in range(60):
 			var x0 := -300.0 + i * 10.0
 			var z0 := 8.0 + j * 8.0
-			var c := Color("86964e").lerp(Color("9aa25a"), rng.randf()).darkened(rng.randf() * 0.08)
+			# cells only nudge the colour (the same rng draws as ever); the shader paints the patches, stripes and verges
+			var c := Color("8a9a52").lerp(Color("949f58"), rng.randf()).darkened(rng.randf() * 0.03)
 			for v: Vector3 in [Vector3(x0, 0, z0), Vector3(x0 + 10, 0, z0), Vector3(x0 + 10, 0, z0 + 8), Vector3(x0, 0, z0), Vector3(x0 + 10, 0, z0 + 8), Vector3(x0, 0, z0 + 8)]:
 				ground.set_color(c)
 				ground.set_normal(Vector3.UP)
 				ground.add_vertex(v + Vector3(0, -0.03, 0))
 	var gm := MeshInstance3D.new()
 	gm.mesh = ground.commit()
-	var gmat := StandardMaterial3D.new()
-	gmat.vertex_color_use_as_albedo = true
-	gmat.roughness = 1.0
+	var gmat := ShaderMaterial.new()                 # the garden lawn's grain, mown stripes, darker verges
+	gmat.shader = preload("res://shaders/neighborhood_ground.gdshader")
+	gmat.set_shader_parameter("detail", Assets.mipmapped("res://assets/sprites/lawn_detail.png"))
 	gm.material_override = gmat
 	root.add_child(gm)
 	# next door, both sides of the white house (which is real: it's in the garden)
@@ -237,6 +243,7 @@ func _build(root: Node3D) -> void:
 	_box(near, Vector3(6.0, 0.02, 0.02), Vector3(12.0, 2.1, 14.5), Color("dddddd"))
 	for k in range(4):
 		_box(near, Vector3(0.6, 0.7, 0.04), Vector3(10.0 + k * 1.3, 1.7, 14.5), [Color("d8c8a8"), Color("8aa0c0"), Color("f0f0ea"), Color("c06a5a")][k])
+	_box(near, Vector3(2.8, 0.03, 7.6), Vector3(18.3, 0.0, 25.0), Color("aaa496"))         # next door's driveway
 	_maple(near, Vector3(-9.0, 0, 13.0), rng)
 	_maple(near, Vector3(18.0, 0, 15.0), rng, 1.2)
 	# the street out front
@@ -264,6 +271,8 @@ func _build(root: Node3D) -> void:
 	for k in range(20):
 		var x := -140.0 + k * 14.0 + rng.randf_range(-1.5, 1.5)
 		_house(far, Vector3(x, 0, 47.0), Vector3(rng.randf_range(8.0, 10.0), rng.randf_range(5.0, 6.5), 7.0), sidings[rng.randi() % sidings.size()], Color("3e3a38").lightened(rng.randf() * 0.15), rng)
+		if k % 3 != 1:                                # most have a driveway to the road (no rng: the town stays the same)
+			_box(far, Vector3(2.6, 0.03, 4.4), Vector3(x + 6.2, 0.0, 41.4), Color("a29c8e"))
 	for k in range(16):
 		var x := -150.0 + k * 19.0 + rng.randf_range(-3, 3)
 		_house(far, Vector3(x, 0, 74.0 + rng.randf_range(-3, 3)), Vector3(9.0, 5.5, 7.0), sidings[rng.randi() % sidings.size()].darkened(0.1), Color("3a3634"), rng)

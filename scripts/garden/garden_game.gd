@@ -1822,16 +1822,20 @@ func set_ui_visible(on: bool) -> void:
 
 
 # ------------------------------------------------------------------ save
-func save() -> void:
+var _last_saved_state := ""                         # autosave serialises to detect changes, but avoids unchanged web I/O
+
+
+func save(force := false) -> void:
 	if OS.get_environment("HEDGEPETS_FRESH") != "":
 		return                                           # captures and checks never touch the player's garden
+	var save_started := HitchLog.begin("save")
 	var data := {"coins": coins, "cleared": cleared, "gone": [], "beds": [], "pets": pet_state, "plants": pet_plant,
 		"moved": _moved_state(),
 		"mended": {"fence": range(garden.fence_sections.size()).filter(func(i) -> bool: return garden.fence_sections[i]["mended"]),
 			"sprinkler": garden.things.any(func(t) -> bool: return t["kind"] == "sprinkler" and t.get("fixed", false))},
 		"gifts": gifts.map(func(g) -> Dictionary: return {"x": g["at"].x, "z": g["at"].z, "icon": g["node"].text, "value": g["value"]}),
 		"flowers": pet_flowers,
-		"last_visit": Time.get_unix_time_from_system(),
+		"last_visit": 0.0,
 		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
 		"following": following, "carried": carried, "nursery": nursery, "keep_seeds": keep_seeds, "woods_finds": woods_finds, "contraband": contraband,
 		"dirt": dirt_piles.map(func(d) -> Array: return [d["at"].x, d["at"].y, d["loads"]]), "shovelful": shovelful,
@@ -1847,19 +1851,26 @@ func save() -> void:
 		var pl = b["plant"]
 		data["beds"].append({"x": b["at"].x, "z": b["at"].y, "plant": null if pl == null else {"species": pl["species"], "stage": pl["stage"], "water": pl["water"], "progress": pl["progress"],
 			"genes": pl["genes"], "origin": pl["origin"]}})
+	var state := JSON.stringify(data)
+	if not force and state == _last_saved_state:
+		HitchLog.end("save", save_started)
+		return
+	_last_saved_state = state
+	data["last_visit"] = Time.get_unix_time_from_system()
 	var text := JSON.stringify(data)
 	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f != null:
 		f.store_string(text)
 		f.close()
 	WebSave.put(save_path, text)                          # the browser's copy, written at once (web only)
+	HitchLog.end("save", save_started)
 
 
 ## Leaving (tab hidden, app sent to the background, window closed): save right then, not up to 8 s later.
 func _notification(what: int) -> void:
 	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_WM_WINDOW_FOCUS_OUT]:
 		if garden != null and is_instance_valid(garden) and _loaded:
-			save()
+			save(true)
 			Telemetry.event("hidden")
 			Telemetry.flush()
 

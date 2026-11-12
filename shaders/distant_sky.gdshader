@@ -12,20 +12,26 @@ uniform vec3 fallback : source_color = vec3(0.77, 0.83, 0.86);
 uniform float soften = 0.0;      // a little blur, in pixels of the picture (a low-poly miniature reads as distance)
 
 void sky() {
-	vec3 d = view_inv * EYEDIR;
-	if (d.z >= -0.01) {
+	// The garden and woods use neither sky ambient nor sky reflections. Sampling the miniature during the radiance
+	// cubemap pass made every camera-uniform change redraw and filter a cubemap, although its result was discarded.
+	if (AT_CUBEMAP_PASS) {
 		COLOR = fallback;
 	} else {
-		vec2 p = d.xy / -d.z;
-		vec2 uv = vec2(0.5 + 0.5 * p.x / tan_half_w, 0.5 - 0.5 * p.y / (tan_half_w / aspect));
-		if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+		vec3 d = view_inv * EYEDIR;
+		if (d.z >= -0.01) {
 			COLOR = fallback;
-		} else if (soften > 0.0) {
-			vec2 px = soften / vec2(textureSize(land, 0));
-			COLOR = (texture(land, uv).rgb * 2.0 + texture(land, uv + vec2(px.x, 0.0)).rgb + texture(land, uv - vec2(px.x, 0.0)).rgb
-				+ texture(land, uv + vec2(0.0, px.y)).rgb + texture(land, uv - vec2(0.0, px.y)).rgb) / 6.0;
 		} else {
-			COLOR = texture(land, uv).rgb;
+			vec2 p = d.xy / -d.z;
+			vec2 uv = vec2(0.5 + 0.5 * p.x / tan_half_w, 0.5 - 0.5 * p.y / (tan_half_w / aspect));
+			if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+				COLOR = fallback;
+			} else if (soften > 0.0) {
+				vec2 px = soften / vec2(textureSize(land, 0));
+				COLOR = (texture(land, uv).rgb * 2.0 + texture(land, uv + vec2(px.x, 0.0)).rgb + texture(land, uv - vec2(px.x, 0.0)).rgb
+					+ texture(land, uv + vec2(0.0, px.y)).rgb + texture(land, uv - vec2(0.0, px.y)).rgb) / 6.0;
+			} else {
+				COLOR = texture(land, uv).rgb;
+			}
 		}
 	}
 }

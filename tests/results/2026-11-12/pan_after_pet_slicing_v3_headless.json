@@ -1,0 +1,128 @@
+{
+	"display": "headless",
+	"live_hitches": [
+		{
+			"moving": false,
+			"ms": 150.0,
+			"tags": [
+				"pet_build:Bramble:3.3ms",
+				"pet_build:Clover:0.1ms",
+				"pet_build:Gerald:38.9ms",
+				"pet_build:Hazel",
+				"pet_build:Juniper",
+				"pet_build:Smudge",
+				"pet_part:Bramble/BODY",
+				"pet_part:Bramble/FEET",
+				"pet_part:Bramble/HEAD",
+				"pet_part:Bramble/TAIL",
+				"pet_part:Clover/BODY",
+				"pet_part:Gerald/BODY",
+				"pet_part:Gerald/EARS",
+				"pet_part:Gerald/FEET",
+				"pet_part:Gerald/HEAD",
+				"pet_part:Gerald/MUZZLE",
+				"pet_part:Gerald/TAIL",
+				"pet_part:Gerald/foliage_BODY",
+				"pet_part:Gerald/foliage_EARS",
+				"pet_part:Gerald/foliage_HEAD",
+				"pet_part:Hazel/BODY",
+				"pet_part:Juniper/BODY",
+				"pet_part:Smudge/BODY",
+				"sky"
+			]
+		},
+		{
+			"moving": false,
+			"ms": 127.1,
+			"tags": [
+				"allocation:10.3ms",
+				"pet_build:Bramble",
+				"pet_build:Clover",
+				"pet_build:Hazel",
+				"pet_build:Juniper",
+				"pet_build:Smudge",
+				"sky"
+			]
+		}
+	],
+	"phases": {
+		"back_first": {
+			"frames": 300,
+			"max_ms": 11.75,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 3.06,
+			"p95_ms": 7.16,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"back_second": {
+			"frames": 300,
+			"max_ms": 8.99,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.73,
+			"p95_ms": 5.1,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"fast_first": {
+			"frames": 120,
+			"max_ms": 6.73,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 3.06,
+			"p95_ms": 5.22,
+			"slow": [],
+			"tags": {
+				"sky": 120
+			}
+		},
+		"fast_second": {
+			"frames": 120,
+			"max_ms": 6.08,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 3.14,
+			"p95_ms": 5.57,
+			"slow": [],
+			"tags": {
+				"sky": 120
+			}
+		},
+		"slow_first": {
+			"frames": 420,
+			"max_ms": 36.81,
+			"over33": 1,
+			"over50": 0,
+			"p50_ms": 2.86,
+			"p95_ms": 6.39,
+			"slow": [],
+			"tags": {
+				"allocation": 1,
+				"first_draw": 5,
+				"pet_build": 23,
+				"pet_part": 55,
+				"sky": 420
+			}
+		},
+		"slow_second": {
+			"frames": 420,
+			"max_ms": 12.09,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 3.86,
+			"p95_ms": 8.26,
+			"slow": [],
+			"tags": {
+				"sky": 420
+			}
+		}
+	},
+	"renderer": "",
+	"size": "Vector2(1080, 1920)"
+}

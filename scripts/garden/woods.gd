@@ -2184,6 +2184,8 @@ func _wild_spot() -> Vector3:
 func _wild_tick(delta: float) -> void:
 	for w: Dictionary in _wild:
 		var node: HedgePetNode = w["node"]
+		if node.building:
+			continue                                      # whole or not at all; materialisation finishes in shared slices
 		if w["gone"]:
 			w["wait"] -= delta
 			if w["wait"] <= 0.0:

@@ -1,0 +1,145 @@
+{
+	"display": "headless",
+	"live_hitches": [
+		{
+			"moving": false,
+			"ms": 150.0,
+			"tags": [
+				"pet_build:Bramble:42.7ms",
+				"pet_build:Clover:0.1ms",
+				"pet_build:Gerald:32.2ms",
+				"pet_build:Hazel:0.1ms",
+				"pet_build:Juniper:0.1ms",
+				"pet_build:Smudge:0.1ms",
+				"pet_part:Bramble/BODY",
+				"pet_part:Bramble/FEET",
+				"pet_part:Bramble/HEAD",
+				"pet_part:Bramble/TAIL",
+				"pet_part:Bramble/foliage_BODY",
+				"pet_part:Clover/BODY",
+				"pet_part:Gerald/BODY",
+				"pet_part:Gerald/EARS",
+				"pet_part:Gerald/FEET",
+				"pet_part:Gerald/HEAD",
+				"pet_part:Gerald/MUZZLE",
+				"pet_part:Gerald/TAIL",
+				"pet_part:Gerald/foliage_BODY",
+				"pet_part:Gerald/foliage_EARS",
+				"pet_part:Gerald/foliage_HEAD",
+				"pet_part:Hazel/BODY",
+				"pet_part:Juniper/BODY",
+				"pet_part:Smudge/BODY",
+				"sky"
+			]
+		},
+		{
+			"moving": false,
+			"ms": 132.2,
+			"tags": [
+				"pet_build:Bramble",
+				"pet_build:Clover",
+				"pet_build:Hazel",
+				"pet_build:Juniper",
+				"pet_build:Smudge",
+				"pet_part:Bramble/foliage_HEAD",
+				"sky"
+			]
+		}
+	],
+	"phases": {
+		"back_first": {
+			"frames": 300,
+			"max_ms": 6.06,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.71,
+			"p95_ms": 3.75,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"back_second": {
+			"frames": 300,
+			"max_ms": 6.72,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.74,
+			"p95_ms": 4.27,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"fast_first": {
+			"frames": 120,
+			"max_ms": 7.37,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 3.32,
+			"p95_ms": 6.21,
+			"slow": [],
+			"tags": {
+				"sky": 120
+			}
+		},
+		"fast_second": {
+			"frames": 120,
+			"max_ms": 5.17,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.87,
+			"p95_ms": 4.51,
+			"slow": [],
+			"tags": {
+				"sky": 120
+			}
+		},
+		"slow_first": {
+			"frames": 420,
+			"max_ms": 54.88,
+			"over33": 2,
+			"over50": 1,
+			"p50_ms": 2.97,
+			"p95_ms": 12.63,
+			"slow": [
+				{
+					"frame": 345,
+					"ms": 54.9,
+					"tags": [
+						"pet_build:Mulberry:6.1ms",
+						"pet_part:Mulberry/BODY",
+						"pet_part:Mulberry/EARS",
+						"pet_part:Mulberry/FEET",
+						"pet_part:Mulberry/HANDS",
+						"pet_part:Mulberry/HEAD",
+						"pet_part:Mulberry/MUZZLE",
+						"pet_part:Mulberry/TAIL",
+						"sky"
+					]
+				}
+			],
+			"tags": {
+				"allocation": 1,
+				"first_draw": 5,
+				"pet_build": 15,
+				"pet_part": 55,
+				"sky": 420
+			}
+		},
+		"slow_second": {
+			"frames": 420,
+			"max_ms": 15.84,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 3.07,
+			"p95_ms": 7.38,
+			"slow": [],
+			"tags": {
+				"sky": 420
+			}
+		}
+	},
+	"renderer": "",
+	"size": "Vector2(1080, 1920)"
+}

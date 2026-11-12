@@ -1,0 +1,115 @@
+{
+	"display": "headless",
+	"live_hitches": [
+		{
+			"moving": false,
+			"ms": 145.6,
+			"tags": [
+				"pet_build:Bramble:52.2ms",
+				"pet_build:Clover:49.4ms",
+				"pet_build:Gerald:38.3ms",
+				"pet_build:Hazel:14.1ms",
+				"pet_build:Juniper:52.6ms",
+				"pet_build:Smudge:43.1ms",
+				"sky"
+			]
+		},
+		{
+			"moving": false,
+			"ms": 121.1,
+			"tags": [
+				"sky"
+			]
+		}
+	],
+	"phases": {
+		"back_first": {
+			"frames": 300,
+			"max_ms": 11.22,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 3.2,
+			"p95_ms": 6.49,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"back_second": {
+			"frames": 300,
+			"max_ms": 14.77,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 3.8,
+			"p95_ms": 7.86,
+			"slow": [],
+			"tags": {
+				"sky": 300
+			}
+		},
+		"fast_first": {
+			"frames": 120,
+			"max_ms": 11.32,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 4.7,
+			"p95_ms": 7.95,
+			"slow": [],
+			"tags": {
+				"sky": 120
+			}
+		},
+		"fast_second": {
+			"frames": 120,
+			"max_ms": 11.75,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 3.86,
+			"p95_ms": 7.55,
+			"slow": [],
+			"tags": {
+				"sky": 120
+			}
+		},
+		"slow_first": {
+			"frames": 420,
+			"max_ms": 79.02,
+			"over33": 1,
+			"over50": 1,
+			"p50_ms": 2.42,
+			"p95_ms": 7.84,
+			"slow": [
+				{
+					"frame": 345,
+					"ms": 79.0,
+					"tags": [
+						"allocation:9.8ms",
+						"first_draw:Mulberry",
+						"pet_build:Mulberry:56.1ms",
+						"sky"
+					]
+				}
+			],
+			"tags": {
+				"allocation": 1,
+				"first_draw": 5,
+				"pet_build": 5,
+				"sky": 420
+			}
+		},
+		"slow_second": {
+			"frames": 420,
+			"max_ms": 15.87,
+			"over33": 0,
+			"over50": 0,
+			"p50_ms": 2.9,
+			"p95_ms": 6.23,
+			"slow": [],
+			"tags": {
+				"sky": 420
+			}
+		}
+	},
+	"renderer": "",
+	"size": "Vector2(1080, 1920)"
+}

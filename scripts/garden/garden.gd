@@ -37,6 +37,7 @@ var _dragged := false
 var _rng := RandomNumberGenerator.new()
 var roster: Array = []                            # every CharacterArtProfile; pets holds the ones built so far
 var _nodes := {}                                  # pet name -> HedgePetNode
+var _pending_pet_modes := {}                      # a sliced visitor stays wholly hidden until its baked parts are ready
 var _wander := {}                                 # pet -> {target, wait, mode}
 var game: Node                                    # scripts/garden/garden_game.gd
 const GAP := Vector3(2.5, 0.0, -11.0)             # the collapsed bit of fence (the burying-ground side)
@@ -152,8 +153,7 @@ func _ready() -> void:
 	if staged:
 		card.stage("Almost there", 1.0)
 		var t1 := Time.get_ticks_msec()
-		for k in range(3):                               # the first frames draw everything once (shaders warm up) behind the card
-			await get_tree().process_frame
+		await _warm_first_draw()                         # compile reachable views and upload every leaf sheet behind the card
 		boot_ms["first frames"] = Time.get_ticks_msec() - t1
 		set_process(true)
 		set_process_unhandled_input(true)
@@ -166,6 +166,46 @@ func _ready() -> void:
 		_start_in_woods.call_deferred(begin.get_slice(":", 1))
 	elif OS.get_environment("HEDGEPETS_FRESH") == "" and OS.get_environment("HEDGEPETS_NO_PREBUILD") == "":
 		get_tree().create_timer(1.5).timeout.connect(woods.prebuild)   # the garden's up: now the woods, quietly
+
+
+## Safari's first draw of a shader/material can take hundreds of milliseconds. The loading card is opaque, so turn
+## through the garden's reachable views and draw one leaf from every plant there; the first player pan then reuses
+## those pipelines and uploaded sheets. Temporary warmers never enter game state or the pet renderer.
+func _warm_first_draw() -> void:
+	var warmers: Array[MeshInstance3D] = []
+	var starter: HedgePetNode = _nodes.get("Gerald")
+	if starter != null and starter.leaves_mat != null and game != null:
+		var k := 0
+		for sp: String in game.SEEDS:
+			var item: Dictionary = game.SEEDS[sp]
+			var m := starter.leaves_mat.duplicate() as ShaderMaterial
+			m.set_shader_parameter("leaf_sheet", Assets.mipmapped("res://assets/sprites/%s.png" % item["sheet"]))
+			m.set_shader_parameter("leaf_normals", Assets.mipmapped("res://assets/sprites/%s_n.png" % item["sheet"]))
+			var quad := QuadMesh.new()
+			quad.size = Vector2(0.18, 0.18)
+			var n := MeshInstance3D.new()
+			n.mesh = quad
+			n.material_override = m
+			n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			n.position = _target + Vector3((k % 6 - 3) * 0.22, 1.0 + (k / 6) * 0.22, 0.0)
+			add_child(n)
+			warmers.append(n)
+			k += 1
+	var rest_yaw := _yaw
+	for quarter in range(4):
+		_yaw = rest_yaw + quarter * PI * 0.5
+		_place_camera()
+		neighborhood.follow(camera, camera.position, 0.0)
+		HitchLog.tag("first_draw:warmup")
+		await get_tree().process_frame
+	_yaw = rest_yaw
+	_place_camera()
+	neighborhood.follow(camera, camera.position, 0.0)
+	HitchLog.tag("first_draw:warmup")
+	await get_tree().process_frame
+	for n: MeshInstance3D in warmers:
+		n.visible = false
+		n.queue_free()
 
 
 ## Where to start (development): `-- --start=woods:ridge` on the command line (the HedgePets editor dock uses it), or
@@ -1465,8 +1505,10 @@ func node_for(p: CharacterArtProfile) -> HedgePetNode:
 	add_child(node)
 	# compact cache profile: a visitor that isn't baked grows from its recipe in slices, hidden till whole (starting
 	# residents are built at once, during the load, as ever)
-	node.sliced = is_built and HedgePetNode.pets_baked() == "starters" and not p.starts_resident
+	node.sliced = is_built and not p.starts_resident
+	var build_started := HitchLog.begin("pet_build:" + p.pet_name)
 	node.setup(p)
+	HitchLog.end("pet_build:" + p.pet_name, build_started)
 	node.scale = Vector3.ONE * PET_SCALE
 	node.rotation.y = _rng.randf_range(-PI, PI)
 	node.set_detail("MEDIUM", true)
@@ -1476,12 +1518,22 @@ func node_for(p: CharacterArtProfile) -> HedgePetNode:
 	pets.append(node)
 	_nodes[p.pet_name] = node
 	_wander[node] = {"target": node.position, "wait": _rng.randf_range(0.5, 3.0), "mode": "away", "gate": gate_for(p)}
+	if node.building:
+		node.materialized.connect(func() -> void:
+			if _pending_pet_modes.has(node):
+				var wanted: Array = _pending_pet_modes[node]
+				_pending_pet_modes.erase(node)
+				set_pet_mode(node, wanted[0], wanted[1]))
 	return node
 
 
 ## How a pet is in the garden: "away" (out of sight), "peek" (at the fence gap, looking in), "roam" (wandering),
 ## "leave" (walking back out through the gap).
 func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
+	if node.building:
+		_pending_pet_modes[node] = [mode, at_once]
+		node.visible = false
+		return
 	var w: Dictionary = _wander[node]
 	if w["mode"] == "carried":
 		return                                           # in the bucket: only uncarry() lets it out
@@ -1499,6 +1551,8 @@ func set_pet_mode(node: HedgePetNode, mode: String, at_once := false) -> void:
 				node.visible = false
 				node.position = g["out"]
 		"peek":
+			if was == "away":
+				HitchLog.tag("first_draw:" + node.profile.pet_name)
 			var bs: Dictionary = hideouts.spot_of("burrow") if hideouts != null else {}
 			if w.get("gate", "") == "burrow" and was == "away" and not bs.is_empty() and bs["occupant"] == null:
 				hideouts.place_hidden(node, bs, 9999.0)          # a face in the burrow doorway, looking out
@@ -1582,6 +1636,8 @@ func _process(delta: float) -> void:
 	_yaw = Motion.spring(_yaw, _goal_yaw, _cam_yaw, 0.1 if _dragged else 0.45, delta)
 	_elev = Motion.spring(_elev, _goal_elev, _cam_elev, 0.1 if _dragged else 0.25, delta)
 	_distance = Motion.spring(_distance, _goal_distance, _cam_zoom, 0.16, delta)
+	HitchLog.camera_moving(_target.distance_squared_to(_goal_target) > 0.0001 or absf(_yaw - _goal_yaw) > 0.0001 \
+		or absf(_elev - _goal_elev) > 0.0001 or absf(_distance - _goal_distance) > 0.0001)
 	_place_camera()
 	neighborhood.follow(camera, camera.position, delta)
 
@@ -2032,8 +2088,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _dragged and _pan_drag:
 			_pan_by(event.relative)
 		elif _dragged:
-			_goal_yaw -= event.relative.x * TURN_PER_PX
-			_goal_elev = clampf(_goal_elev + event.relative.y * 0.002, deg_to_rad(28), deg_to_rad(72))
+			_turn_by(event.relative)
 
 
 func _touch_mid() -> Vector2:
@@ -2056,6 +2111,11 @@ func _pan_by(screen: Vector2) -> void:
 	var right := Vector3(cos(_yaw), 0, -sin(_yaw))
 	var toward_camera := Vector3(sin(_yaw), 0, cos(_yaw))
 	_goal_target = _clamp_target(_goal_target - right * screen.x * k - toward_camera * screen.y * k)
+
+
+func _turn_by(screen: Vector2) -> void:
+	_goal_yaw -= screen.x * TURN_PER_PX
+	_goal_elev = clampf(_goal_elev + screen.y * 0.002, deg_to_rad(28), deg_to_rad(72))
 
 
 func _zoom_by(factor: float) -> void:
