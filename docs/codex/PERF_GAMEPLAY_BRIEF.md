@@ -10,13 +10,32 @@ cause of a rendering problem; if so, stop and write it up in the report instead 
 
 ## Part A - the stutter when panning the garden camera (owner: "runs fine then it doesn't, very choppy")
 
+**The owner's numbers (iPhone):** a steady 28-35 fps that drops to ~2 fps for a moment, then back to 30. It is the
+**1% lows: discrete stalls of roughly 300-500 ms**, not a slow average and not thermal throttling. Find what does one big
+piece of work on the main thread. Candidates, measure each:
+
+- **A hedgepet's first build** when a new face comes to the fence (every 14 s, down to 5; "a pet's node is only built
+  the first time it comes by"; 17-28 ms on desktop, likely 10x on a phone), and its leaf-sheet mipmaps / texture upload.
+  If this is it, it IS a root cause in how pets are built, so the "don't touch the pets" rule allows changing WHEN and
+  HOW they are built (prebuild behind the loading card, build in slices, share materials), but not how they look.
+- **First-draw shader / pipeline compiles** for a material seen for the first time (a new pet, a new variant plant, the
+  pan revealing something) - in Safari these are the worst stalls of all.
+- **Saving** (`garden_game.save()` serialises the whole garden; on the web user:// is IndexedDB): time it.
+- **GC / allocations:** big Arrays/Dictionaries/strings rebuilt in `_process` (and JS-side garbage).
+- The sky's cubemap redraw while panning (hypothesis 1) - steadier, but costly on a phone.
+
+**Instrument stalls with their cause:** a hitch log - every frame over 100 ms records what happened in that frame
+(tag the suspects: "pet_build:<name>", "first_draw", "save", "woods", "sky", "gc" if detectable…), kept in memory and
+sent in the frame-time telemetry (below). Reproduce on the laptop: a scripted session where new faces come to the
+fence while the camera pans, logging every frame over 50 ms with its tags. Fix the biggest cause first; the target
+is no frame over ~50 ms on the laptop during normal play, and the iPhone telemetry confirms it.
+
 **The owner saw this on an iPhone** (Safari, WebGL 2 through ANGLE to Metal). That shifts the weight:
 
 - **Shader/pipeline compiles are far slower in Safari** than on the laptop: every material seen for the first time can
   stall a frame by tens to hundreds of ms. Warming every garden material behind the loading card (hypothesis 2) is
   probably the biggest single win on the phone, and the sky's per-frame cubemap redraw (hypothesis 1) costs more there.
-- **Thermal throttling:** an iPhone runs full speed, heats up, then iOS slows the GPU - "fine, then choppy" after a
-  minute or two. Lower the steady-state GPU load: the miniature redrawn only when its view changes (hypothesis 3),
+- **(Lower priority now: the owner's numbers point at stalls, not throttling.)** Still worth it: lower the steady-state GPU load: the miniature redrawn only when its view changes (hypothesis 3),
   its resolution lower on phones, the canvas size (deploy/web/shell.html caps devicePixelRatio at 2 - measure 1.5 on
   phones), no work for things off screen, and consider capping to 30 fps on phones (steady 30 beats 60 that drops to
   20). Use the existing quality tiers (`scripts/quality.gd`) for any phone-only setting.
