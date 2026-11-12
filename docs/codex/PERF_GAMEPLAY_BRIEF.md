@@ -10,6 +10,23 @@ cause of a rendering problem; if so, stop and write it up in the report instead 
 
 ## Part A - the stutter when panning the garden camera (owner: "runs fine then it doesn't, very choppy")
 
+**The owner saw this on an iPhone** (Safari, WebGL 2 through ANGLE to Metal). That shifts the weight:
+
+- **Shader/pipeline compiles are far slower in Safari** than on the laptop: every material seen for the first time can
+  stall a frame by tens to hundreds of ms. Warming every garden material behind the loading card (hypothesis 2) is
+  probably the biggest single win on the phone, and the sky's per-frame cubemap redraw (hypothesis 1) costs more there.
+- **Thermal throttling:** an iPhone runs full speed, heats up, then iOS slows the GPU - "fine, then choppy" after a
+  minute or two. Lower the steady-state GPU load: the miniature redrawn only when its view changes (hypothesis 3),
+  its resolution lower on phones, the canvas size (deploy/web/shell.html caps devicePixelRatio at 2 - measure 1.5 on
+  phones), no work for things off screen, and consider capping to 30 fps on phones (steady 30 beats 60 that drops to
+  20). Use the existing quality tiers (`scripts/quality.gd`) for any phone-only setting.
+- **You cannot measure an iPhone from here**, so add evidence from real sessions: web telemetry (`scripts/telemetry.gd`,
+  `Telemetry.event`) of frame times - every ~30 s while playing: median, p95, max, count of frames > 50 ms, and whether
+  the camera was moving, plus the quality tier, canvas size and device pixel ratio. Small, aggregated, no personal
+  data. The owner will play on the iPhone after the deploy and the report (go's telemetry page) shows before/after.
+- On the laptop, test the web export too if you can (`tools/deploy_web.sh` builds it; serve it locally and open it
+  in Firefox, muted), not only the desktop run.
+
 Hypotheses found by reading the code (verify each by measurement before and after; keep what helps):
 
 1. **The garden sky re-renders its radiance cubemap on every moving frame.** `scripts/garden/miniature_sky.gd`
