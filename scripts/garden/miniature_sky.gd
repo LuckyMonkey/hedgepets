@@ -9,6 +9,9 @@ extends Node
 const SCALE := 16.0
 
 var res := 0.6                                       # of the screen's resolution
+## The picture is a little wider than the screen: while the camera turns it is redrawn a frame late, and without the
+## margin its edge (the shader's flat fallback colour) showed as a seam down the side of the sky.
+const OVERSCAN := 1.1
 var view: SubViewport
 var sky_cam: Camera3D
 var _sky_mat: ShaderMaterial
@@ -50,7 +53,7 @@ func _make_view(host_vp: Viewport, env: Environment, world: Node3D = null) -> No
 
 func _fit() -> void:
 	var s := _host_vp.get_visible_rect().size if _host_vp != null else Vector2(540, 960)
-	var wanted := Vector2i(maxi(64, int(s.x * res)), maxi(64, int(s.y * res)))
+	var wanted := Vector2i(maxi(64, int(s.x * res * OVERSCAN)), maxi(64, int(s.y * res * OVERSCAN)))
 	if view.size != wanted:
 		view.size = wanted
 		_request_redraw()
@@ -74,7 +77,7 @@ func follow(cam: Camera3D, local_pos: Vector3, delta: float) -> void:
 	if pose_changed:
 		sky_cam.position = pos
 		sky_cam.rotation = cam.rotation
-		sky_cam.fov = cam.fov
+		sky_cam.fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(cam.fov) * 0.5) * OVERSCAN))
 		_last_pos = pos
 		_last_basis = basis
 		_last_fov = cam.fov
@@ -84,7 +87,7 @@ func follow(cam: Camera3D, local_pos: Vector3, delta: float) -> void:
 	var projection_changed := pose_changed or not is_equal_approx(aspect, _last_aspect)
 	if projection_changed and _sky_mat != null:       # how the host's sky finds this picture's pixels
 		_sky_mat.set_shader_parameter("view_inv", basis.transposed())
-		_sky_mat.set_shader_parameter("tan_half_w", tan(deg_to_rad(cam.fov) * 0.5))
+		_sky_mat.set_shader_parameter("tan_half_w", tan(deg_to_rad(cam.fov) * 0.5) * OVERSCAN)
 		_sky_mat.set_shader_parameter("aspect", aspect)
 		_last_aspect = aspect
 	if pose_changed or _tick(delta):

@@ -226,3 +226,21 @@ its palette and bloom; `tools/capture_plants.gd` -> docs/acceptance/plants.png.
     HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/garden_fps.gd       # ~3.5 ms/frame on the RTX 3050 (close other game windows first)
 
 HEDGEPETS_FRESH=1 starts from a new garden and never reads or writes the player's save.
+
+## The garden as a whole, cause and effect, introductions (2026-11-12)
+
+`scripts/garden/garden_story.gd` (GardenStory), read entirely from the rules the game already runs on (`wants`,
+`garden_counts()`, `capacity()`, `grows_for()`):
+
+- **Your garden** (top of the 📖 journal): what the garden offers, grouped - plants (planted / grown / in flower, and
+  who is made of each), food, water, shelter, comforts, company - each offer with the hedgepets it draws: met ones by
+  name, unmet ones only as their animal ("a red fox"), at most three, then "…". **Room**: n of 6 at once, and exactly
+  how many more kinds grown or built make room for one more (capacity = 2 + every 3 kinds).
+- **Cause and effect:** once a second, each hedgepet's wishes for its next step are compared with the last second's;
+  the first wish newly met says so in the caption ("A red fox would like a leaf pile like that.", "Bramble would like
+  that jasmine."). One line, no pop-ups, no counters. Telemetry `wish_met`.
+- **Introductions:** the first time a hedgepet comes in (noticed -> visiting), the camera's goal eases to it (the
+  spring does the easing; any drag takes over) and a card names it: its animal, the plant it's made of, what drew it
+  in, what would make it stay, its hint. Once per hedgepet per garden; saved as `introduced` (older saves: whoever is
+  visiting or resident already counts as met). The journal marks them "met in your garden". Telemetry `introduced`.
+- No timers in any of it. Check: `tools/story_check.gd`.

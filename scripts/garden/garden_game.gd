@@ -125,9 +125,11 @@ var _journal_text: RichTextLabel
 
 
 var grab: Node                       # scripts/garden/garden_grab.gd: yank, haul, sell, fix
+var story: GardenStory              # scripts/garden/garden_story.gd: Your garden, cause and effect, introductions
 
 
 func setup(g: Node3D) -> void:
+	story = GardenStory.new(self)
 	garden = g
 	if OS.get_environment("HEDGEPETS_SAVE") != "":
 		save_path = OS.get_environment("HEDGEPETS_SAVE")      # checks use their own save file
@@ -293,6 +295,7 @@ var _notice_wait := 4.0
 
 func _visitors() -> void:
 	var counts := garden_counts()
+	story.watch(counts)
 	_notice_wait -= 1.0
 	var guests := 0                                       # everyone here: residents too (room for capacity())
 	for k in pet_state:
@@ -314,7 +317,8 @@ func _visitors() -> void:
 			"noticed":
 				if _met(p.wants["visit"], counts):
 					next = "visiting"
-					toast("%s came in to have a look around." % name)
+					if story.introduced.has(name):
+						toast("%s came in to have a look around." % name)
 				elif not _met(p.wants["notice"], counts):
 					_since[name] = float(_since.get(name, 0.0)) + 1.0
 					if float(_since[name]) > 90.0:          # lingers at the fence a good while first
@@ -342,6 +346,8 @@ func _visitors() -> void:
 			_since[name] = 0.0
 			pet_state[name] = next
 			_apply_mode(_node(p))
+			if next == "visiting":
+				story.arrived(p)                          # the first time: the camera eases to it, a card introduces it
 			_refresh()
 
 
@@ -1551,7 +1557,7 @@ func _show_tool() -> void:
 
 
 func _fill_journal() -> void:
-	var lines := "[b]Journal[/b]\n\n"
+	var lines := "[b]Journal[/b]\n\n" + story.page()
 	var counts := garden_counts()
 	var unseen: Array = []
 	for p: CharacterArtProfile in garden.roster:
@@ -1569,6 +1575,8 @@ func _fill_journal() -> void:
 		var seen_as := ("\n[color=#7a6a50]seen as %s[/color]" % ", ".join(vs)) if vs.size() > 1 else ""
 		if is_contraband(p.pet_name):
 			hint = "It wants sun. Lots of sun. Preferably where nobody can see it."
+		if story.introduced.has(p.pet_name):
+			label += ", met in your garden"
 		lines += "[b]%s[/b] the %s - %s\n%s%s\n\n" % [p.pet_name, SpeciesBuilder.variant_name(p, pet_plant.get(p.pet_name, "")), label, hint, seen_as]
 	# rumours: a few of the ones you haven't met, the nearest to noticing first
 	lines += "[b]Around the neighbourhood[/b]\n\n"
@@ -1576,7 +1584,6 @@ func _fill_journal() -> void:
 	for p: CharacterArtProfile in unseen.slice(0, 4):
 		var vs: Array = SpeciesBuilder.variants_of(p).map(func(v) -> String: return SpeciesBuilder.PLANT_NAMES.get(v, v))
 		lines += "🐾 %s [color=#7a6a50]Seen near gardens growing %s.[/color]\n\n" % [p.hints["notice"], " or ".join(vs.slice(0, 2)) if vs.size() <= 2 else ", ".join(vs.slice(0, vs.size() - 1)) + " or " + vs[vs.size() - 1]]
-	lines += "[color=#7a6a50]Room here for %d at once.[/color]\n" % capacity()
 	lines += "\n[url=howto]❓ How to play[/url]     [url=feedback]💬 Tell us what you think[/url]\n"
 	_journal_text.text = lines
 
@@ -1837,7 +1844,7 @@ func save(force := false) -> void:
 		"flowers": pet_flowers,
 		"last_visit": 0.0,
 		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
-		"following": following, "carried": carried, "nursery": nursery, "keep_seeds": keep_seeds, "woods_finds": woods_finds, "contraband": contraband,
+		"following": following, "carried": carried, "nursery": nursery, "introduced": story.introduced, "keep_seeds": keep_seeds, "woods_finds": woods_finds, "contraband": contraband,
 		"dirt": dirt_piles.map(func(d) -> Array: return [d["at"].x, d["at"].y, d["loads"]]), "shovelful": shovelful,
 		"barrow": {"x": barrow["node"].position.x, "z": barrow["node"].position.z, "load": int(barrow.get("load", 0))} if barrow.has("node") else {},
 		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["node"].position.x, "z": b["node"].position.z, "yaw": b["node"].rotation_degrees.y})}
@@ -1949,6 +1956,7 @@ func _load() -> void:
 		_place(str(b["kind"]), Vector2(float(b["x"]), float(b["z"])), float(b["yaw"]), false)
 	following = (data.get("following", []) as Array).filter(func(n) -> bool: return n is String)
 	carried = str(data.get("carried", ""))
+	story.introduced = (data.get("introduced", []) as Array).filter(func(n) -> bool: return n is String)
 	var ns = data.get("nursery", {})
 	if ns is Dictionary:
 		for k in ns:
@@ -1975,3 +1983,5 @@ func _load() -> void:
 	for name in saved:
 		if pet_state.has(name):
 			pet_state[name] = saved[name]
+	if not data.has("introduced"):                      # a garden from before introductions: whoever's in already is met
+		story.introduced = pet_state.keys().filter(func(n) -> bool: return pet_state[n] in ["visiting", "resident"])
