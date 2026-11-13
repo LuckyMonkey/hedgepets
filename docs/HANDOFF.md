@@ -19,16 +19,19 @@ offering dishes, collection page, favourites: `docs/codex/REPORT_LOOPS_2026-11-1
 redraw, fades instead of cell pop: `REPORT_WOODS_2026-11-13.md`); tap the lawn with ✋ to frame the camera; fences
 without z-fighting; next door's yards match the white house's lawn; weather of the day (`garden.gd` `weather()`).
 
-**In flight (Codex, worktrees `~/work/hp-<name>`, branch `codex-<name>`, briefs in `docs/codex/`):**
-- `woods` pass 2 (`WOODS2_BRIEF_2026-11-13.md`): a skybox alignment check + fixes, trail clipping, pop-in, the ravine,
-  binoculars at the ravine with details to find, a miniature of the garden visible from the woods.
-- `rocks` (`ROCKS_BRIEF_2026-11-13.md`): `scripts/art/rock_factory.gd` - plane-cut rocks by role (wall/cap/stepping/
-  boulder/cobble/ledge) with fitting (dry-stone walls like a puzzle, trail crossings), used everywhere; `tools/rock_lab.tscn`.
-Review = read the report, capture the views it names (Codex's sandbox can't open X; use display :77, see quick-start),
-judge the look, merge into main, deploy.
+**Also live (later 2026-11-13):** woods passes 2-4 (ridge as the ravine with strata ledges, mounted binoculars with six
+details to find, a toy of home seen from the woods, skybox_check, lighter woods ground, arrival views kept clear);
+the rock factory (`scripts/art/rock_factory.gd`, `data/rocks.json`, `docs/ROCKS_SPEC.md`: plane-cut low-poly rocks,
+15-22 tris, every rock in the game); woods hand-placement editor (`world_editor.tscn -- --woods=<place>`,
+`world/woods_overrides.tres`); deploys ping the owner's phone with a link (ntfy).
+Worktrees `~/work/hp-<name>` / branches `codex-<name>` are merged; reuse them for the next Codex job.
+
+**Gotchas learned:** Godot front faces wind clockwise (generated meshes); Godot 4 has MODEL_MATRIX, not WORLD_MATRIX
+(a failed shader silently falls back - grep deploy logs for "SHADER ERROR"); Codex's sandbox can't open X - Claude
+renders captures on a private Xvfb (`:77`) and hands Codex the PNGs (`codex exec -i a.png -i b.png -- "prompt"`).
 
 **Open:** a hand-placement editor for the woods (stable IDs for woods placements + the overrides file, like
-`docs/WORLD_EDITOR.md`); mesh consolidation in the neighbourhood/distant land; `life_check` is flaky (random pet
+`docs/WORLD_EDITOR.md`); mesh consolidation in the neighbourhood/distant land; the old oak's arrival view still has its crown overhead; `life_check` is flaky (random pet
 life) and `collision_check` failed once after the fence change (not chased); How to play on go needs the collecting
 loop and binoculars once they're final (fridge-go `src/hedgepets_howto.php`).
 
