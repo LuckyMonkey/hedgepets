@@ -711,7 +711,7 @@ func _build_sky() -> void:
 	env.sky = land.sky_for_woods()
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("38506a")                 # the shade is blue
+	env.ambient_light_color = Color("56697a")                 # the shade is blue - but light enough to see the path
 	env.ambient_light_energy = 0.95
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	env.fog_enabled = true
