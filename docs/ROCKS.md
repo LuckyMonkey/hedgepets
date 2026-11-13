@@ -1,40 +1,52 @@
 # Rock system
 
-`RockFactory` (`scripts/art/rock_factory.gd`) is the single source for low-poly stones. It starts with a box, cuts
-it with deterministic broad planes, and triangulates the resulting convex faces. This gives fractured planes and
-flat-ish beds without the spherical look of an ellipsoid. `seed`, `size`, `roughness`, `facets`, `flatten`, and
-`sink` are the tuning inputs; size is the box the rock must fit.
+`RockFactory` is a deliberately tiny, data-defined rock generator. It does not use an icosphere, ellipsoid mesh, or
+runtime noise geometry. Archetypes live in [data/rocks.json](../data/rocks.json), and the lab edits the selected
+archetype and saves it with the `save_archetype` Inspector toggle.
 
-## Lab
+## The five geometry operations
 
-Open `res://tools/rock_lab.tscn` in the editor. The selected `RockLab` node exposes role, seed, size, roughness,
-facets, and flatten in the Inspector. The row compares all roles; below it are a fitted dry-stone wall and a trail
-crossing. Changing an Inspector value regenerates the preview. For a quick desktop preview:
+1. Build a convex hull from 10–14 points on the archetype aspect.
+2. Project points beyond 3–6 role-biased fracture planes to flatten broad beds, tops, or strata.
+3. Apply one coherent low-frequency vertex nudge, capped at 8%.
+4. Pull at most three sharp points inward for restrained weathering; no spikes or slivers are accepted.
+5. Put grain, cracks, lichen, and restrained colour variation in the shared `shaders/rock.gdshader` material.
 
-```text
-godot --path . res://tools/rock_lab.tscn
-```
+The hull has no added detail during variation. The hard triangle budgets are enforced in `make()`:
 
-## Roles and fitting
+| Archetype | Reference triangles | Hard cap |
+|---|---:|---:|
+| cobble | 15 | 16 |
+| scree | 16 | 16 |
+| wall_stone | 20 | 30 |
+| cap_stone | 15 | 30 |
+| stepping_stone | 20 | 30 |
+| boulder / weathered_boulder | 22 | 48 |
+| ledge | 19 | 60 |
+| outcrop | 19 | 60 |
 
-- `wall_stone`: broad, roughly parallel faces for a dry-stone wall slot.
-- `cap_stone`: flatter stones for the top course.
-- `stepping_stone`: low, level stones for a trail or creek crossing.
-- `boulder`: weathered, faceted glacial stone; broad cuts prevent spikes.
-- `cobble` / `scree`: small stones, suitable for a shared MultiMesh.
-- `ledge` / `outcrop`: layered-looking low stones for ravine edges.
+Counts are from the lab's reference seed set (17 plus the role index); seeds can reduce the hull, never exceed the cap.
 
-`wall(from, to, height, seed)` returns positioned stone specs for bottom-to-top courses and caps. `crossing(points,
-width)` returns level stepping-stone specs. `scatter(area, density, role)` returns sunk ground placements. Meshes are
-cached by role, quantised size, seed, and shape inputs, and the bake cache includes the factory fingerprint.
+## Lab and fitting
 
-## Game usage
+Open `res://tools/rock_lab.tscn` in the Godot editor. The Inspector exposes role, seed, size, roughness, facets, and
+flatten. The row shows every archetype; the wall and crossing below it exercise the fitting functions. Edit one
+reference at a time—start with `wall_stone` and `boulder`—then toggle `save_archetype`. Only after the silhouette is
+convincing should seeds and fitting variations be explored.
 
-Garden loose rocks and all garden wall stones now use the factory. Woods loose rocks call the same garden entry point;
-forest-floor cobbles, creek stepping stones, and ridge outcrops use the factory directly. Existing placement and RNG
-draws remain in their callers so the rest of the garden stays put. `GardenProps.bake_static` still merges static wall
-geometry per material.
+`wall(from, to, height, seed)` returns bottom stones, filling courses, and caps sized to slots. `crossing(points,
+width)` returns level stepping stones. `scatter(area, density, role)` returns sunk ground placements. Meshes cache by
+role, quantised size, seed, and archetype data. The bake fingerprint includes the factory and the data file's use is
+documented in the report.
 
-To add a role: add its name to `ROLES`, choose its initial plane bias in `make`, add a lab size, and document the
-placement helper. Keep facets low (6–10 is the normal range) and use roughness for broad silhouette variation, not
-high-frequency noise. Sink ground stones instead of raising them above the terrain.
+## Game usage and performance
+
+Garden loose rocks and wall stones use the factory. Woods loose rocks inherit that route; forest-floor cobbles, creek
+stepping stones, and ridge outcrops use it directly. Existing placement/RNG layout remains unchanged and static walls
+still merge by material.
+
+The prior documented renderer baseline was approximately 860k garden primitives and 3.13M woods primitives. A same-
+machine before/after total could not be collected in this sandbox: headless Godot exits before `detail_census.gd`,
+`woods_cost.gd`, or the world benchmark emits their totals, and no X server is available for a renderer capture. The
+rock-only geometry is now bounded by the table above; Claude should run those tools on the normal machine and record
+the resulting garden/woods totals in the dated report before shipping.

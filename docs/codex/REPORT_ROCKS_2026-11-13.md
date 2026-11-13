@@ -18,11 +18,18 @@ The ProtonScatter license reference is the [Godot Asset Store listing](https://s
 the project repository is [HungryProton/scatter](https://github.com/HungryProton/scatter). No external library was
 copied into the game.
 
+## Geometry decision
+
+The first implementation was rejected by the owner's override because repeated plane clipping started from a box and
+could grow too many faces. It has been replaced by the five ordered operations in `ROCKS_SPEC.md`: a 10–14 point
+convex hull, role-biased projection fractures, one <=8% coherent nudge, <=3 corner blunts, and shader-only micro
+detail. No icosphere or per-vertex noise is used.
+
 ## API
 
-`RockFactory.make(spec)` returns a cached `ArrayMesh`. The spec supports `role`, `size`, `seed`, `roughness`, `facets`,
-`flatten`, and `sink`. `wall`, `crossing`, and `scatter` return fitted specs with positions. Quantised sizes and full
-shape inputs form the cache key. The bake fingerprint now includes `rock_factory.gd`.
+`RockFactory.make(spec)` returns a cached `ArrayMesh`. Archetype values come from `data/rocks.json`; per-call values
+override role, size, seed, and sink. `wall`, `crossing`, and `scatter` return fitted specs with positions. Quantised
+sizes and full archetype inputs form the cache key. The bake fingerprint includes `rock_factory.gd`.
 
 ## Integration
 
@@ -30,18 +37,25 @@ Garden loose rocks and wall stones are routed through the factory. Woods loose r
 cobbles, creek stepping stones, and ridge outcrops are also routed directly. The old `GardenProps.fieldstone*` names
 remain as compatibility wrappers for existing callers, but no longer build the old stretched anatomy mesh.
 
+## Triangle counts
+
+Reference lab counts are: cobble 15/16, scree 16/16, wall_stone 20/30, cap_stone 15/30, stepping_stone 20/30,
+boulder/weathered_boulder 22/48, ledge 19/60, and outcrop 19/60 (measured triangles / hard cap). The cap fallback
+rejects and simplifies any edited archetype that exceeds its budget.
+
 ## Performance and verification
 
-The factory uses 6–10 low-poly facets for normal roles and duplicates only triangle vertices, keeping the generated
-meshes small and flat shaded. Exact before/after world triangle counters were not available in this worktree's quick
-runbook, and an offscreen visual capture could not be made because the software renderer needs the owner's X server;
-Claude should inspect the wall, garden, woods, ridge, and creek captures. The requested bake and compile commands are
-the final handoff steps below.
+The previous documented renderer baseline was approximately 860k garden primitives and 3.13M woods primitives. The
+after totals could not be collected here: headless Godot exited before the census/world benchmark printed, and the
+software renderer needs the owner's X server for a capture. The dated table is therefore: garden 860k before / after
+pending normal-machine census; woods 3.13M before / after pending normal-machine census. Rock geometry itself is
+bounded by the counts above and is materially lower-poly than the former stretched anatomy meshes.
 
 Checks run during this increment:
 
 - Godot headless scene load of `tools/rock_lab.tscn` with `--audio-driver Dummy`.
 - Parser/import validation through the Godot editor startup.
+- Headless `tools/rock_lab.tscn` load: PASS; the lab printed all eight archetype counts above.
 
 The requested `tools/bake_cache.gd`, `tools/compile_woods.gd`, `woods_check`, and `yard_check` commands were attempted
 headless with the required Dummy audio driver, but this sandbox ended those Godot processes without producing output;

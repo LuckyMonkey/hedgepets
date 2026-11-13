@@ -1286,7 +1286,7 @@ func _forest_floor(rng: RandomNumberGenerator) -> void:
 	_multimesh(cyl, logs)
 	_multimesh(cyl, stumps)
 	_multimesh(ball, mossy)
-	_multimesh(RockFactory.make({"role": "cobble", "size": Vector3.ONE, "seed": 733, "roughness": 0.16, "facets": 6, "flatten": 0.9}), stones)
+	_rock_multimesh(RockFactory.make({"role": "cobble", "size": Vector3.ONE, "seed": 733}), stones)
 	_multimesh(cyl, stems)
 	_multimesh(ball, caps)
 
@@ -1336,6 +1336,21 @@ func _multimesh(mesh: Mesh, items: Array) -> void:
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
 	node.material_override = m
+	add_child(node)
+
+
+func _rock_multimesh(mesh: Mesh, items: Array) -> void:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = mesh
+	mm.instance_count = items.size()
+	for i in items.size():
+		mm.set_instance_transform(i, items[i][0])
+		mm.set_instance_color(i, items[i][1])
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = mm
+	node.material_override = RockFactory.material(Color.WHITE)
 	add_child(node)
 
 
@@ -1764,7 +1779,7 @@ func _creek(rng: RandomNumberGenerator) -> void:
 				var b := _creek_point(i + rng.randf_range(-1, 1)) + side * sgn * rng.randf_range(1.6, 2.2)
 				if not _near_trail(b, 2.0):
 					GardenProps.cattails(self, Vector3(b.x, height(b.x, b.y), b.y), rng)
-	var stone := GardenProps.mat("stepstone0", Color("7a7a72"))
+	var stone := RockFactory.material(Color("7a7a72"))
 	for e in _paths:                                      # stepping stones where a trail crosses
 		var pts: PackedVector3Array = e["pts"]
 		for i in range(pts.size()):
@@ -1780,7 +1795,7 @@ func _creek(rng: RandomNumberGenerator) -> void:
 func _ridge(rng: RandomNumberGenerator) -> void:
 	var c: Vector2 = NODES["ridge"]["at"]
 	var side := VIEW_DIR.orthogonal()
-	var lichen := GardenProps.mat("lichenrock", Color("8a8c80"))
+	var lichen := RockFactory.material(Color("8a8c80"))
 	for k in range(7):
 		var p := c + VIEW_DIR * rng.randf_range(4.0, 6.0) + side * (k - 3) * 1.6
 		var rs := Vector3(1.0, 0.35, 0.8) * snappedf(rng.randf_range(0.8, 1.3), 0.1)
