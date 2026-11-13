@@ -2118,6 +2118,29 @@ func _turn_by(screen: Vector2) -> void:
 	_goal_elev = clampf(_goal_elev + screen.y * 0.002, deg_to_rad(28), deg_to_rad(72))
 
 
+## A tap on the lawn (or a thing on it) with ✋ brings the camera over to work there: the view eases to the spot,
+## nudged towards what's around it so the things you can work on are in frame, and comes in to a comfortable working
+## distance if it was further out. Only goals: the camera's springs do the easing, and any drag takes over at once.
+const WORK_DISTANCE := 8.0
+const WORK_ELEV := 52.0
+
+func frame_point(p: Vector3) -> void:
+	var near := Vector2.ZERO
+	var n := 0
+	for t: Dictionary in things:
+		var at: Vector2 = t["at"]
+		if at.distance_to(Vector2(p.x, p.z)) < 3.5:
+			near += at
+			n += 1
+	var aim := Vector2(p.x, p.z)
+	if n > 0:
+		aim = aim.lerp(near / n, 0.35)
+	_goal_target = _clamp_target(Vector3(aim.x, 0.0, aim.y))
+	if _goal_distance > WORK_DISTANCE:
+		_goal_distance = WORK_DISTANCE
+	_goal_elev = lerpf(_goal_elev, deg_to_rad(WORK_ELEV), 0.5)
+
+
 func _zoom_by(factor: float) -> void:
 	_goal_distance = clampf(_goal_distance * factor, ZOOM_MIN, ZOOM_MAX)
 

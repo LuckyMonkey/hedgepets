@@ -661,6 +661,9 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 				toast(_thing_line(t))
 			elif _plant_at(p2) != null:
 				toast(_plant_line(_plant_at(p2)))
+			if t != null and t["kind"] == "burrow":
+				return true                                  # (went down into the den)
+			garden.frame_point(Vector3(p2.x, 0, p2.y))       # the camera comes over to work there
 			return true
 		"shovel":
 			return _shovel(p2)

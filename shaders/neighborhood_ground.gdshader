@@ -47,6 +47,12 @@ void fragment() {
 	float fence_on = fence * (1.0 - smoothstep(25.0, 26.0, p.y)) * step(10.5, p.y);
 	float walk = 1.0 - smoothstep(0.1, 0.9, min(abs(p.y - 28.6), abs(p.y - 39.4)));
 	base *= 1.0 - verge_strength * max(fence_on, walk);
+	// next door's yards meet the real lawn of the white house's yard (garden.gd, x -6.4..6.4) at its side fences:
+	// match that lawn - a touch brighter and warmer, and its bald, worn patches, big enough to survive the blur
+	float near_yard = 1.0 - smoothstep(26.0, 28.5, p.y);
+	base *= mix(vec3(1.0), vec3(1.1, 1.13, 1.0), near_yard);
+	float bald = smoothstep(0.66, 0.8, noise(p * 0.32 + 41.0)) * near_yard;
+	base = mix(base, vec3(0.36, 0.3, 0.17), bald * 0.45);
 	ALBEDO = base;
 	ROUGHNESS = 1.0;
 }

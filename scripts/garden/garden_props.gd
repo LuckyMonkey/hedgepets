@@ -177,6 +177,8 @@ static func rusty_grill(parent: Node3D, at: Vector3, yaw: float) -> Node3D:
 
 ## A run of picket fence: weathered paint, pickets missing, leaning, snapped; optionally a collapsed section lying
 ## in the grass (where visitors come through).
+const PICKET_Z := -0.17                              # rails at -0.1 (0.06 thick): pickets clear of them, nailed behind
+
 static func broken_fence(parent: Node3D, from_x: float, to_x: float, z: float, rng: RandomNumberGenerator, gap := Vector2(INF, INF), mended := false) -> Node3D:
 	var r := root(parent, "Fence", Vector3(0, 0, z), 0.0)
 	if mended:
@@ -197,7 +199,9 @@ static func broken_fence(parent: Node3D, from_x: float, to_x: float, z: float, r
 					continue                                     # missing
 				var h := 1.45 if roll > 0.24 else rng.randf_range(0.5, 0.9)   # snapped short
 				var lean := rng.randf_range(-3, 3) if roll > 0.33 else rng.randf_range(-18, 18)
-				var picket := part(r, box(Vector3(0.22, h, 0.05)), paint if rng.randf() < 0.7 else old, Vector3(px, h * 0.5, -0.06), Vector3(0, 0, lean), 0.008)
+				# behind the rails (not through them), every other one a little further back: a leaning picket crosses
+				# its neighbour, and in one plane the two faces fought (the "clipping" the owner saw)
+				var picket := part(r, box(Vector3(0.22, h, 0.05)), paint if rng.randf() < 0.7 else old, Vector3(px, h * 0.5, PICKET_Z - (k % 2) * 0.014), Vector3(0, 0, lean), 0.008)
 				if h > 1.0:
 					part(picket, box(Vector3(0.16, 0.16, 0.05)), paint, Vector3(0, h * 0.5, 0), Vector3(0, 0, 45), 0.006)
 		else:
@@ -223,7 +227,7 @@ static func _mended_fence(r: Node3D, from_x: float, to_x: float, gap: Vector2) -
 		part(r, box(Vector3(2.2, 0.1, 0.06)), paint, Vector3(x + 1.1, 1.25, -0.1), Vector3.ZERO, 0.008)
 		part(r, box(Vector3(2.2, 0.1, 0.06)), paint, Vector3(x + 1.1, 0.45, -0.1), Vector3.ZERO, 0.008)
 		for k in range(6):
-			var picket := part(r, box(Vector3(0.22, 1.45, 0.05)), paint, Vector3(x + 0.25 + k * 0.36, 0.725, -0.06), Vector3.ZERO, 0.008)
+			var picket := part(r, box(Vector3(0.22, 1.45, 0.05)), paint, Vector3(x + 0.25 + k * 0.36, 0.725, PICKET_Z), Vector3.ZERO, 0.008)
 			part(picket, box(Vector3(0.16, 0.16, 0.05)), paint, Vector3(0, 0.725, 0), Vector3(0, 0, 45), 0.006)
 		x += 2.2
 	var mid := (gap.x + gap.y) * 0.5
