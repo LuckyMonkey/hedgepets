@@ -5,12 +5,19 @@ on top. It is an in-engine mode rather than an `EditorPlugin`, because the garde
 `garden.gd` has built it at runtime, so the Godot editor's scene tree never contains it (see
 `WORLD_ARCHITECTURE.md`).
 
+For the woods, choose the starting clearing: `godot --path . res://world_editor.tscn -- --woods=ridge`.
+Use any place name (`trailhead`, `fork`, `hollow`, `ridge`, `creek`, `oak`, `nursery`, `pond`, `cellar`, or
+`pines`). Woods edits are saved separately in `res://world/woods_overrides.tres`.
+
 ## How edits are stored
 
 - `scripts/world/world_overrides.gd` (`WorldOverrides`, a Resource) saves to `res://world/garden_overrides.tres`.
+- Woods use the same format and editor, but save to `res://world/woods_overrides.tres`.
 - The format is `things: id -> {position: Vector3, yaw: float, scale: Vector3, hidden: bool}`.
 - IDs are the garden's own stable `things[i].id` (`lawn_chair_5`, `rock_31`, …), fixed by the build order of
   `_build_props`.
+- Woods IDs come from generation context: `place:kind_index` for landmarks, signs, finds and logs, and
+  `tree:cell_x_y:lod_kind` for batched tree patches.
 - The game applies overrides in `garden_game.setup`, after every thing exists and **before** the player's save is
   read. So the player's own moves still win, and authored edits never touch the save.
 - Generation is never fed an override: same calls, same order, same random numbers. A missing or empty file is a
@@ -31,6 +38,11 @@ on top. It is an in-engine mode rather than an `EditorPlugin`, because the garde
 | Save | Ctrl+S |
 | Camera | Wheel zooms, right-drag pans; WASD / QE / RF are the garden's own keys |
 
+## Woods controls
+
+The controls are the same in both modes: select from the list or click, drag to move, `[` / `]` turn, `-` / `=` scale,
+Delete hides, `R` resets, `G` toggles the 0.25 m grid, Ctrl+Z / Ctrl+Y undo and redo, and Ctrl+S saves.
+
 ## Verified
 
 `tools/world_editor_check.gd` passes 10/10 (headless). It checks that:
@@ -46,8 +58,8 @@ on top. It is an in-engine mode rather than an `EditorPlugin`, because the garde
 
 ## Not built yet (later milestones)
 
-- Editing things without a `things` ID: fence sections, stone walls, garden trees, grass, woods trees and the
-  trail graph. Those need IDs from their generation context first (`WORLD_ARCHITECTURE.md`).
+- Editing things without a `things` ID: fence sections, stone walls, grass and the trail graph. Those need IDs from
+  their generation context first (`WORLD_ARCHITECTURE.md`).
 - Duplicating, and placing new prefabs.
 - Multi-select, per-axis gizmos and surface snapping.
 - Showing the woods graph (9 places, 10 trails) in the editor, and the skybox as a read-only context.

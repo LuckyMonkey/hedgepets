@@ -13,6 +13,8 @@ const GRID := 0.25
 const TURN := PI / 12.0
 
 var garden: Node
+var target: Node
+var woods_mode := false
 var overrides: WorldOverrides
 var selected := ""
 var snap := true
@@ -33,7 +35,12 @@ var is_ready := false
 func _ready() -> void:
 	OS.set_environment("HEDGEPETS_FRESH", "1")        # the editor never reads or writes the player's save
 	Motion.speed = 0.0
-	overrides = WorldOverrides.current()
+	var woods_place := ""
+	for arg in OS.get_cmdline_user_args():
+		if str(arg).begins_with("--woods="):
+			woods_place = str(arg).trim_prefix("--woods=")
+	woods_mode = woods_place != ""
+	overrides = WorldOverrides.current(WorldOverrides.WOODS_PATH if woods_mode else "")
 	var keep := OS.get_environment("HEDGEPETS_WORLD")
 	OS.set_environment("HEDGEPETS_WORLD", "res://world/__generated__.tres")   # no such file: build it as generated
 	garden = (load("res://garden.tscn") as PackedScene).instantiate()
@@ -41,11 +48,17 @@ func _ready() -> void:
 	if not garden.is_built:
 		await garden.built
 	OS.set_environment("HEDGEPETS_WORLD", keep)
+	target = garden.woods if woods_mode else garden
+	if woods_mode:
+		target.build_now()
+		target._at = woods_place if target.NODES.has(woods_place) else "trailhead"
+		target._settle(Vector3.INF)
+		target.cam.make_current()
 	garden.set_process_unhandled_input(false)
 	if garden.game != null:
 		garden.game.set_process_unhandled_input(false)
 		garden.game.set_process(false)                # no wishes, toasts or saves while editing
-	for t in garden.things:
+	for t in target.things:
 		var n: Node3D = t["node"]
 		_orig[t["id"]] = {"position": n.position, "yaw": n.rotation.y, "scale": n.scale, "at": t["at"]}
 	for id in overrides.things:                       # then the authored layer, exactly as the game applies it
@@ -58,7 +71,7 @@ func _ready() -> void:
 
 
 func thing(id: String) -> Dictionary:
-	for t in garden.things:
+	for t in target.things:
 		if t["id"] == id:
 			return t
 	return {}
@@ -140,6 +153,8 @@ func _put(id: String, o: Variant) -> void:
 
 
 func save(path := "") -> Error:
+	if path == "" and woods_mode:
+		path = WorldOverrides.WOODS_PATH
 	var err := WorldOverrides.save_to(overrides, path)
 	if err == OK:
 		dirty = false
@@ -152,12 +167,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
-			garden._zoom_by(0.9)
+			if not woods_mode:
+				garden._zoom_by(0.9)
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
-			garden._zoom_by(1.1)
+			if not woods_mode:
+				garden._zoom_by(1.1)
 		elif mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
-				var p: Vector3 = garden.ground_point(mb.position)
+				var p: Vector3 = _ground_point(mb.position)
 				var id := _pick(Vector2(p.x, p.z))
 				select(id)
 				if id != "":
@@ -175,9 +192,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		if mm.button_mask & MOUSE_BUTTON_MASK_RIGHT:
-			garden._pan_by(mm.relative)
+			if not woods_mode:
+				garden._pan_by(mm.relative)
 		elif _dragging and selected != "":
-			var p: Vector3 = garden.ground_point(mm.position)
+			var p: Vector3 = _ground_point(mm.position)
 			var to: Vector3 = _drag_start["position"] + (p - _drag_from)
 			if snap:
 				to = Vector3(snappedf(to.x, GRID), to.y, snappedf(to.z, GRID))
@@ -208,12 +226,21 @@ func _unhandled_input(event: InputEvent) -> void:
 func _pick(p: Vector2) -> String:
 	var best := ""
 	var best_d := INF
-	for t in garden.things:
+	for t in target.things:
 		var d: float = p.distance_to(Vector2((t["node"] as Node3D).position.x, (t["node"] as Node3D).position.z))
 		if d < maxf(float(t["radius"]), 0.5) and d < best_d:
 			best = t["id"]
 			best_d = d
 	return best
+
+
+func _ground_point(screen: Vector2) -> Vector3:
+	if not woods_mode:
+		return garden.ground_point(screen)
+	var origin: Vector3 = target.cam.project_ray_origin(screen)
+	var direction: Vector3 = target.cam.project_ray_normal(screen)
+	var hit: Variant = Plane(Vector3.UP, target.global_position.y).intersects_ray(origin, direction)
+	return target.to_local(hit) if hit != null else Vector3.ZERO
 
 
 # ------------------------------------------------------------------ ui
@@ -240,7 +267,7 @@ func _build_ui() -> void:
 	var box := VBoxContainer.new()
 	panel.add_child(box)
 	var title := Label.new()
-	title.text = "World editor"
+	title.text = "Woods editor" if woods_mode else "World editor"
 	box.add_child(title)
 	_list = ItemList.new()
 	_list.custom_minimum_size = Vector2(290, 360)

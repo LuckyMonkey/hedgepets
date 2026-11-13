@@ -9,14 +9,17 @@ extends Resource
 ##   things: id -> {"position": Vector3, "yaw": float (radians), "scale": Vector3, "hidden": bool}
 
 const PATH := "res://world/garden_overrides.tres"
+const WOODS_PATH := "res://world/woods_overrides.tres"
 
 @export var version := 1
 @export var things := {}
 
 
 ## The overrides in use: HEDGEPETS_WORLD=path (tools, tests) or PATH; an empty set when there's no file.
-static func current() -> WorldOverrides:
-	var path := OS.get_environment("HEDGEPETS_WORLD")
+static func current(path_override := "") -> WorldOverrides:
+	var path := path_override
+	if path == "":
+		path = OS.get_environment("HEDGEPETS_WORLD")
 	if path == "":
 		path = PATH
 	if ResourceLoader.exists(path):
