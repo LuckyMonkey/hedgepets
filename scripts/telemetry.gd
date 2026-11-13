@@ -7,7 +7,7 @@ extends RefCounted
 ## left. pid is a random id the browser keeps; sid one per visit. Nothing else identifies anyone.
 ##   Telemetry.event("dig")   Telemetry.event("sow", {"species": "clover"})
 
-const VERSION := "2026.11.12b"
+const VERSION := "2026.11.13"
 const URL := "/hedgepets/telemetry"
 
 static var on := false
