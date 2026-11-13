@@ -131,6 +131,7 @@ func _run() -> void:
 		home.append(Vector3(p2.x, y, p2.y))
 		t += 0.5
 	lines.append(home)
+	print("woods_clip_check: sweeping %d trail edges plus the way home (step %.2f m)" % [lines.size() - 1, STEP])
 	for pts: PackedVector3Array in lines:
 		for i in range(1, pts.size()):
 			var a: Vector3 = pts[i - 1]

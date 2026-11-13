@@ -133,9 +133,29 @@ var _released: Array = []             # pets let out of the bucket here: they co
 var _told := false
 var _finds: Array = []                # {id, kind, at (node id), node: Node3D, tugs}
 var _basket_label: Label
+var _binoculars: Node3D
+var _binocular_mode := false
+var _binocular_returning := false
+var _binocular_target := Vector3.ZERO
+var _binocular_yaw := 0.0
+var _binocular_pitch := deg_to_rad(-10.0)
+var _binocular_fov := 24.0
+var _binocular_pos_state := {"v": Vector3.ZERO}
+var _binocular_fov_state := {"v": 0.0}
+var _binocular_caption: Label
+var _binocular_dwell := 0.0
+var _binocular_candidate := ""
+const BINOCULAR_DETAILS := {
+	"heron": {"name": "A heron in the creek", "at": Vector3(5.9, -1.0, -2.5)},
+	"hawk": {"name": "A hawk circling above the ridge", "at": Vector3(12.8, 2.6, -8.0)},
+	"fox": {"name": "A fox at the den", "at": Vector3(10.8, -0.2, -5.2)},
+	"deer": {"name": "A deer at the treeline", "at": Vector3(9.1, 0.4, -6.8)},
+	"church": {"name": "The church weathervane", "at": Vector3(7.6, 0.7, -1.1)},
+	"garden": {"name": "Home, the garden by the white house", "at": Vector3(11.25, 0.6, -8.25)},
+}
 var nursery: Node3D                   # nursery.gd
 var campfire: Node3D                  # fire_pit.gd, in fern hollow
-var land: Node                        # distant_land.gd: the miniature land beyond the woods
+var land: MiniatureSky                 # distant_land.gd: the miniature land beyond the woods
 var basket: Dictionary:
 	get:
 		return garden.game.woods_finds["basket"]
@@ -179,6 +199,16 @@ func setup(g: Node3D) -> void:
 	_basket_label.position = Vector2(60, 150)
 	_basket_label.modulate.a = 0.0
 	_ui.add_child(_basket_label)
+	_binocular_caption = Label.new()
+	_binocular_caption.add_theme_font_size_override("font_size", 34)
+	_binocular_caption.add_theme_color_override("font_color", Color(0.98, 0.94, 0.84))
+	_binocular_caption.add_theme_color_override("font_outline_color", Color(0.1, 0.08, 0.06, 0.8))
+	_binocular_caption.add_theme_constant_override("outline_size", 8)
+	_binocular_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_binocular_caption.position = Vector2(60, 1420)
+	_binocular_caption.size = Vector2(960, 100)
+	_binocular_caption.visible = false
+	_ui.add_child(_binocular_caption)
 
 
 # ------------------------------------------------------------------ the ground
@@ -658,6 +688,7 @@ func _build_places() -> void:
 			await Slicer.tick(self)
 			way["label"] = _sign(id, way["dir"], str(way["name"]))
 			way["marks"] = _chevrons(id, way)
+	_setup_ravine_viewer()
 
 
 func _build_sky() -> void:
@@ -1796,6 +1827,110 @@ func _ridge(rng: RandomNumberGenerator) -> void:
 	for k in range(5):
 		var w := 0.42 - k * 0.07
 		GardenProps.part(self, GardenProps.blob(Vector3(w, 0.11, w * 0.85), "pebble"), lichen, Vector3(cairn.x, cy + 0.1 + k * 0.19, cairn.y), Vector3(0, rng.randf_range(0, 360), 0), 0.006)
+	# The ridge is the ravine lookout: a broken lip and a visibly lower shelf make the drop legible at its rim.
+	var ledge := GardenProps.mat("ravineledge", Color("68756b"))
+	var down := VIEW_DIR
+	var across := VIEW_DIR.orthogonal()
+	for k in range(5):
+		var q := Vector2(c.x, c.y) + down * (3.8 + k * 1.8) + across * (k - 2) * 2.2
+		var h := height(q.x, q.y)
+		GardenProps.part(self, GardenProps.box(Vector3(1.9, 0.35, 0.8)), ledge,
+			Vector3(q.x, h - 0.18 - k * 0.65, q.y), Vector3(0, rad_to_deg(atan2(down.x, down.y)), 0), 0.01)
+	_setup_ravine_viewer()
+
+
+func _setup_ravine_viewer() -> void:
+	if _binoculars != null:
+		return
+	var c: Vector2 = NODES["ridge"]["at"]
+	var side := VIEW_DIR.orthogonal()
+	var at := _off_trail(Vector3(c.x, height(c.x, c.y), c.y) + Vector3(side.x, 0, side.y) * 2.5 + Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 1.8, 1.2)
+	_binoculars = GardenProps.root(self, "RavineBinoculars", at, rad_to_deg(atan2(VIEW_DIR.x, VIEW_DIR.y)))
+	var dark := GardenProps.mat("binocularmetal", Color("3c4a48"))
+	var wood := GardenProps.mat("binocularpost", Color("5c4634"))
+	GardenProps.part(_binoculars, GardenProps.box(Vector3(0.14, 1.25, 0.14)), wood, Vector3(0, 0.62, 0), Vector3.ZERO, 0.008)
+	GardenProps.part(_binoculars, GardenProps.box(Vector3(0.8, 0.12, 0.18)), wood, Vector3(0, 1.2, 0), Vector3.ZERO, 0.008)
+	for sx: float in [-0.18, 0.18]:
+		GardenProps.part(_binoculars, GardenProps.cyl(0.09, 0.09, 0.48, 10), dark, Vector3(sx, 1.34, -0.12), Vector3(90, 0, 0), 0.006)
+	GardenProps.part(_binoculars, GardenProps.box(Vector3(0.48, 0.08, 0.12)), dark, Vector3(0, 1.34, 0.13), Vector3.ZERO, 0.006)
+	_binocular_target = at + Vector3(0, 1.1, 0) - Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 0.7
+
+
+func _binocular_saved() -> Dictionary:
+	var b: Dictionary = garden.game.woods_finds.get("binoculars", {})
+	return b if b is Dictionary else {}
+
+
+func _enter_binoculars() -> void:
+	if _binoculars == null or _binocular_mode:
+		return
+	_binocular_mode = true
+	_binocular_returning = false
+	_binocular_fov = 24.0
+	_binocular_yaw = _heading_of(Vector3(VIEW_DIR.x, 0, VIEW_DIR.y))
+	_binocular_pitch = deg_to_rad(-10.0)
+	_binocular_pos_state["v"] = Vector3.ZERO
+	_binocular_fov_state["v"] = 0.0
+	_binocular_caption.text = "🔭 Drag to look · scroll to zoom · tap to step back"
+	Motion.fade(_binocular_caption, 1.0, Motion.FAST)
+	if land != null:
+		land.res = 0.9
+		land._fit()
+	Telemetry.event("binoculars", {"place": "ridge"})
+
+
+func _leave_binoculars() -> void:
+	if not _binocular_mode:
+		return
+	_binocular_mode = false
+	_binocular_returning = true
+	Motion.fade(_binocular_caption, 0.0, Motion.FAST)
+	_binocular_candidate = ""
+	_binocular_dwell = 0.0
+	_binocular_fov = 70.0
+	_binocular_target = node_pos(_at) + Vector3(0, EYE, 0)
+	_binocular_yaw = _goal_yaw
+	_binocular_pitch = _pitch
+	if land != null:
+		land.quality_tier_changed(str(get_meta("quality_tier", "medium")))
+
+
+func _binocular_detail() -> void:
+	if land == null or not _binocular_mode:
+		return
+	var best := ""
+	var best_d := 0.065
+	for id: String in BINOCULAR_DETAILS:
+		var d: Vector3 = BINOCULAR_DETAILS[id]["at"]
+		var screen := cam.unproject_position(land.to_global(d * MiniatureSky.SCALE))
+		var nd := screen.distance_to(get_viewport().get_visible_rect().size * 0.5) / minf(get_viewport().get_visible_rect().size.x, get_viewport().get_visible_rect().size.y)
+		if nd < best_d:
+			best_d = nd
+			best = id
+	if best != _binocular_candidate:
+		_binocular_candidate = best
+		_binocular_dwell = 0.0
+	elif best != "":
+		_binocular_dwell += get_process_delta_time()
+		if _binocular_dwell > 0.8:
+			var found: Dictionary = _binocular_saved()
+			if not found.has(best):
+				found[best] = true
+				garden.game.woods_finds["binoculars"] = found
+				garden.game.save()
+				Telemetry.event("binocular_find", {"detail": best})
+			_binocular_caption.text = "🔭 " + str(BINOCULAR_DETAILS[best]["name"])
+
+
+func _update_binocular_camera(delta: float) -> void:
+	var target := _binocular_target
+	cam.position = Motion.spring(cam.position, target, _binocular_pos_state, 0.42, delta)
+	cam.fov = Motion.spring(cam.fov, _binocular_fov, _binocular_fov_state, 0.25, delta)
+	cam.rotation = Vector3(Motion.approach(cam.rotation.x, _binocular_pitch, 8.0, delta), Motion.approach(cam.rotation.y, _binocular_yaw, 8.0, delta), 0)
+	if _binocular_mode:
+		_binocular_detail()
+	elif cam.position.distance_to(target) < 0.03 and absf(cam.fov - 70.0) < 0.05:
+		_binocular_returning = false
 
 
 ## Where the sun gets through: a slanting beam (two crossed cards, the garden's light-shaft shader, stronger). A couple near most clearings (off to the side, never in your face), more along
@@ -2500,12 +2635,16 @@ func facing() -> Dictionary:
 func _process(delta: float) -> void:
 	_stream_update()
 	_t += delta
-	if not _walking.is_empty():
+	if _binocular_mode or _binocular_returning:
+		_update_binocular_camera(delta)
+	elif not _walking.is_empty():
 		_step_walk(delta)
 	else:
 		_pitch = lerpf(_pitch, clampf(_pitch, deg_to_rad(-25), deg_to_rad(12)), clampf(delta * 4.0, 0.0, 1.0))
 	_yaw = lerp_angle(_yaw, _goal_yaw, clampf(delta * (5.0 if _walking.is_empty() else 3.0), 0.0, 1.0))
-	if _walking.is_empty():
+	if _binocular_mode or _binocular_returning:
+		pass                                             # the mounted viewer owns the camera while in its quiet gaze
+	elif _walking.is_empty():
 		_place_camera(node_pos(_at) + Vector3(0, EYE, 0))
 	else:
 		cam.rotation = Vector3(_pitch, _yaw, 0)
@@ -2544,6 +2683,12 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION:
 		return
+	if _binocular_mode and event is InputEventMouseButton and event.pressed and (event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		_binocular_fov = clampf(_binocular_fov + (-3.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 3.0), 8.0, 40.0)
+		return
+	if _binocular_mode and event is InputEventMagnifyGesture:
+		_binocular_fov = clampf(_binocular_fov / maxf(event.factor, 0.1), 8.0, 40.0)
+		return
 	var pressed: bool = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) or (event is InputEventScreenTouch and event.pressed)
 	var released: bool = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed) or (event is InputEventScreenTouch and not event.pressed)
 	if pressed:
@@ -2556,7 +2701,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif (event is InputEventMouseMotion or event is InputEventScreenDrag) and _press != Vector2.INF:
 		if event.position.distance_to(_press) > 10.0:
 			_moved = true
-		if _moved and _walking.is_empty():               # any drag looks around
+		if _moved and _binocular_mode:
+			_binocular_yaw = clampf(_binocular_yaw - event.relative.x * 0.0032, _heading_of(Vector3(VIEW_DIR.x, 0, VIEW_DIR.y)) - 0.65, _heading_of(Vector3(VIEW_DIR.x, 0, VIEW_DIR.y)) + 0.65)
+			_binocular_pitch = clampf(_binocular_pitch - event.relative.y * 0.002, deg_to_rad(-28), deg_to_rad(8))
+		elif _moved and _walking.is_empty():               # any drag looks around
 			_goal_yaw -= event.relative.x * 0.0045
 			_pitch = clampf(_pitch - event.relative.y * 0.002, deg_to_rad(-25), deg_to_rad(12))
 	if event is InputEventKey and event.pressed and _walking.is_empty():
@@ -2569,7 +2717,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _tap(at: Vector2) -> void:
+	if _binocular_mode:
+		_leave_binoculars()
+		return
 	if not _walking.is_empty():
+		return
+	if _binoculars != null and not cam.is_position_behind(_binoculars.global_position) and cam.unproject_position(_binoculars.global_position + Vector3(0, 1.1, 0)).distance_to(at) < 150.0:
+		_enter_binoculars()
 		return
 	var pets := followers.duplicate()
 	if _carried != null:

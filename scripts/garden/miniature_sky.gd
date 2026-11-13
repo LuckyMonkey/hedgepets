@@ -24,6 +24,7 @@ var _last_basis := Basis.IDENTITY
 var _last_fov := -1.0
 var _last_aspect := -1.0
 var redraws := 0                                      # tools/pan_trace.gd: requested miniature frames
+var last_follow_frame := -1                            # the host frame whose pose is in the texture
 
 
 ## Make the viewport, its world (or adopt a ready-made one) and its camera; returns the world to build in.
@@ -92,6 +93,21 @@ func follow(cam: Camera3D, local_pos: Vector3, delta: float) -> void:
 		_last_aspect = aspect
 	if pose_changed or _tick(delta):
 		_request_redraw()
+	# follow is deliberately called at the end of the woods camera update. Keeping the frame id here makes
+	# ordering observable to the regression check, and avoids silently returning to a one-frame-old sky.
+	last_follow_frame = Engine.get_process_frames()
+
+
+## Project a world direction with the exact mapping used by distant_sky.gdshader.
+## Tools use this instead of duplicating one of the two camera/FOV conventions.
+func project_direction(direction: Vector3) -> Vector2:
+	var basis := _last_basis
+	var d := basis.transposed() * direction.normalized()
+	if d.z >= -0.01:
+		return Vector2.INF
+	var p := Vector2(d.x, d.y) / -d.z
+	var tan_half_w := tan(deg_to_rad(_last_fov) * 0.5) * OVERSCAN
+	return Vector2(0.5 + 0.5 * p.x / tan_half_w, 0.5 - 0.5 * p.y / (tan_half_w / _last_aspect))
 
 
 ## Per-frame extras for a subclass (drifting clouds...).

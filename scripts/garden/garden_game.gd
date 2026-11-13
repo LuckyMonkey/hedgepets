@@ -84,7 +84,7 @@ var placed: Array = []              # {kind, x, z, yaw}: what you built (saved)
 var following: Array = []           # pet names that follow you (saved)
 var carried := ""                   # the pet in the bucket, or "" (saved)
 var nursery := {"visits": 0, "said": [], "once": [], "gave": false, "crossed": false, "returned": false}   # nursery.gd (saved)
-var woods_finds := {"taken": {}, "basket": {}}   # woods.gd: what you've picked up there (when) and what's in the basket
+var woods_finds := {"taken": {}, "basket": {}, "binoculars": {}}   # woods.gd: finds and the quiet things seen from the ridge
 var collection := {}             # found kind -> number; unlike the basket, this is a keepsake record
 var keep_seeds: Array = []          # seeds the nursery gave you, {species, genes}: sown before bought ones of that kind
 const SOW_SECONDS := 45.0           # how often an empty bed may get a self-sown seedling
@@ -1616,6 +1616,12 @@ func _show_tool() -> void:
 
 func _fill_journal() -> void:
 	var lines := "[b]Journal[/b]\n\n" + story.page()
+	var binoculars: Dictionary = woods_finds.get("binoculars", {})
+	if binoculars.size() > 0:
+		lines += "\n[b]Seen through the binoculars[/b]\n"
+		for id: String in ["heron", "hawk", "fox", "deer", "church", "garden"]:
+			if binoculars.has(id):
+				lines += "   %s\n" % {"heron": "A heron in the creek", "hawk": "A hawk circling above the ridge", "fox": "A fox at the den", "deer": "A deer at the treeline", "church": "The church weathervane", "garden": "Home, the garden by the white house"}[id]
 	lines += "[b]Found things[/b]\n"
 	for kind: String in ["cone", "acorn", "feather", "apple", "mushroom", "shell", "stone", "flower", "berry"]:
 		var n := int(collection.get(kind, 0))
