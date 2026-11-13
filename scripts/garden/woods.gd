@@ -1293,7 +1293,7 @@ func _forest_floor(rng: RandomNumberGenerator) -> void:
 			mossy.append([Transform3D(Basis().scaled(Vector3(r * 0.95, r * 0.25, r * 0.95)), Vector3(p.x, y + h, p.y)), Color("5a7a34")])
 		elif kind < 0.65:
 			var sz := rng.randf_range(0.4, 1.1)
-			stones.append([Transform3D(Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(sz, sz * 0.6, sz * 0.8)), Vector3(p.x, y + sz * 0.2, p.y)), Color("7e7a70").darkened(rng.randf() * 0.25)])
+			stones.append([Transform3D(Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(sz, sz * 0.6, sz * 0.8)), Vector3(p.x, y - sz * 0.12, p.y)), Color("7e7a70").darkened(rng.randf() * 0.25)])
 			mossy.append([Transform3D(Basis().scaled(Vector3(sz * 0.85, sz * 0.22, sz * 0.7)), Vector3(p.x, y + sz * 0.62, p.y)), Color("4e6e30")])
 		else:
 			var cap := Color("a8583a") if rng.randf() < 0.6 else (Color("d8c8a0") if rng.randf() < 0.6 else Color("c8402e"))
@@ -1318,7 +1318,7 @@ func _forest_floor(rng: RandomNumberGenerator) -> void:
 	_multimesh(cyl, logs)
 	_multimesh(cyl, stumps)
 	_multimesh(ball, mossy)
-	_multimesh(ball, stones)
+	_rock_multimesh(RockFactory.make({"role": "cobble", "size": Vector3.ONE, "seed": 733}), stones)
 	_multimesh(cyl, stems)
 	_multimesh(ball, caps)
 
@@ -1374,6 +1374,21 @@ func _multimesh(mesh: Mesh, items: Array) -> void:
 	var node := MultiMeshInstance3D.new()
 	node.multimesh = mm
 	node.material_override = m
+	add_child(node)
+
+
+func _rock_multimesh(mesh: Mesh, items: Array) -> void:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = mesh
+	mm.instance_count = items.size()
+	for i in items.size():
+		mm.set_instance_transform(i, items[i][0])
+		mm.set_instance_color(i, items[i][1])
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = mm
+	node.material_override = RockFactory.material(Color.WHITE)
 	add_child(node)
 
 
@@ -1804,7 +1819,7 @@ func _creek(rng: RandomNumberGenerator) -> void:
 				var b := _creek_point(i + rng.randf_range(-1, 1)) + side * sgn * rng.randf_range(1.6, 2.2)
 				if not _near_trail(b, 2.0):
 					GardenProps.cattails(self, Vector3(b.x, height(b.x, b.y), b.y), rng)
-	var stone := GardenProps.mat("stepstone0", Color("7a7a72"))
+	var stone := RockFactory.material(Color("7a7a72"))
 	for e in _paths:                                      # stepping stones where a trail crosses
 		var pts: PackedVector3Array = e["pts"]
 		for i in range(pts.size()):
@@ -1813,17 +1828,18 @@ func _creek(rng: RandomNumberGenerator) -> void:
 			if absf(_creek_lat(q)) < 2.1 and absf(along) < 72.0:
 				var mid := _creek_point(along)
 				var y := height(mid.x, mid.y) + 0.78
-				GardenProps.part(self, GardenProps.blob(Vector3(0.42, 0.14, 0.34), "pebble"), stone, Vector3(pts[i].x, y, pts[i].z), Vector3(0, rng.randf_range(0, 180), 0), 0.006)
+				GardenProps.part(self, RockFactory.make({"role": "stepping_stone", "size": Vector3(0.84, 0.28, 0.68), "seed": rng.randi(), "flatten": 0.96}), stone, Vector3(pts[i].x, y - 0.14, pts[i].z), Vector3(0, rng.randf_range(0, 180), 0), 0.006)
 
 
 ## The ridge: flat lichened rocks at the edge, a weathered bench looking out, a cairn.
 func _ridge(rng: RandomNumberGenerator) -> void:
 	var c: Vector2 = NODES["ridge"]["at"]
 	var side := VIEW_DIR.orthogonal()
-	var lichen := GardenProps.mat("lichenrock", Color("8a8c80"))
+	var lichen := RockFactory.material(Color("8a8c80"))
 	for k in range(7):
 		var p := c + VIEW_DIR * rng.randf_range(4.0, 6.0) + side * (k - 3) * 1.6
-		GardenProps.part(self, GardenProps.blob(Vector3(1.0, 0.35, 0.8) * snappedf(rng.randf_range(0.8, 1.3), 0.1), {"exponent": 2.6, "flat_bottom": 0.5}), lichen, Vector3(p.x, height(p.x, p.y) - 0.1, p.y), Vector3(rng.randf_range(-8, 8), rng.randf_range(0, 360), 0), 0.012)
+		var rs := Vector3(1.0, 0.35, 0.8) * snappedf(rng.randf_range(0.8, 1.3), 0.1)
+		GardenProps.part(self, RockFactory.make({"role": "ledge", "size": rs * 2.0, "seed": rng.randi(), "roughness": 0.14, "facets": 8, "flatten": 0.9}), lichen, Vector3(p.x, height(p.x, p.y) - 0.1 - rs.y, p.y), Vector3(rng.randf_range(-8, 8), rng.randf_range(0, 360), 0), 0.012)
 	var bench3 := _off_trail(Vector3(c.x, 0, c.y) + Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 1.2 + Vector3(side.x, 0, side.y) * 2.4, 1.6)
 	var bench := GardenProps.root(self, "RidgeBench", bench3, rad_to_deg(atan2(VIEW_DIR.x, VIEW_DIR.y)))
 	var grey := GardenProps.mat("greywood", Color("6e665a"))

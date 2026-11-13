@@ -1,0 +1,10 @@
+{
+  "wall_stone": {"hull_points": 12, "aspect": [1.35, 0.78, 0.72], "fracture_planes": 4, "deformation": 0.045, "weathering": 0.25, "preserve_facets": true, "material": "granite", "max_triangles": 30, "max_displacement": 0.08},
+  "cap_stone": {"hull_points": 12, "aspect": [1.45, 0.42, 0.82], "fracture_planes": 4, "deformation": 0.04, "weathering": 0.22, "preserve_facets": true, "material": "granite", "max_triangles": 30, "max_displacement": 0.08},
+  "stepping_stone": {"hull_points": 12, "aspect": [1.3, 0.34, 1.0], "fracture_planes": 3, "deformation": 0.035, "weathering": 0.18, "preserve_facets": true, "material": "granite", "max_triangles": 30, "max_displacement": 0.08},
+  "weathered_boulder": {"hull_points": 14, "aspect": [1.3, 0.85, 1.1], "fracture_planes": 5, "deformation": 0.06, "weathering": 0.35, "preserve_facets": true, "material": "granite", "max_triangles": 48, "max_displacement": 0.08},
+  "cobble": {"hull_points": 10, "aspect": [1.0, 0.7, 0.9], "fracture_planes": 3, "deformation": 0.04, "weathering": 0.2, "preserve_facets": true, "material": "granite", "max_triangles": 16, "max_displacement": 0.08},
+  "scree": {"hull_points": 10, "aspect": [1.0, 0.62, 0.86], "fracture_planes": 3, "deformation": 0.04, "weathering": 0.2, "preserve_facets": true, "material": "granite", "max_triangles": 16, "max_displacement": 0.08},
+  "ledge": {"hull_points": 14, "aspect": [1.5, 0.8, 0.55], "fracture_planes": 6, "deformation": 0.055, "weathering": 0.25, "preserve_facets": true, "material": "granite", "max_triangles": 60, "max_displacement": 0.08},
+  "outcrop": {"hull_points": 14, "aspect": [1.5, 0.9, 0.6], "fracture_planes": 6, "deformation": 0.055, "weathering": 0.25, "preserve_facets": true, "material": "granite", "max_triangles": 60, "max_displacement": 0.08}
+}

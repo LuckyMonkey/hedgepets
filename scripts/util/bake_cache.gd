@@ -17,7 +17,7 @@ const PATH := "res://assets/baked/garden.res"
 ## Code whose output is cached but not fully described by its keys: the woods' tree patches are keyed by patch only
 ## (woods.gd places, woods_trees.gd builds), the grass by its inputs but not its algorithm (garden.gd). A change to any
 ## of these makes the editor ignore the bake (built live, with a warning) instead of reading stale geometry.
-const GENERATORS := ["res://scripts/art/foliage_builder.gd", "res://scripts/art/hedge_anatomy.gd", "res://scripts/util/bake_cache.gd",
+const GENERATORS := ["res://scripts/art/rock_factory.gd", "res://scripts/art/foliage_builder.gd", "res://scripts/art/hedge_anatomy.gd", "res://scripts/util/bake_cache.gd",
 	"res://scripts/garden/garden.gd", "res://scripts/garden/woods.gd", "res://scripts/garden/woods_trees.gd"]
 
 static var recording := false
