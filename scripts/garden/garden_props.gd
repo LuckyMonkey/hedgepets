@@ -130,6 +130,26 @@ static func root(parent: Node3D, name: String, at: Vector3, yaw_deg: float) -> N
 	return n
 
 
+## A small shared dish for a found thing. One mesh recipe serves every offering kind; the coloured item is only
+## a tiny accent, keeping the garden cheap on low-tier phones.
+static func offering_dish(parent: Node3D, at: Vector3, yaw: float, kind: String) -> Node3D:
+	var r := root(parent, "OfferingDish_" + kind, at, yaw)
+	var clay := mat("offering_clay", Color("b46a44"))
+	var dark := mat("offering_dark", Color("4b3528"))
+	part(r, cyl(0.28, 0.34, 0.08, 12), clay, Vector3(0, 0.05, 0), Vector3.ZERO, 0.006)
+	var rim := TorusMesh.new()
+	rim.inner_radius = 0.25
+	rim.outer_radius = 0.34
+	rim.rings = 16
+	rim.ring_segments = 6
+	part(r, rim, clay, Vector3(0, 0.1, 0), Vector3.ZERO, 0.004)
+	var accent: Color = {"cone": Color("7a5232"), "acorn": Color("a87a3a"), "feather": Color("4a7ac0"), "apple": Color("b8402e")}.get(kind, Color("8a6a4a"))
+	part(r, blob(Vector3(0.09, 0.07, 0.09), "pebble"), mat("offering_" + kind, accent), Vector3(0, 0.15, 0), Vector3.ZERO, 0.004)
+	if kind == "feather":
+		part(r, box(Vector3(0.025, 0.012, 0.2)), dark, Vector3(0, 0.18, 0), Vector3(0, 0, 18), 0.0)
+	return r
+
+
 # ------------------------------------------------------------------ the things
 ## A white resin lawn chair, knocked over onto its side.
 static func lawn_chair(parent: Node3D, at: Vector3, yaw: float) -> Node3D:

@@ -53,7 +53,8 @@
    },
    "resident": {
     "oak_flowering": 1,
-    "log_pile": 1
+    "log_pile": 1,
+    "acorn": 1
    }
   },
   "hints": [
@@ -92,7 +93,8 @@
    },
    "resident": {
     "fern_flowering": 1,
-    "clover_grown": 2
+    "clover_grown": 2,
+    "apple": 1
    }
   },
   "hints": [
@@ -525,7 +527,8 @@
    },
    "resident": {
     "pine_grown": 1,
-    "boxwood_grown": 1
+    "boxwood_grown": 1,
+    "feather": 1
    }
   },
   "hints": [
@@ -600,7 +603,8 @@
    "resident": {
     "oak_flowering": 1,
     "has_chipmunk": 1,
-    "feeder": 1
+    "feeder": 1,
+    "acorn": 1
    }
   },
   "hints": [
