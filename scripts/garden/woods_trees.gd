@@ -317,6 +317,7 @@ func finish() -> void:
 					# trunks disappear into the existing blue haze instead of filling the frame.
 					node.visibility_range_end = 68.0
 					node.set_meta("woods_lod_kind", "trunk")
+					node.set_meta("woods_id", "tree:%d_%d:trunk" % [key.x, key.y])
 					woods.add_child(node)
 				"mass":
 					var node := MeshInstance3D.new()
@@ -324,6 +325,7 @@ func finish() -> void:
 					node.material_override = GardenProps.mat("treemass%s" % (m[2] as Color).to_html(false), m[2])
 					node.visibility_range_end = 58.0
 					node.set_meta("woods_lod_kind", "mass")
+					node.set_meta("woods_id", "tree:%d_%d:mass_%s" % [key.x, key.y, (m[2] as Color).to_html(false)])
 					woods.add_child(node)
 				"leaves":
 					var mm := MultiMesh.new()
@@ -346,4 +348,5 @@ func finish() -> void:
 					# trees the player can meaningfully see; the merged dark masses carry the far read.
 					node.visibility_range_end = 36.0
 					node.set_meta("woods_lod_kind", "leaves")
+					node.set_meta("woods_id", "tree:%d_%d:leaves_%s" % [key.x, key.y, m[2]])
 					woods.add_child(node)

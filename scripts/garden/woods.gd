@@ -132,6 +132,8 @@ var _let_out: Button
 var _released: Array = []             # pets let out of the bucket here: they come home beside you
 var _told := false
 var _finds: Array = []                # {id, kind, at (node id), node: Node3D, tugs}
+var things: Array = []                # authored woods placements: stable id, node, at, radius
+const OVERRIDES_PATH := "res://world/woods_overrides.tres"
 var _basket_label: Label
 var _binoculars: Node3D
 var _binocular_mode := false
@@ -344,7 +346,39 @@ func build_steps() -> Array:
 	return [["Finding the trails", _build_trails], ["Shaping the hills and the creek", _static_step.bind("land", _build_land)],
 		["Growing the trees", _build_trees], ["Ferns and fallen logs", _static_step.bind("undergrowth", _build_undergrowth)],
 		["The old oak, the pond, the signs", _build_places], ["Letting the sun in", _build_sky],
-		["Down to the nursery", _build_nursery], ["Tidying up", _merge_static]]
+		["Down to the nursery", _build_nursery], ["Applying woods placements", _apply_overrides], ["Tidying up", _merge_static]]
+
+
+func _placement(id: String, node: Node3D, radius := 1.0) -> void:
+	if node == null:
+		return
+	node.set_meta("woods_id", id)
+	things.append({"id": id, "kind": "woods", "node": node, "at": Vector2(node.position.x, node.position.z), "radius": radius, "hidden": false})
+
+
+func _scan_placements(n: Node) -> void:
+	for c in n.get_children():
+		if c is Node3D and c.has_meta("woods_id"):
+			var id := str(c.get_meta("woods_id"))
+			var exists := false
+			for t in things:
+				if t["id"] == id:
+					exists = true
+					break
+			if not exists:
+				things.append({"id": id, "kind": "woods", "node": c, "at": Vector2(c.position.x, c.position.z), "radius": 1.5, "hidden": false})
+		_scan_placements(c)
+
+
+func _apply_overrides() -> void:
+	_scan_placements(self)
+	var o := WorldOverrides.current(OVERRIDES_PATH)
+	for t in things:
+		if o.things.has(t["id"]):
+			WorldOverrides.apply_one(t, o.things[t["id"]])
+			if t.get("hidden", false):
+				t["node"].visible = false
+
 
 
 # ------------------------------------------------------------------ the compiled woods
@@ -1012,8 +1046,9 @@ func _ground(rng: RandomNumberGenerator) -> void:
 	var step := 1.6
 	var nx := 76
 	var nz := 85
-	var moss := Color("2f3b25")
-	var litter := Color("3d3022")
+	# The shade is blue-green, but the leaf litter must still read as earth under the canopy.
+	var moss := Color("465234")
+	var litter := Color("604631")
 	var grid: Array = []
 	for j in range(nz + 1):
 		await Slicer.tick(self)
@@ -1486,7 +1521,8 @@ func _clearings(rng: RandomNumberGenerator) -> void:
 			if k >= 2:
 				log = _off_trail(log + (log - c).normalized() * 0.8, 1.3 + log_len * 0.5)
 		if log_ok:                                       # (nowhere clear to lie: this clearing does without)
-			GardenProps.part(self, GardenProps.cyl(0.28, 0.32, log_len, 9), GardenProps.mat("woodslog", Color("4a3a2a")), log + Vector3(0, 0.25, 0), Vector3(90, log_yaw, 0), 0.012)
+			var log_node := GardenProps.part(self, GardenProps.cyl(0.28, 0.32, log_len, 9), GardenProps.mat("woodslog", Color("4a3a2a")), log + Vector3(0, 0.25, 0), Vector3(90, log_yaw, 0), 0.012)
+			_placement("%s:log_0" % id, log_node, log_len * 0.5)
 		for k in range(10):
 			var f := MeshInstance3D.new()
 			f.mesh = dot
@@ -1749,6 +1785,7 @@ func _old_oak(rng: RandomNumberGenerator) -> void:
 	var p := Vector2(at.x, at.z)
 	var bark := GardenProps.mat("oldoak", Color("4a3c30"))
 	var r := GardenProps.root(self, "OldOak", at, rng.randf() * 360.0)
+	_placement("oak:old_oak", r, 4.0)
 	GardenProps.part(r, GardenProps.cyl(1.15, 1.9, 7.5, 16), bark, Vector3(0, 3.75, 0), Vector3(0, 0, 3), 0.025)
 	GardenProps.part(r, GardenProps.blob(Vector3(2.5, 1.0, 2.5), {"exponent": 2.0, "flat_bottom": 0.6}), bark, Vector3(0, 0.4, 0), Vector3.ZERO, 0.02)
 	for k in range(7):                                    # roots over the ground
@@ -1839,9 +1876,11 @@ func _ridge(rng: RandomNumberGenerator) -> void:
 	for k in range(7):
 		var p := c + VIEW_DIR * rng.randf_range(4.0, 6.0) + side * (k - 3) * 1.6
 		var rs := Vector3(1.0, 0.35, 0.8) * snappedf(rng.randf_range(0.8, 1.3), 0.1)
-		GardenProps.part(self, RockFactory.make({"role": "ledge", "size": rs * 2.0, "seed": rng.randi(), "roughness": 0.14, "facets": 8, "flatten": 0.9}), lichen, Vector3(p.x, height(p.x, p.y) - 0.1 - rs.y, p.y), Vector3(rng.randf_range(-8, 8), rng.randf_range(0, 360), 0), 0.012)
+		var ledge_node := GardenProps.part(self, RockFactory.make({"role": "ledge", "size": rs * 2.0, "seed": rng.randi(), "roughness": 0.14, "facets": 8, "flatten": 0.9}), lichen, Vector3(p.x, height(p.x, p.y) - 0.1 - rs.y, p.y), Vector3(rng.randf_range(-8, 8), rng.randf_range(0, 360), 0), 0.012)
+		_placement("ridge:ledge_%d" % k, ledge_node, 1.2)
 	var bench3 := _off_trail(Vector3(c.x, 0, c.y) + Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 1.2 + Vector3(side.x, 0, side.y) * 2.4, 1.6)
 	var bench := GardenProps.root(self, "RidgeBench", bench3, rad_to_deg(atan2(VIEW_DIR.x, VIEW_DIR.y)))
+	_placement("ridge:bench", bench, 1.5)
 	var grey := GardenProps.mat("greywood", Color("6e665a"))
 	GardenProps.part(bench, GardenProps.box(Vector3(1.6, 0.06, 0.4)), grey, Vector3(0, 0.45, 0), Vector3.ZERO, 0.008)
 	GardenProps.part(bench, GardenProps.box(Vector3(1.6, 0.3, 0.05)), grey, Vector3(0, 0.72, -0.2), Vector3(-10, 0, 0), 0.008)
@@ -1871,6 +1910,7 @@ func _setup_ravine_viewer() -> void:
 	var side := VIEW_DIR.orthogonal()
 	var at := _off_trail(Vector3(c.x, height(c.x, c.y), c.y) + Vector3(side.x, 0, side.y) * 2.5 + Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 1.8, 1.2)
 	_binoculars = GardenProps.root(self, "RavineBinoculars", at, rad_to_deg(atan2(VIEW_DIR.x, VIEW_DIR.y)))
+	_placement("ridge:binoculars", _binoculars, 1.0)
 	var dark := GardenProps.mat("binocularmetal", Color("3c4a48"))
 	var wood := GardenProps.mat("binocularpost", Color("5c4634"))
 	GardenProps.part(_binoculars, GardenProps.box(Vector3(0.14, 1.25, 0.14)), wood, Vector3(0, 0.62, 0), Vector3.ZERO, 0.008)
@@ -2153,6 +2193,7 @@ func _trailhead_board() -> void:
 	# Keep the board behind the arrival camera's forward cone; it is found by turning back toward home.
 	var at := _off_trail(c + Vector3(HOME_DIR.x, 0, HOME_DIR.y) * 4.5, 1.6)
 	var r := GardenProps.root(self, "TrailBoard", at, -30.0)
+	_placement("trailhead:sign_home", r, 1.0)
 	var wood := GardenProps.mat("boardwood", Color("6a5038"))
 	for sx: float in [-0.6, 0.6]:
 		GardenProps.part(r, GardenProps.box(Vector3(0.1, 1.9, 0.1)), wood, Vector3(sx, 0.95, 0), Vector3.ZERO, 0.008)
@@ -2175,6 +2216,7 @@ func _place_finds() -> void:
 				var b := _creek_point((q - CREEK_AT).dot(CREEK_DIR) + (2.5 if kind == "tire" else -3.0)) + CREEK_DIR.orthogonal() * (0.4 if kind == "tire" else 1.9) * signf(_creek_lat(q))
 				at = Vector3(b.x, height(b.x, b.y) + (0.55 if kind == "tire" else 0.6), b.y)
 			var holder := GardenProps.root(self, "Find_" + kind, at, rng.randf() * 360.0)
+			_placement("%s:find_%s_%d" % [id, kind, i], holder, 0.6)
 			_find_look(holder, kind, rng)
 			_finds.append({"id": "%s:%d" % [id, i], "kind": kind, "at": id, "node": holder, "tugs": int(FINDS[kind].get("tugs", 1))})
 
@@ -2190,7 +2232,7 @@ func _find_look(h: Node3D, kind: String, rng: RandomNumberGenerator) -> void:
 		"tire":
 			GardenProps.old_tire(h, Vector3(0, -0.2, 0), 0.0).rotation_degrees.x = 25.0
 		"tarp":
-			GardenProps.part(h, GardenProps.blob(Vector3(0.8, 0.22, 0.6), "pebble"), GardenProps.mat("tarp", Color("3a5a9a"), 0.6), Vector3(0, 0.12, 0), Vector3.ZERO, 0.01)
+			GardenProps.part(h, GardenProps.blob(Vector3(0.8, 0.22, 0.6), "pebble"), GardenProps.mat("tarp", Color("536878"), 0.95), Vector3(0, 0.12, 0), Vector3.ZERO, 0.01)
 		"drum":
 			GardenProps.part(h, GardenProps.cyl(0.3, 0.3, 0.85, 14), GardenProps.rust_mat(), Vector3(0, 0.28, 0), Vector3(0, 0, 90), 0.01)
 		"line":
@@ -2447,7 +2489,7 @@ func _arrive() -> void:
 	_yaw = _heading_of(_way_to("fork")["dir"])
 	_goal_yaw = _yaw
 	_settle(Vector3.INF)
-	_place_camera(node_pos(_at) + Vector3(0, EYE, 0))
+	_place_camera(_arrival_camera_point())
 	if not _told:
 		_told = true
 		garden.game.toast("Turn to face a trail, then tap to walk it.")
@@ -2644,6 +2686,15 @@ func _place_camera(at: Vector3) -> void:
 	cam.rotation = Vector3(_pitch, _yaw, 0)
 
 
+func _arrival_camera_point() -> Vector3:
+	var p := node_pos(_at) + Vector3(0, EYE, 0)
+	if _at == "oak":
+		p += Vector3(OAK_VIEW.x, 0, OAK_VIEW.y) * 2.8
+	elif _at == "ridge":
+		p -= Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 1.5
+	return p
+
+
 func facing() -> Dictionary:
 	if not _walking.is_empty():
 		return {}
@@ -2671,7 +2722,7 @@ func _process(delta: float) -> void:
 	if _binocular_mode or _binocular_returning:
 		pass                                             # the mounted viewer owns the camera while in its quiet gaze
 	elif _walking.is_empty():
-		_place_camera(node_pos(_at) + Vector3(0, EYE, 0))
+		_place_camera(_arrival_camera_point())
 	else:
 		cam.rotation = Vector3(_pitch, _yaw, 0)
 	var faced := facing()
