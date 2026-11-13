@@ -234,6 +234,45 @@ var _sun_goal := Basis.IDENTITY
 var _sun_check := 0.0
 
 
+## The weather of the day (owner 2026-11-13: "the fog is heavy and hazy - let it happen occasionally, not all the
+## time"). One per calendar day, the same all day (nothing to catch or miss): mostly clear, sometimes a light haze, now
+## and then a misty day; and on any day an early-morning mist that lifts by noon. Clear air is cooler and bluer with
+## distance, mist is the old sage. HEDGEPETS_WEATHER=clear|haze|mist pins it; captures and checks (HEDGEPETS_HOUR) keep
+## the misty look they were made with.
+const WEATHER_FOG := {"clear": 0.0035, "haze": 0.006, "mist": 0.01}
+var _env: Environment
+var _fog_goal := 0.01
+
+
+func weather() -> String:
+	var pinned := OS.get_environment("HEDGEPETS_WEATHER")
+	if WEATHER_FOG.has(pinned):
+		return pinned
+	if OS.get_environment("HEDGEPETS_HOUR") != "":
+		return "mist"
+	var d := Time.get_date_dict_from_system()
+	var roll := absi(hash("%d-%d-%d" % [d["year"], d["month"], d["day"]])) % 100
+	return "mist" if roll < 10 else ("haze" if roll < 40 else "clear")
+
+
+func fog_at(hour: float) -> float:
+	var base: float = WEATHER_FOG[weather()]
+	var morning := 1.0 - smoothstep(8.0, 12.0, hour)          # early mist, lifting by noon
+	return lerpf(base, maxf(base, 0.011), morning * 0.8)
+
+
+## Fog and its colour for a density: the garden's, and the neighbourhood miniature's (its own world, the same air).
+func _apply_fog(density: float) -> void:
+	if _env == null:
+		return
+	var clear := clampf((0.01 - density) / (0.01 - 0.0035), 0.0, 1.0)
+	var tint := Color("a7b37a").lerp(Color("b2bfc2"), clear * 0.75)
+	_env.fog_density = density
+	_env.fog_light_color = tint
+	if neighborhood != null:
+		neighborhood.set_air(density, tint)
+
+
 func _hour() -> float:
 	if OS.get_environment("HEDGEPETS_HOUR") != "":
 		return float(OS.get_environment("HEDGEPETS_HOUR"))
@@ -311,6 +350,9 @@ func _tend_sun(delta: float) -> void:
 		var s: Array = sun_at(_hour())
 		_aim_sun(s, false)
 		_place_shafts(s)
+		_fog_goal = fog_at(_hour())
+	if _env != null and absf(_env.fog_density - _fog_goal) > 0.00002:   # the air changes slowly, never jumps
+		_apply_fog(move_toward(_env.fog_density, _fog_goal, delta * 0.0002))
 	sun.basis = sun.basis.orthonormalized().slerp(_sun_goal.orthonormalized(), clampf(delta * 0.05, 0.0, 1.0))   # glides, never jumps (re-squared: slerping drifts)
 
 
@@ -371,6 +413,9 @@ func _build_world() -> void:
 	env.sky = neighborhood.sky_for_woods(Color("a7b37a"), 1.4)
 	env.fog_sky_affect = 0.0                             # (the miniature has the garden's fog of its own)
 	neighborhood.show_land(true)
+	_env = env
+	_fog_goal = fog_at(_hour())
+	_apply_fog(_fog_goal)                                # the day's weather (weather())
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)

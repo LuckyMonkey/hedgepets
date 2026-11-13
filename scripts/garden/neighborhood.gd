@@ -11,6 +11,16 @@ var _sun: DirectionalLight3D
 var _mats := {}
 var _root: Node3D                                    # the 1:SCALE root: everything in here is built in metres
 var _unfaded := {}                                   # garden material -> its copy without the near fade
+var _env: Environment
+
+
+## The garden's air, in miniature units (garden.gd _apply_fog: the weather of the day).
+func set_air(density: float, tint: Color) -> void:
+	if _env == null:
+		return
+	_env.fog_density = density * SCALE
+	_env.fog_light_color = tint
+	_request_redraw()
 
 
 func setup(garden: Node3D) -> void:
@@ -27,6 +37,7 @@ func setup(garden: Node3D) -> void:
 	env.fog_enabled = true
 	env.fog_light_color = Color("a7b37a")
 	env.fog_density = 0.01 * SCALE                    # the garden's fog, in miniature units
+	_env = env
 	var world := _make_view(garden.get_viewport(), env)
 	_sun = DirectionalLight3D.new()
 	_sun.shadow_enabled = false

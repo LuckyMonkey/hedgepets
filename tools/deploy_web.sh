@@ -4,6 +4,10 @@
 # Needs: Godot 4.7.2 export templates (~/.local/share/godot/export_templates/4.7.2.stable), ssh fridge@fridge.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# no xvfb on this laptop's system (and no sudo): a private copy unpacked in ~/work/xvfb-local (docs/OWNER_QUICKSTART.md)
+if ! command -v xvfb-run >/dev/null && [ -x "$HOME/work/xvfb-local/root/usr/bin/xvfb-run" ]; then
+  export PATH="$HOME/work/xvfb-local/root/usr/bin:$PATH" LD_LIBRARY_PATH="$HOME/work/xvfb-local/root/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 if [ -f world/woods.compile ]; then                     # opt-in: ship the compiled woods (faster woods, ~16 MB more download)
   echo "== compile the woods"
   xvfb-run -a -s "-screen 0 320x240x24" godot --audio-driver Dummy --rendering-driver opengl3 --resolution 320x240 --path . \
