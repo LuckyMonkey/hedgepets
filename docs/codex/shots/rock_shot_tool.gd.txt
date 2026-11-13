@@ -1,0 +1,3 @@
+(Claude's render: a 6x3 grid - rows back to front: wall_stone, cap_stone, stepping_stone, boulder, cobble, ledge -
+each RockFactory.make() lifted so its AABB bottom sits on y=0, RockFactory.material(Color("9a968a")), one
+DirectionalLight3D at (-35, -40, 0), Compatibility renderer, llvmpipe.)

@@ -322,7 +322,7 @@ static func rock(parent: Node3D, at: Vector3, size: float, rng: RandomNumberGene
 	var r := root(parent, "Rock", at, rng.randf_range(0, 360))
 	var grey := Color("8d8a80").lerp(Color("a39e90"), rng.randf())
 	var shape := int((rng.randf_range(-0.2, 0.2) + 0.2) * 29.9)    # (the draw that once set its taper)
-	part(r, RockFactory.make({"role": "boulder", "size": Vector3(size, size * 0.62, size * 0.8), "seed": shape, "sink": 0.16}), RockFactory.material(grey), Vector3(0, size * 0.3, 0), Vector3.ZERO, 0.01)
+	part(r, RockFactory.make({"role": "boulder", "size": Vector3(size, size * 0.62, size * 0.8), "seed": shape}), RockFactory.material(grey), Vector3(0, -size * 0.12, 0), Vector3.ZERO, 0.01)
 	return r
 
 
@@ -472,7 +472,7 @@ static func _field_stone(r: Node3D, at: Vector3, radii: Vector3, yaw: float, rng
 	if cap and rng.randf() < 0.45:
 		m = mat("fieldstone_moss%d" % (g % 3), Color(FIELD_GREYS[g]).lerp(Color("6e7a4a"), 0.3))
 	var role := "cap_stone" if cap else "wall_stone"
-	var stone := part(r, RockFactory.make({"role": role, "size": q * 2.0, "seed": rng.randi()}), RockFactory.material(m.albedo_color), at,
+	var stone := part(r, RockFactory.make({"role": role, "size": q * 2.0, "seed": rng.randi()}), RockFactory.material(m.albedo_color), at - Vector3(0, q.y, 0),
 		Vector3(rng.randf_range(-7, 7), yaw + rng.randf_range(-12, 12), rng.randf_range(-9, 9)), 0.008)
 	stone.name = "Stone"
 

@@ -32,7 +32,12 @@ static func make(spec: Dictionary) -> ArrayMesh:
 	var seed := int(spec.get("seed", 1))
 	var qsize := (size / 0.03).round() * 0.03
 	qsize = qsize.max(Vector3(0.03, 0.03, 0.03))
-	var key := BakeCache.key(["rock_factory_v2", role, qsize, seed, data])
+	var horizontal_min := minf(qsize.x, qsize.z)
+	if role in ["wall_stone", "cap_stone", "stepping_stone"]:
+		qsize.y = maxf(qsize.y, horizontal_min * 0.4)
+	elif role in ["ledge", "outcrop"]:
+		qsize.y = maxf(qsize.y, horizontal_min * 0.25)
+	var key := BakeCache.key(["rock_factory_v4", role, qsize, seed, data])
 	if _cache.has(key): return _cache[key]
 	var baked = BakeCache.fetch(key)
 	if baked != null:
@@ -117,13 +122,14 @@ static func _build_points(data: Dictionary, size: Vector3, seed: int, max_triang
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var points: Array[Vector3] = []
-	points.append(Vector3(0, aspect.y, 0))
-	points.append(Vector3(0, -aspect.y, 0))
-	var ring := count - 2
-	for i in range(ring):
-		var a := TAU * float(i) / ring + rng.randf_range(-0.06, 0.06)
-		var y := rng.randf_range(-0.18, 0.18) * aspect.y
-		points.append(Vector3(cos(a) * aspect.x, y, sin(a) * aspect.z))
+	# Fibonacci sphere: even coverage keeps boulders chunky instead of making a pyramid from clustered points.
+	const GOLDEN_ANGLE := 2.399963229728653
+	for i in range(count):
+		var y := 1.0 - 2.0 * (float(i) + 0.5) / float(count)
+		var radius := sqrt(maxf(0.0, 1.0 - y * y))
+		var a := GOLDEN_ANGLE * i + rng.randf_range(-0.10, 0.10)
+		var jitter := rng.randf_range(0.95, 1.05)
+		points.append(Vector3(cos(a) * radius * aspect.x, y * aspect.y, sin(a) * radius * aspect.z) * jitter)
 	# 1. Structural fracture planes: project beyond-plane vertices, never add geometry.
 	var planes := clampi(int(data.get("fracture_planes", 4)), 3, 6)
 	var role := str(data.get("role", ""))
@@ -132,7 +138,10 @@ static func _build_points(data: Dictionary, size: Vector3, seed: int, max_triang
 		if role in ["wall_stone", "cap_stone"]: n.y = rng.randf_range(-0.12, 0.12)
 		elif role == "stepping_stone": n = Vector3(rng.randf_range(-0.3, 0.3), 1, rng.randf_range(-0.3, 0.3)).normalized()
 		elif role in ["ledge", "outcrop"]: n.y = rng.randf_range(-0.16, 0.28)
-		var d := rng.randf_range(0.55, 0.86) * minf(aspect.x, minf(aspect.y, aspect.z))
+		# Only the outer 10–25% may be projected: broad fracture facets, never shards.
+		# depth measured along this plane's own direction (the ellipsoid's reach that way), so a cut takes 10-25%
+		var reach := Vector3(n.x * aspect.x, n.y * aspect.y, n.z * aspect.z).length()
+		var d := rng.randf_range(0.75, 0.9) * reach
 		for i in points.size():
 			var over := points[i].dot(n) - d
 			if over > 0.0: points[i] -= n * over
@@ -148,7 +157,8 @@ static func _build_points(data: Dictionary, size: Vector3, seed: int, max_triang
 	for i in range(mini(3, points.size())):
 		var index := (seed + i * 5) % points.size()
 		points[index] = points[index].lerp(Vector3.ZERO, weathering * 0.08)
-	return points.map(func(p: Vector3) -> Vector3: return Vector3(p.x * size.x * 0.5, p.y * size.y * 0.5, p.z * size.z * 0.5))
+	# `size` is the box the rock fills: the aspect shaped the cuts; scale the result back into that box
+	return points.map(func(p: Vector3) -> Vector3: return Vector3(p.x / aspect.x * size.x * 0.5, p.y / aspect.y * size.y * 0.5, p.z / aspect.z * size.z * 0.5))
 
 
 static func _hull_mesh(points: Array, tint: Color) -> ArrayMesh:
@@ -156,6 +166,9 @@ static func _hull_mesh(points: Array, tint: Color) -> ArrayMesh:
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var eps := 0.00001
+	var hull_centre := Vector3.ZERO
+	for point in points: hull_centre += point
+	hull_centre /= maxf(points.size(), 1)
 	for a in range(points.size()):
 		for b in range(a + 1, points.size()):
 			for c in range(b + 1, points.size()):
@@ -175,10 +188,21 @@ static func _hull_mesh(points: Array, tint: Color) -> ArrayMesh:
 						valid = false
 						break
 				if not valid or side == 0: continue
-				var n: Vector3 = normal.normalized() * (-1.0 if side > 0 else 1.0)
+				var va: Vector3 = points[a]
+				var vb: Vector3 = points[c] if side > 0 else points[b]
+				var vc: Vector3 = points[b] if side > 0 else points[c]
+				var face_normal: Vector3 = (vb - va).cross(vc - va).normalized()
+				var face_centre := (va + vb + vc) / 3.0
+				if face_normal.dot(face_centre - hull_centre) <= 0.0:
+					var swap := vb
+					vb = vc
+					vc = swap
+					face_normal = (vb - va).cross(vc - va).normalized()
+				assert(face_normal.dot(face_centre - hull_centre) > 0.0)
 				var base := vertices.size()
-				vertices.append(points[a]); vertices.append(points[c] if side > 0 else points[b]); vertices.append(points[b] if side > 0 else points[c])
-				normals.append(n); normals.append(n); normals.append(n)
+				# Godot's front faces wind clockwise seen from outside: (va, vc, vb) with the outward normal
+				vertices.append(va); vertices.append(vc); vertices.append(vb)
+				normals.append(face_normal); normals.append(face_normal); normals.append(face_normal)
 				colors.append(tint); colors.append(tint); colors.append(tint)
 	var arrays := []; arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
@@ -186,6 +210,14 @@ static func _hull_mesh(points: Array, tint: Color) -> ArrayMesh:
 	arrays[Mesh.ARRAY_COLOR] = colors
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	# Geometry is returned standing on the ground; callers apply sink/placement in world space.
+	var bottom := mesh.get_aabb().position.y
+	if absf(bottom) > 0.0001:
+		var adjusted := PackedVector3Array()
+		for vertex in vertices: adjusted.append(vertex - Vector3(0, bottom, 0))
+		arrays[Mesh.ARRAY_VERTEX] = adjusted
+		mesh = ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
 
 

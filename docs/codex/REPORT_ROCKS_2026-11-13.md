@@ -22,8 +22,9 @@ copied into the game.
 
 The first implementation was rejected by the owner's override because repeated plane clipping started from a box and
 could grow too many faces. It has been replaced by the five ordered operations in `ROCKS_SPEC.md`: a 10–14 point
-convex hull, role-biased projection fractures, one <=8% coherent nudge, <=3 corner blunts, and shader-only micro
-detail. No icosphere or per-vertex noise is used.
+convex hull from evenly distributed Fibonacci points (<=10% jitter), role-biased projection fractures only 10–25%
+into the hull, one <=8% coherent nudge, <=3 corner blunts, and shader-only micro detail. No icosphere or per-vertex
+noise is used. Meshes are translated so their bottom is y=0; placement applies sink.
 
 ## API
 
@@ -39,8 +40,8 @@ remain as compatibility wrappers for existing callers, but no longer build the o
 
 ## Triangle counts
 
-Reference lab counts are: cobble 15/16, scree 16/16, wall_stone 20/30, cap_stone 15/30, stepping_stone 20/30,
-boulder/weathered_boulder 22/48, ledge 19/60, and outcrop 19/60 (measured triangles / hard cap). The cap fallback
+Reference lab counts are: cobble 16/16, scree 16/16, wall_stone 20/30, cap_stone 20/30, stepping_stone 19/30,
+boulder/weathered_boulder 24/48, ledge 22/60, and outcrop 24/60 (measured triangles / hard cap). The cap fallback
 rejects and simplifies any edited archetype that exceeds its budget.
 
 ## Performance and verification

@@ -6,24 +6,29 @@ archetype and saves it with the `save_archetype` Inspector toggle.
 
 ## The five geometry operations
 
-1. Build a convex hull from 10–14 points on the archetype aspect.
-2. Project points beyond 3–6 role-biased fracture planes to flatten broad beds, tops, or strata.
+1. Build a convex hull from 10–14 evenly distributed Fibonacci-sphere points on the archetype aspect, with <=10% jitter.
+2. Project points beyond 3–6 role-biased fracture planes to flatten broad beds, tops, or strata; each plane cuts only
+   10–25% into the hull.
 3. Apply one coherent low-frequency vertex nudge, capped at 8%.
 4. Pull at most three sharp points inward for restrained weathering; no spikes or slivers are accepted.
 5. Put grain, cracks, lichen, and restrained colour variation in the shared `shaders/rock.gdshader` material.
 
-The hull has no added detail during variation. The hard triangle budgets are enforced in `make()`:
+The hull has no added detail during variation. `make()` returns the mesh with its bottom at y=0; callers apply ground
+placement and sink. Wall/cap/stepping stones enforce y >= 40% of horizontal width; ledge/outcrop pieces enforce y >=
+25%.
+
+The hard triangle budgets are enforced in `make()`:
 
 | Archetype | Reference triangles | Hard cap |
 |---|---:|---:|
 | cobble | 15 | 16 |
 | scree | 16 | 16 |
 | wall_stone | 20 | 30 |
-| cap_stone | 15 | 30 |
-| stepping_stone | 20 | 30 |
-| boulder / weathered_boulder | 22 | 48 |
-| ledge | 19 | 60 |
-| outcrop | 19 | 60 |
+| cap_stone | 20 | 30 |
+| stepping_stone | 19 | 30 |
+| boulder / weathered_boulder | 24 | 48 |
+| ledge | 22 | 60 |
+| outcrop | 24 | 60 |
 
 Counts are from the lab's reference seed set (17 plus the role index); seeds can reduce the hull, never exceed the cap.
 
@@ -50,3 +55,6 @@ machine before/after total could not be collected in this sandbox: headless Godo
 `woods_cost.gd`, or the world benchmark emits their totals, and no X server is available for a renderer capture. The
 rock-only geometry is now bounded by the table above; Claude should run those tools on the normal machine and record
 the resulting garden/woods totals in the dated report before shipping.
+
+For visual review, run `tools/rock_shots.gd` under X with the Compatibility renderer. It writes a six-row by
+three-variation grid to `docs/codex/shots/rocks_grid_v3.png`.
