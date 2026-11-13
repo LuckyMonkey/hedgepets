@@ -1,7 +1,36 @@
 # HedgePets: handoff for the next agent
 
 Read this first, then the doc for whatever you're touching. The owner calls themselves luckymonkey. Last updated
-2026-10-10.
+2026-11-13.
+
+## Now (2026-11-13) - read this part first
+
+**Working copy on the owner's laptop: `~/work/hedgepets`** (not ~/Projects). Owner quick-start:
+`docs/OWNER_QUICKSTART.md`. Ship = commit, push, `tools/deploy_web.sh`.
+
+**Owner's rules this week:** don't overtest (one quick check per change; they'd rather debug); commit often and keep
+this section current; Codex does engineering in its own worktree, Claude owns how things look; the 3D skybox is a
+"very important feature" and must not regress.
+
+**Live (deployed 2026-11-13):** pet build slicing + sky redraw-on-change + first-draw warm-up (iPhone: steady 30 fps
+in the garden); frame-time telemetry (go: /hedgepets/telemetry/report, "Frame times"); "Your garden" journal,
+cause-and-effect captions, first-arrival introductions (`garden_story.gd`); collecting loop (forage → basket →
+offering dishes, collection page, favourites: `docs/codex/REPORT_LOOPS_2026-11-13.md`); woods pass 1 (no 12 Hz sky
+redraw, fades instead of cell pop: `REPORT_WOODS_2026-11-13.md`); tap the lawn with ✋ to frame the camera; fences
+without z-fighting; next door's yards match the white house's lawn; weather of the day (`garden.gd` `weather()`).
+
+**In flight (Codex, worktrees `~/work/hp-<name>`, branch `codex-<name>`, briefs in `docs/codex/`):**
+- `woods` pass 2 (`WOODS2_BRIEF_2026-11-13.md`): a skybox alignment check + fixes, trail clipping, pop-in, the ravine,
+  binoculars at the ravine with details to find, a miniature of the garden visible from the woods.
+- `rocks` (`ROCKS_BRIEF_2026-11-13.md`): `scripts/art/rock_factory.gd` - plane-cut rocks by role (wall/cap/stepping/
+  boulder/cobble/ledge) with fitting (dry-stone walls like a puzzle, trail crossings), used everywhere; `tools/rock_lab.tscn`.
+Review = read the report, capture the views it names (Codex's sandbox can't open X; use display :77, see quick-start),
+judge the look, merge into main, deploy.
+
+**Open:** a hand-placement editor for the woods (stable IDs for woods placements + the overrides file, like
+`docs/WORLD_EDITOR.md`); mesh consolidation in the neighbourhood/distant land; `life_check` is flaky (random pet
+life) and `collision_check` failed once after the fence change (not chased); How to play on go needs the collecting
+loop and binoculars once they're final (fridge-go `src/hedgepets_howto.php`).
 
 ## What it is
 
