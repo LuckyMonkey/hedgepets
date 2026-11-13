@@ -2130,6 +2130,7 @@ func take(f: Dictionary) -> void:
 			game.toast("%s 🪙 +%d" % [info["say"], info["coins"]])
 		"forage":
 			basket[f["kind"]] = int(basket.get(f["kind"], 0)) + 1
+			game.collection[f["kind"]] = int(game.collection.get(f["kind"], 0)) + 1
 			game.toast(info["say"] + " The nursery might want it.")
 			show_basket()
 		"seeds":

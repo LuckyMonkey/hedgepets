@@ -57,6 +57,15 @@ const BUILDS := {
 	"stones": {"icon": "🪨", "price": 3, "name": "stepping stones", "radius": 0.3},
 	"fire_pit": {"icon": "🔥", "price": 6, "name": "fire pit", "radius": 0.65},     # tap it with ✋ to light it
 }
+## Foraged things can be set out in a small shared dish. The item is consumed from the woods basket;
+## the dish itself is a normal placed thing, so it counts for appeal and is saved with the garden.
+const OFFERINGS := {
+	"offering_cone": {"icon": "🌲", "find": "cone", "name": "pine cone dish", "radius": 0.42},
+	"offering_acorn": {"icon": "🌰", "find": "acorn", "name": "acorn dish", "radius": 0.42},
+	"offering_feather": {"icon": "🪶", "find": "feather", "name": "feather dish", "radius": 0.42},
+	"offering_apple": {"icon": "🍎", "find": "apple", "name": "apple dish", "radius": 0.48},
+}
+const GIFT_COLLECTION := {"🌰": "acorn", "🪶": "feather", "🍄": "mushroom", "🐚": "shell", "💎": "stone", "🌼": "flower", "🫐": "berry"}
 const MAX_FOLLOWERS := 3
 const STAGE_SECONDS := 18.0        # watered growth time per stage
 const WATER_SECONDS := 40.0        # how long one watering lasts
@@ -76,6 +85,7 @@ var following: Array = []           # pet names that follow you (saved)
 var carried := ""                   # the pet in the bucket, or "" (saved)
 var nursery := {"visits": 0, "said": [], "once": [], "gave": false, "crossed": false, "returned": false}   # nursery.gd (saved)
 var woods_finds := {"taken": {}, "basket": {}}   # woods.gd: what you've picked up there (when) and what's in the basket
+var collection := {}             # found kind -> number; unlike the basket, this is a keepsake record
 var keep_seeds: Array = []          # seeds the nursery gave you, {species, genes}: sown before bought ones of that kind
 const SOW_SECONDS := 45.0           # how often an empty bed may get a self-sown seedling
 const SOW_REACH := 5.0              # from a flowering plant this near
@@ -174,6 +184,9 @@ func garden_counts() -> Dictionary:
 		"woodpile": garden.count("woodpile"), "brush_pile": garden.count("brush_pile"), "chair": garden.count("chair"),
 		"clearing": 1 if _clearing() else 0,
 		"cleared": cleared}
+	for offering: String in OFFERINGS:
+		c[offering] = garden.count(offering)
+		c[OFFERINGS[offering]["find"]] = garden.count(offering)
 	for p: CharacterArtProfile in garden.roster:
 		if pet_state.get(p.pet_name, "") == "resident":
 			c["has_" + p.species] = int(c.get("has_" + p.species, 0)) + 1
@@ -510,6 +523,11 @@ func favourite(node: HedgePetNode) -> Dictionary:
 			options.append({"at": g + Vector3(randf_range(-1.6, 1.6), 0, randf_range(-1.2, 0.2)), "radius": 0.6, "emote": "☀️"})
 	for step in ["notice", "visit", "resident"]:
 		for key: String in p.wants[step]:
+			if OFFERING_WANT_TO_KIND.has(key):
+				for t in garden.things:
+					if t["kind"] == OFFERING_WANT_TO_KIND[key]:
+						options.append({"at": Vector3(t["at"].x, 0, t["at"].y), "radius": t["radius"], "emote": OFFERING_WANT_EMOTE[key]})
+				continue
 			if WANT_THINGS.has(key):
 				var kind: String = WANT_THINGS[key][0]
 				for t in garden.things:
@@ -525,6 +543,19 @@ func favourite(node: HedgePetNode) -> Dictionary:
 			for k in range(3):
 				options.append({"at": Vector3(t["at"].x, 0, t["at"].y), "radius": 1.1, "emote": "🔥"})
 	return options.pick_random() if not options.is_empty() else {}
+
+
+const OFFERING_WANT_TO_KIND := {"cone": "offering_cone", "acorn": "offering_acorn", "feather": "offering_feather", "apple": "offering_apple"}
+const OFFERING_WANT_EMOTE := {"cone": "🌲", "acorn": "🌰", "feather": "🪶", "apple": "🍎"}
+
+
+## One favourite collectable per pet, derived from its authored wants. It is deliberately not a second data table.
+func favourite_collectable(p: CharacterArtProfile) -> String:
+	for step in ["resident", "visit", "notice"]:
+		for key: String in p.wants[step]:
+			if OFFERING_WANT_TO_KIND.has(key):
+				return key
+	return ""
 
 
 var _away_for := 0.0                # seconds since the last visit (0 on a first visit)
@@ -567,6 +598,9 @@ func _welcome_back() -> void:
 ## A happy resident leaves something behind: tap it to collect.
 func _drop_gift(node: HedgePetNode) -> void:
 	var g: Array = GIFTS.pick_random()
+	var gift_kind: String = str(GIFT_COLLECTION.get(g[0], ""))
+	if gift_kind != "":
+		collection[gift_kind] = int(collection.get(gift_kind, 0)) + 1
 	var l := pickup_label(g[0])
 	var at := node.position + Vector3(randf_range(-0.5, 0.5), 0.0, randf_range(0.3, 0.7))
 	l.position = at + Vector3(0, 1.1, 0)
@@ -712,6 +746,21 @@ func tap(at: Vector2, pet: HedgePetNode) -> bool:
 			regraft(pet)
 			return true
 		"build":
+			if OFFERINGS.has(build_choice):
+				var offering: Dictionary = OFFERINGS[build_choice]
+				var basket: Dictionary = woods_finds["basket"]
+				var find_kind: String = offering["find"]
+				if int(basket.get(find_kind, 0)) <= 0:
+					toast("Find a %s in the woods first. It will wait in your basket." % find_kind)
+					return true
+				if not garden.BOUNDS.has_point(p2) or garden._blocked(p2, float(offering["radius"]) + 0.2) or _bed_at(p2) != null:
+					toast("Not here - too close to something.")
+					return true
+				basket[find_kind] -= 1
+				_place(build_choice, p2, randf_range(-40, 40))
+				toast("%s Set out the %s." % [offering["icon"], offering["name"]])
+				_refresh()
+				return true
 			var item: Dictionary = BUILDS[build_choice]
 			if coins < int(item["price"]):
 				toast("A %s costs 🪙 %d." % [item["name"], item["price"]])
@@ -880,8 +929,14 @@ func _place(kind: String, p2: Vector2, yaw: float, animate := true) -> void:
 		"lantern": node = GardenProps.lantern(garden, at, yaw)
 		"stones": node = GardenProps.stepping_stones(garden, at, yaw, rng)
 		"fire_pit": node = preload("res://scripts/garden/fire_pit.gd").build(garden, at, yaw)
+		_:
+			if OFFERINGS.has(kind):
+				node = GardenProps.offering_dish(garden, at, yaw, str(OFFERINGS[kind]["find"]))
+			else:
+				return
 	node.rotation_degrees.y = yaw                        # every kind the same way round (it's saved, and arranged)
-	garden._thing(kind, node, p2, float(BUILDS[kind]["radius"]), int(BUILDS[kind]["price"]) / 2)
+	var spec: Dictionary = BUILDS.get(kind, OFFERINGS.get(kind, {}))
+	garden._thing(kind, node, p2, float(spec["radius"]), int(spec.get("price", 0)) / 2)
 	garden.things[-1]["placed"] = true
 	garden.things[-1]["id"] = "placed_%d_%d" % [Time.get_ticks_usec(), randi()]
 	if garden.hideouts != null and garden.hideouts.SPOTS.has(kind):
@@ -1561,6 +1616,11 @@ func _show_tool() -> void:
 
 func _fill_journal() -> void:
 	var lines := "[b]Journal[/b]\n\n" + story.page()
+	lines += "[b]Found things[/b]\n"
+	for kind: String in ["cone", "acorn", "feather", "apple", "mushroom", "shell", "stone", "flower", "berry"]:
+		var n := int(collection.get(kind, 0))
+		lines += "   %s: %s\n" % [(GardenStory.words(kind, n) if n > 0 else "?"), ("found %d" % n if n > 0 else "not found yet")]
+	lines += "\n"
 	var counts := garden_counts()
 	var unseen: Array = []
 	for p: CharacterArtProfile in garden.roster:
@@ -1576,11 +1636,13 @@ func _fill_journal() -> void:
 		var seen: Array = discovered.get(p.pet_name, [])
 		var vs: Array = seen.map(func(v) -> String: return SpeciesBuilder.variant_name(p, v))
 		var seen_as := ("\n[color=#7a6a50]seen as %s[/color]" % ", ".join(vs)) if vs.size() > 1 else ""
+		var favourite: String = favourite_collectable(p)
+		var favourite_line := "\n[color=#7a6a50]Favourite: %s%s[/color]" % [GardenStory.words(favourite) if favourite != "" else "nothing collected yet", " (set one out to draw it closer)" if favourite != "" else ""]
 		if is_contraband(p.pet_name):
 			hint = "It wants sun. Lots of sun. Preferably where nobody can see it."
 		if story.introduced.has(p.pet_name):
 			label += ", met in your garden"
-		lines += "[b]%s[/b] the %s - %s\n%s%s\n\n" % [p.pet_name, SpeciesBuilder.variant_name(p, pet_plant.get(p.pet_name, "")), label, hint, seen_as]
+		lines += "[b]%s[/b] the %s - %s\n%s%s%s\n\n" % [p.pet_name, SpeciesBuilder.variant_name(p, pet_plant.get(p.pet_name, "")), label, hint, seen_as, favourite_line]
 	# rumours: a few of the ones you haven't met, the nearest to noticing first
 	lines += "[b]Around the neighbourhood[/b]\n\n"
 	unseen.sort_custom(func(a, b) -> bool: return _missing(a.wants["notice"], counts) < _missing(b.wants["notice"], counts))
@@ -1790,9 +1852,10 @@ func _build_ui() -> void:
 	_build_row.position = BUILD_AT
 	_build_row.add_theme_constant_override("h_separation", 8)
 	_build_row.add_theme_constant_override("v_separation", 6)
-	for kind in BUILDS:
-		var item: Dictionary = BUILDS[kind]
-		var b := _button("%s%d" % [item["icon"], item["price"]], "%s (🪙 %d)" % [item["name"], item["price"]], 34)
+	for kind in BUILDS.keys() + OFFERINGS.keys():
+		var item: Dictionary = OFFERINGS[kind] if OFFERINGS.has(kind) else BUILDS[kind]
+		var cost_text := "find one" if OFFERINGS.has(kind) else "🪙 %d" % item["price"]
+		var b := _button("%s%s" % [item["icon"], ("" if OFFERINGS.has(kind) else str(item["price"]))], "%s (%s)" % [item["name"], cost_text], 34)
 		b.name = kind
 		b.custom_minimum_size = Vector2(136, 90)
 		b.pressed.connect(func() -> void:
@@ -1847,7 +1910,7 @@ func save(force := false) -> void:
 		"flowers": pet_flowers,
 		"last_visit": 0.0,
 		"barrel": {"contents": grab.contents, "next_pickup": grab.next_pickup},
-		"following": following, "carried": carried, "nursery": nursery, "introduced": story.introduced, "keep_seeds": keep_seeds, "woods_finds": woods_finds, "contraband": contraband,
+		"following": following, "carried": carried, "nursery": nursery, "introduced": story.introduced, "keep_seeds": keep_seeds, "woods_finds": woods_finds, "collection": collection, "contraband": contraband,
 		"dirt": dirt_piles.map(func(d) -> Array: return [d["at"].x, d["at"].y, d["loads"]]), "shovelful": shovelful,
 		"barrow": {"x": barrow["node"].position.x, "z": barrow["node"].position.z, "load": int(barrow.get("load", 0))} if barrow.has("node") else {},
 		"discovered": discovered, "placed": placed.map(func(b) -> Dictionary: return {"kind": b["kind"], "x": b["node"].position.x, "z": b["node"].position.z, "yaw": b["node"].rotation_degrees.y})}
@@ -1968,6 +2031,9 @@ func _load() -> void:
 	if wf is Dictionary:
 		woods_finds["taken"] = wf.get("taken", {}) if wf.get("taken", {}) is Dictionary else {}
 		woods_finds["basket"] = wf.get("basket", {}) if wf.get("basket", {}) is Dictionary else {}
+	var saved_collection = data.get("collection", {})
+	if saved_collection is Dictionary:
+		collection = saved_collection
 	for d in data.get("dirt", []):
 		if d is Array and d.size() == 3:
 			var pile := {"at": Vector2(float(d[0]), float(d[1])), "loads": int(d[2]), "node": null}

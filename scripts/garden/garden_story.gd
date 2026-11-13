@@ -23,12 +23,16 @@ const GROUPS := [
 	["💧", "Water", ["puddle", "bath"]],
 	["🪵", "Shelter", ["log_pile", "nest_box", "leaf_pile", "brush_pile", "woodpile", "rocks", "sticks", "branches", "tire", "pot"]],
 	["🪑", "Comforts", ["lawn_chair", "clearing", "cleared"]],
+	["🧺", "Found things", ["cone", "acorn", "feather", "apple", "mushroom", "shell", "stone", "flower", "berry"]],
 ]
 const WORDS := {"feeder": "a bird feeder", "apples": "apples", "pumpkin": "a pumpkin", "grill": "the old grill",
 	"puddle": "a puddle (the sprinkler)", "bath": "a bird bath", "log_pile": "a log pile", "nest_box": "a nest box",
 	"leaf_pile": "a leaf pile", "brush_pile": "a brush pile", "woodpile": "a woodpile", "rocks": "rocks", "sticks": "sticks",
 	"branches": "branches", "tire": "the old tire", "pot": "flowerpots", "lawn_chair": "the lawn chair",
 	"clearing": "a sunny clearing", "cleared": "junk cleared away"}
+
+const FOUND_WORDS := {"cone": "a pine cone", "acorn": "an acorn", "feather": "a feather", "apple": "an apple",
+	"mushroom": "a mushroom", "shell": "a shell", "stone": "a smooth stone", "flower": "a flower", "berry": "a berry"}
 
 
 func _init(g: Node) -> void:
@@ -45,6 +49,11 @@ static func words(key: String, n := 1) -> String:
 		return "a %s living here" % key.trim_prefix("has_")
 	if key == "cleared":
 		return "%d bits of junk cleared away" % n if n > 1 else "junk cleared away"
+	if FOUND_WORDS.has(key):
+		var found: String = FOUND_WORDS[key]
+		if n <= 1:
+			return found
+		return "%d %s" % [n, found.trim_prefix("a ").trim_prefix("an ") + "s"]
 	var w: String = WORDS.get(key, key.replace("_", " "))
 	if n <= 1:
 		return w
@@ -217,6 +226,9 @@ func card_text(p: CharacterArtProfile) -> String:
 	var plant: String = SpeciesBuilder.PLANT_NAMES.get(plant_id, plant_id)
 	var s := "[b]%s[/b]\n[color=#7a6a50]%s, made of %s[/color]\n\n" % [p.pet_name, _A(p.species), plant.to_lower()]
 	s += "What drew it in: %s.\n" % wish_words(p.wants["visit"])
+	var favourite: String = game.favourite_collectable(p)
+	if favourite != "":
+		s += "Favourite: %s.\n" % words(favourite)
 	if p.starts_resident:
 		return s
 	s += "What would make it stay: %s.\n" % wish_words(p.wants["resident"])
