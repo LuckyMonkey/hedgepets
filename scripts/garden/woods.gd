@@ -151,7 +151,7 @@ const BINOCULAR_DETAILS := {
 	"fox": {"name": "A fox at the den", "at": Vector3(10.8, -0.2, -5.2)},
 	"deer": {"name": "A deer at the treeline", "at": Vector3(9.1, 0.4, -6.8)},
 	"church": {"name": "The church weathervane", "at": Vector3(7.6, 0.7, -1.1)},
-	"garden": {"name": "Home, the garden by the white house", "at": Vector3(11.25, 0.6, -8.25)},
+	"garden": {"name": "Home, the garden by the white house", "at": Vector3(10.9, 0.6, 36.4)},
 }
 var nursery: Node3D                   # nursery.gd
 var campfire: Node3D                  # fire_pit.gd, in fern hollow
@@ -234,9 +234,10 @@ func height(x: float, z: float) -> float:
 		v = lerpf(v, level + (fs - 4.0) * 0.04, smoothstep(4.0, 14.0, fs) * exp(-flat * flat / (2.0 * 16.0 * 16.0)))
 	var rv := Vector2(x, z) - (NODES["ridge"]["at"] as Vector2)
 	var s := rv.dot(VIEW_DIR)
-	if s > 3.0:                                          # past the ridge's edge the land falls away
+	if s > 2.5:                                          # past the rim the land falls away immediately
 		var lat := rv.dot(VIEW_DIR.orthogonal())
-		v -= 20.0 * smoothstep(3.0, 22.0, s) * exp(-lat * lat / (2.0 * 20.0 * 20.0))
+		var ravine := 25.0 * smoothstep(2.5, 9.0, s) + 8.0 * smoothstep(9.0, 24.0, s)
+		v -= ravine * exp(-lat * lat / (2.0 * 18.0 * 18.0))
 	var dp := Vector2(x, z).distance_to(POND_AT)                # the pond: level banks round a bowl the water fills
 	v = lerpf(v, _base(POND_AT) - 2.0, smoothstep(POND_R + 7.0, POND_R + 1.5, dp))
 	v -= 1.5 * smoothstep(POND_R + 0.8, POND_R - 1.5, dp)
@@ -931,7 +932,7 @@ func _out_of_view(id: String, c: Vector3, p: Vector3) -> Vector3:
 	if d.normalized().dot(v) < 0.6:
 		return p
 	var side := v.orthogonal() * signf(d.dot(v.orthogonal()) + 0.001)
-	var q := Vector2(c.x, c.z) + (side * 0.8 - v * 0.6).normalized() * d.length()
+	var q := Vector2(c.x, c.z) + (side * 2.4 - v * 1.8).normalized() * d.length()
 	return _off_trail(Vector3(q.x, 0, q.y), 1.6)
 
 
@@ -1050,8 +1051,8 @@ func _ribbon(pts: PackedVector3Array, faint: bool) -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var w := 0.8 if not faint else 0.45
-	var worn := Color("86704f")
-	var loose := Color("54442f")
+	var worn := Color("a08059")
+	var loose := Color("6b5237")
 	var cols: Array = []                                  # across: edge, loose, worn, worn, loose, edge
 	var offs := [-1.0, -0.55, -0.18, 0.18, 0.55, 1.0]
 	var prev: Array = []
@@ -1330,6 +1331,12 @@ func _keep_open(p: Vector2, rng: RandomNumberGenerator) -> bool:
 	var s := rv.dot(VIEW_DIR)
 	if s > 1.0 and absf(rv.dot(VIEW_DIR.orthogonal())) < 9.0 + s * 1.0:
 		return s < 28.0 or rng.randf() < 0.75
+	# A second, narrow window faces back over the footbridge toward home. It is below the lookout,
+	# so the miniature lawn and white house can be picked out without turning the ravine into a lawn.
+	var home_view := (HOME_DIR * 18.0 - NODES["ridge"]["at"]).normalized()
+	var hs := rv.dot(home_view)
+	if hs > 1.0 and hs < 28.0 and absf(rv.dot(home_view.orthogonal())) < 3.5 + hs * 0.16:
+		return true
 	if p.distance_to(POND_AT) < POND_R + 2.0 or p.distance_to(CELLAR_AT) < 6.5:
 		return true
 	var ov := p - (NODES["oak"]["at"] as Vector2)               # the oak's lookout: nothing right in front of it
@@ -1746,9 +1753,11 @@ func _old_oak(rng: RandomNumberGenerator) -> void:
 		var limb := GardenProps.part(r, GardenProps.cyl(0.28, 0.7, 7.0, 10), bark, Vector3(0, 7.0, 0) + out * 2.6 + Vector3(0, 1.6, 0), Vector3.ZERO, 0.015)
 		limb.look_at_from_position(limb.position, limb.position + out * 0.8 + Vector3(0, 0.6, 0), Vector3.UP)
 		limb.rotate_object_local(Vector3.RIGHT, -PI * 0.5)
-		var tip := Vector3(0, 9.5, 0) + out * rng.randf_range(6.0, 7.5)
+		var tip := Vector3(0, 11.0, 0) + out * rng.randf_range(6.0, 7.5)
 		GardenProps.part(r, GardenProps.blob(Vector3(4.2, 2.6, 4.2) * snappedf(rng.randf_range(0.85, 1.1), 0.05), {"exponent": 2.0}), crown if k % 3 else rust, tip, Vector3(0, rng.randf() * 360, 0), 0.0)
-	GardenProps.part(r, GardenProps.blob(Vector3(7.5, 4.0, 7.5), {"exponent": 2.0}), crown, Vector3(0, 12.5, 0), Vector3.ZERO, 0.0)
+	GardenProps.near_fade(crown)
+	GardenProps.near_fade(rust)
+	GardenProps.part(r, GardenProps.blob(Vector3(7.5, 4.0, 7.5), {"exponent": 2.0}), crown, Vector3(0, 14.0, 0), Vector3.ZERO, 0.0)
 
 
 ## The creek: water in its channel the whole way through the woods, rocks and cattails on the banks, and stepping
@@ -1827,15 +1836,15 @@ func _ridge(rng: RandomNumberGenerator) -> void:
 	for k in range(5):
 		var w := 0.42 - k * 0.07
 		GardenProps.part(self, GardenProps.blob(Vector3(w, 0.11, w * 0.85), "pebble"), lichen, Vector3(cairn.x, cy + 0.1 + k * 0.19, cairn.y), Vector3(0, rng.randf_range(0, 360), 0), 0.006)
-	# The ridge is the ravine lookout: a broken lip and a visibly lower shelf make the drop legible at its rim.
-	var ledge := GardenProps.mat("ravineledge", Color("68756b"))
+	# The ridge is the ravine lookout: thin, broad strata follow the drop instead of reading as boulders.
+	var ledge := GardenProps.mat("ravineledge", Color("625d51"))
 	var down := VIEW_DIR
 	var across := VIEW_DIR.orthogonal()
 	for k in range(5):
-		var q := Vector2(c.x, c.y) + down * (3.8 + k * 1.8) + across * (k - 2) * 2.2
+		var q := Vector2(c.x, c.y) + down * (4.0 + k * 2.0) + across * (k - 2) * 2.1
 		var h := height(q.x, q.y)
-		GardenProps.part(self, GardenProps.box(Vector3(1.9, 0.35, 0.8)), ledge,
-			Vector3(q.x, h - 0.18 - k * 0.65, q.y), Vector3(0, rad_to_deg(atan2(down.x, down.y)), 0), 0.01)
+		GardenProps.part(self, GardenProps.box(Vector3(4.2, 0.18, 1.25)), ledge,
+			Vector3(q.x, h + 0.04, q.y), Vector3(0, rad_to_deg(atan2(down.x, down.y)), 0), 0.01)
 	_setup_ravine_viewer()
 
 
@@ -2125,7 +2134,8 @@ func _cellar_hole(rng: RandomNumberGenerator) -> void:
 ## The trailhead: a little roofed board where a map would go.
 func _trailhead_board() -> void:
 	var c := node_pos("trailhead")
-	var at := _off_trail(c + Vector3(2.6, 0, 1.2), 1.6)
+	# Keep the board behind the arrival camera's forward cone; it is found by turning back toward home.
+	var at := _off_trail(c + Vector3(HOME_DIR.x, 0, HOME_DIR.y) * 4.5, 1.6)
 	var r := GardenProps.root(self, "TrailBoard", at, -30.0)
 	var wood := GardenProps.mat("boardwood", Color("6a5038"))
 	for sx: float in [-0.6, 0.6]:

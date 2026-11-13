@@ -37,7 +37,7 @@ const LAKE_R := 22.0
 const VILLAGE := Vector2(122.0, -18.0)
 ## A make-believe garden far off in the valley (seen from the ridge): the white house with the blue door, its
 ## neighbours, the lawn, the picket fence, the creek and its little bridge, a few autumn trees - a toy, not the real one.
-const TOY_GARDEN := Vector2(180.0, -132.0)             # on a shelf high on the mountain, in the ridge's view (~3 km)
+const TOY_GARDEN := Vector2(0.287, 0.958) * 38.0       # beyond the footbridge, on the garden side of the woods
 const TOY_SCALE := 5.0
 var _toy_y := INF                                  # bigger than life: a make-believe garden you can pick out
 
@@ -911,20 +911,22 @@ func _clouds_build(world: Node3D) -> void:
 	puff.height = 2.0
 	puff.radial_segments = 10
 	puff.rings = 5
-	for k in range(14):
+	for k in range(6):
 		var cloud := Node3D.new()
 		var a := rng.randf() * TAU
-		var r := rng.randf_range(120.0, 420.0)
-		cloud.position = Vector3(cos(a) * r, rng.randf_range(70.0, 110.0), sin(a) * r)
+		var r := rng.randf_range(260.0, 520.0)
+		cloud.position = Vector3(cos(a) * r, rng.randf_range(115.0, 165.0), sin(a) * r)
 		cloud.set_meta("x0", cloud.position.x)
 		cloud.set_meta("ph", rng.randf() * 120.0)
-		for p in range(rng.randi_range(4, 7)):
+		for p in range(rng.randi_range(3, 5)):
 			var b := MeshInstance3D.new()
-			b.mesh = puff
+			var slab := BoxMesh.new()
+			slab.size = Vector3(10.0, 2.2, 6.0)
+			b.mesh = slab
 			b.material_override = m
-			var s := rng.randf_range(6.0, 13.0)
-			b.scale = Vector3(s * 1.6, s * 0.55, s)
-			b.position = Vector3(rng.randf_range(-14, 14), rng.randf_range(-1.5, 2.0), rng.randf_range(-8, 8))
+			var s := rng.randf_range(0.8, 1.5)
+			b.scale = Vector3(s * 1.5, 1.0, s)
+			b.position = Vector3(rng.randf_range(-18, 18), rng.randf_range(-1.0, 1.0), rng.randf_range(-10, 10))
 			b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			cloud.add_child(b)
 		world.add_child(cloud)
