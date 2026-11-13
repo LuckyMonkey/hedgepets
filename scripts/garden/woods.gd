@@ -470,20 +470,20 @@ func _stream_prepare() -> void:
 			add_child(chunk)
 			_stream_chunks[key] = chunk
 		n.reparent(_stream_chunks[key], true)
+		g.set_meta("woods_stream_static", true)
+		g.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	_stream_update(true)
 
 
 func _stream_update(force := false) -> void:
 	if _stream_chunks.is_empty() or cam == null:
 		return
-	var at := cam.position
-	if not force and at.distance_squared_to(_stream_last) < 1.0:
-		return
-	_stream_last = at
-	for key: Vector2i in _stream_chunks:
-		var chunk: Node3D = _stream_chunks[key]
-		var centre := Vector3((key.x + 0.5) * 24.0, at.y, (key.y + 0.5) * 24.0)
-		chunk.visible = Vector2(at.x, at.z).distance_to(Vector2(centre.x, centre.z)) < _stream_radius()
+	# Keep all buckets present. GeometryInstance3D visibility ranges do the
+	# actual culling, with a dither fade margin. A parent visibility toggle is a
+	# hard, screen-wide pop at a cell boundary even when the children are distant.
+	for chunk: Node3D in _stream_chunks.values():
+		chunk.visible = true
+	_stream_last = cam.position
 
 
 func quality_tier_changed(tier: String) -> void:
@@ -495,6 +495,7 @@ func quality_tier_changed(tier: String) -> void:
 		var kind := str(node.get_meta("woods_lod_kind", ""))
 		if kind == "leaves":
 			node.visibility_range_end = _leaf_range(tier)
+			node.visibility_range_end_margin = _fade_margin(tier)
 			var leaves := node as MultiMeshInstance3D
 			if leaves.multimesh != null:
 				if not node.has_meta("woods_full_instances"):
@@ -509,8 +510,13 @@ func quality_tier_changed(tier: String) -> void:
 					leaves.multimesh.visible_instance_count = -1
 		elif kind == "mass":
 			node.visibility_range_end = 120.0 if tier == "high" else 42.0 if tier == "low" else 58.0
+			node.visibility_range_end_margin = _fade_margin(tier)
 		elif kind == "trunk":
 			node.visibility_range_end = 140.0 if tier == "high" else 48.0 if tier == "low" else 68.0
+			node.visibility_range_end_margin = _fade_margin(tier)
+		elif node.has_meta("woods_stream_static"):
+			node.visibility_range_end = _stream_radius() + 10.0
+			node.visibility_range_end_margin = _fade_margin(tier)
 
 
 func _multimesh_centre(node: Node, multimesh: MultiMesh) -> Vector3:
@@ -532,6 +538,10 @@ func _stream_radius() -> float:
 		"low": return STREAM_RADIUS_LOW
 		"high": return STREAM_RADIUS_HIGH
 	return STREAM_RADIUS
+
+
+func _fade_margin(tier: String) -> float:
+	return 6.0 if tier == "low" else 8.0 if tier == "medium" else 12.0
 
 
 func _leaf_range(tier: String) -> float:
