@@ -31,3 +31,7 @@ echo "== (re)start the container"
 ssh fridge@fridge 'cd /srv/apps/hedgepets && SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A docker compose up -d && SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A docker exec hedgepets nginx -s reload'
 echo "== check from inside the web network"
 ssh fridge@fridge 'SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A docker exec fridge-caddy wget -qS -O /dev/null http://hedgepets:8080/hedgepets/index.html 2>&1 | head -3'
+echo "== tell the owner's phone (ntfy, via go's notify-owner: only phones that opted in as owner)"
+V=$(grep -o 'VERSION := "[^"]*"' scripts/telemetry.gd | cut -d'"' -f2)
+WHAT=${DEPLOY_NOTE:-$(git log -1 --format=%s | cut -c1-180)}
+ssh fridge@fridge "SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A docker exec -u www-data fridge-php php /var/www/go/scripts/notify-owner.php info $(printf '%q' "HedgePets build $V is up") $(printf '%q' "$WHAT - tap to play") https://go.fridge.run/hedgepets/?v=$V" || echo "(phone notification failed; the build is up)"
