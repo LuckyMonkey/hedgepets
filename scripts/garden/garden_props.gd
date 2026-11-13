@@ -322,7 +322,7 @@ static func rock(parent: Node3D, at: Vector3, size: float, rng: RandomNumberGene
 	var r := root(parent, "Rock", at, rng.randf_range(0, 360))
 	var grey := Color("8d8a80").lerp(Color("a39e90"), rng.randf())
 	var shape := int((rng.randf_range(-0.2, 0.2) + 0.2) * 29.9)    # (the draw that once set its taper)
-	part(r, fieldstone_sized((Vector3(size, size * 0.62, size * 0.8) / 0.03).round() * 0.03, shape % 3), mat("rock%d" % int(grey.r * 100), grey), Vector3(0, size * 0.3, 0), Vector3.ZERO, 0.01)
+	part(r, RockFactory.make({"role": "boulder", "size": Vector3(size, size * 0.62, size * 0.8), "seed": shape, "roughness": 0.2, "facets": 7, "flatten": 0.92, "sink": 0.16}), mat("rock%d" % int(grey.r * 100), grey), Vector3(0, size * 0.3, 0), Vector3.ZERO, 0.01)
 	return r
 
 
@@ -471,7 +471,8 @@ static func _field_stone(r: Node3D, at: Vector3, radii: Vector3, yaw: float, rng
 	var m := mat("fieldstone%d" % g, Color(FIELD_GREYS[g]))
 	if cap and rng.randf() < 0.45:
 		m = mat("fieldstone_moss%d" % (g % 3), Color(FIELD_GREYS[g]).lerp(Color("6e7a4a"), 0.3))
-	var stone := part(r, fieldstone_sized(q, rng.randi() % 3), m, at,
+	var role := "cap_stone" if cap else "wall_stone"
+	var stone := part(r, RockFactory.make({"role": role, "size": q * 2.0, "seed": rng.randi(), "roughness": 0.15, "facets": 8, "flatten": 0.92}), m, at,
 		Vector3(rng.randf_range(-7, 7), yaw + rng.randf_range(-12, 12), rng.randf_range(-9, 9)), 0.008)
 	stone.name = "Stone"
 
@@ -485,17 +486,7 @@ static func fieldstone_sized(radii: Vector3, variant: int) -> ArrayMesh:
 	var key := [radii, variant % 3]
 	if _sized.has(key):
 		return _sized[key]
-	var arrays := fieldstone(variant).surface_get_arrays(0)
-	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-	var inv := Vector3.ONE / radii.max(Vector3(0.001, 0.001, 0.001))
-	for i in verts.size():
-		verts[i] *= radii
-		norms[i] = (norms[i] * inv).normalized()
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_NORMAL] = norms
-	var m := ArrayMesh.new()
-	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var m := RockFactory.make({"role": "boulder", "size": radii * 2.0, "seed": variant, "roughness": 0.2, "facets": 7, "flatten": 0.92})
 	_sized[key] = m
 	return m
 

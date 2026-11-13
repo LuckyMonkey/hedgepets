@@ -1286,7 +1286,7 @@ func _forest_floor(rng: RandomNumberGenerator) -> void:
 	_multimesh(cyl, logs)
 	_multimesh(cyl, stumps)
 	_multimesh(ball, mossy)
-	_multimesh(ball, stones)
+	_multimesh(RockFactory.make({"role": "cobble", "size": Vector3.ONE, "seed": 733, "roughness": 0.16, "facets": 6, "flatten": 0.9}), stones)
 	_multimesh(cyl, stems)
 	_multimesh(ball, caps)
 
@@ -1773,7 +1773,7 @@ func _creek(rng: RandomNumberGenerator) -> void:
 			if absf(_creek_lat(q)) < 2.1 and absf(along) < 72.0:
 				var mid := _creek_point(along)
 				var y := height(mid.x, mid.y) + 0.78
-				GardenProps.part(self, GardenProps.blob(Vector3(0.42, 0.14, 0.34), "pebble"), stone, Vector3(pts[i].x, y, pts[i].z), Vector3(0, rng.randf_range(0, 180), 0), 0.006)
+				GardenProps.part(self, RockFactory.make({"role": "stepping_stone", "size": Vector3(0.84, 0.28, 0.68), "seed": rng.randi(), "flatten": 0.96}), stone, Vector3(pts[i].x, y, pts[i].z), Vector3(0, rng.randf_range(0, 180), 0), 0.006)
 
 
 ## The ridge: flat lichened rocks at the edge, a weathered bench looking out, a cairn.
@@ -1783,7 +1783,8 @@ func _ridge(rng: RandomNumberGenerator) -> void:
 	var lichen := GardenProps.mat("lichenrock", Color("8a8c80"))
 	for k in range(7):
 		var p := c + VIEW_DIR * rng.randf_range(4.0, 6.0) + side * (k - 3) * 1.6
-		GardenProps.part(self, GardenProps.blob(Vector3(1.0, 0.35, 0.8) * snappedf(rng.randf_range(0.8, 1.3), 0.1), {"exponent": 2.6, "flat_bottom": 0.5}), lichen, Vector3(p.x, height(p.x, p.y) - 0.1, p.y), Vector3(rng.randf_range(-8, 8), rng.randf_range(0, 360), 0), 0.012)
+		var rs := Vector3(1.0, 0.35, 0.8) * snappedf(rng.randf_range(0.8, 1.3), 0.1)
+		GardenProps.part(self, RockFactory.make({"role": "ledge", "size": rs * 2.0, "seed": rng.randi(), "roughness": 0.14, "facets": 8, "flatten": 0.9}), lichen, Vector3(p.x, height(p.x, p.y) - 0.1, p.y), Vector3(rng.randf_range(-8, 8), rng.randf_range(0, 360), 0), 0.012)
 	var bench3 := _off_trail(Vector3(c.x, 0, c.y) + Vector3(VIEW_DIR.x, 0, VIEW_DIR.y) * 1.2 + Vector3(side.x, 0, side.y) * 2.4, 1.6)
 	var bench := GardenProps.root(self, "RidgeBench", bench3, rad_to_deg(atan2(VIEW_DIR.x, VIEW_DIR.y)))
 	var grey := GardenProps.mat("greywood", Color("6e665a"))
