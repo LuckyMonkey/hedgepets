@@ -555,23 +555,21 @@ func _chevrons(from: String, way: Dictionary) -> Dictionary:
 	return {"mat": m}
 
 
-## One chevron (a ^ pointing along `fwd`) centred on the trail at `at`, draped on the bed. Each arm is a strip
-## subdivided along its length so it follows the ground's curve.
+## One chevron (a ^ pointing along `fwd`) centred on the trail at `at`, draped on the bed. Two arm strips that meet on
+## a shared apex edge (outer tip to inner tip), so the ^ is one clean shape; each arm is cut into a few pieces along its
+## length so it follows the ground's curve. Coordinates are (across, along) in metres.
 func _chevron(st: SurfaceTool, at: Vector3, fwd: Vector3) -> void:
 	var side := fwd.cross(Vector3.UP)
-	var tip := Vector2(0.0, 0.2)                          # (across, along) in metres; the tip leads
-	var half := 0.09                                      # half the arm's width
+	var tip := Vector2(0.0, 0.2)
+	var tip_in := Vector2(0.0, 0.06)                      # the inner corner: the chevron's thickness along the trail
 	for sgn: float in [-1.0, 1.0]:
-		var foot := Vector2(sgn * 0.32, -0.14)
-		var arm := (tip - foot).normalized()
-		var n := Vector2(-arm.y, arm.x) * half
+		var foot := Vector2(sgn * 0.3, -0.12)
+		var foot_in := Vector2(sgn * 0.3, -0.26)
 		var steps := 4
 		for k in range(steps):
 			var f0 := float(k) / steps
 			var f1 := float(k + 1) / steps
-			var a0 := foot.lerp(tip, f0)
-			var a1 := foot.lerp(tip, f1)
-			var quad := [a0 - n, a0 + n, a1 + n, a1 - n]
+			var quad := [foot.lerp(tip, f0), foot.lerp(tip, f1), foot_in.lerp(tip_in, f1), foot_in.lerp(tip_in, f0)]
 			var vs: Array = []
 			for q: Vector2 in quad:
 				var w := at + side * q.x + fwd * q.y

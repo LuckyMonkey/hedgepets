@@ -15,7 +15,6 @@ extends "res://scripts/garden/woods/woods_finds.gd"
 const STREAM_RADIUS := 33.0
 const STREAM_RADIUS_LOW := 20.0
 const STREAM_RADIUS_HIGH := 72.0
-var _stream_chunks := {}
 var _stream_last := Vector3.INF
 
 
@@ -24,10 +23,54 @@ var nursery: Node3D                   # nursery.gd
 # ------------------------------------------------------------------ building it (once)
 ## Built in steps (Elsewhere shows a loading card between them; the bake runs them all at once).
 func build_steps() -> Array:
-	return [["Finding the trails", _build_trails], ["Shaping the hills and the creek", _static_step.bind("land", _build_land)],
-		["Growing the trees", _build_trees], ["Ferns and fallen logs", _static_step.bind("undergrowth", _build_undergrowth)],
-		["The old oak, the pond, the signs", _build_places], ["Letting the sun in", _build_sky],
-		["Down to the nursery", _build_nursery], ["Applying woods placements", _apply_overrides], ["Tidying up", _merge_static]]
+	return [["Finding the trails", _build_trails],
+		["Shaping the hills and the creek", _layered.bind("Ground", _static_step.bind("land", _build_land))],
+		["Growing the trees", _layered.bind("Trees", _build_trees)],
+		["Ferns and fallen logs", _layered.bind("Undergrowth", _static_step.bind("undergrowth", _build_undergrowth))],
+		["The old oak, the pond, the signs", _layered.bind("Places", _build_places)],
+		["Letting the sun in", _layered.bind("Sky", _build_sky)],
+		["Down to the nursery", _layered.bind("NurseryGlade", _build_nursery)],
+		["Applying woods placements", _apply_overrides], ["Tidying up", _merge_static]]
+
+
+## The woods' layers in the scene tree: one node per build step, so the remote scene tree (and the woods view in the
+## editor) reads Ground / Trees / Undergrowth / Places / Sky / NurseryGlade instead of thousands of loose nodes. A layer
+## is a plain Node3D at the woods' origin: positions inside it are woods positions.
+const LAYERS := ["Ground", "Trees", "Undergrowth", "Places", "Sky", "NurseryGlade"]   # ("NurseryGlade": the nursery node itself is "Nursery")
+
+
+## Runs one build step, then moves whatever it added to the woods into that step's layer.
+func _layered(layer: String, step: Callable) -> void:
+	var before := {}
+	for n in get_children():
+		before[n] = true
+	await step.call()
+	var holder := _layer(layer)
+	if holder == null:
+		holder = Node3D.new()
+		holder.name = layer
+		holder.set_meta("woods_layer", true)
+		add_child(holder)
+	for n in get_children():
+		# (the distant land stays at the root: its SubViewport's picture is the woods' sky)
+		if not before.has(n) and n != holder and n != cam and n != _ui and n != land:
+			n.reparent(holder, false)
+
+
+## Every layer node built so far.
+func layers() -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	for name_: String in LAYERS:
+		var n := _layer(name_)
+		if n != null:
+			out.append(n)
+	return out
+
+
+## A layer node by name, only if it really is one (made by _layered, marked woods_layer).
+func _layer(name_: String) -> Node3D:
+	var n := get_node_or_null(name_) as Node3D
+	return n if n != null and n.has_meta("woods_layer") else null
 
 
 # ------------------------------------------------------------------ the compiled woods
@@ -159,52 +202,51 @@ func _merge_static() -> void:
 	for n in [_pail, campfire, nursery, land]:
 		if n != null:
 			keep[n] = true
-	var batch: Array = []
-	for n in get_children():
-		if not keep.has(n) and n is Node3D and (n as Node3D).visible and _static_meshes_only(n):
-			batch.append(n)
-	set_meta("merged", await GardenProps.merge_static(self, batch, 16.0))
-	set_meta("merged_from", batch.size())
+	var merged := 0
+	var merged_from := 0
+	for layer in layers():                               # merged within each layer, so the layers stay what they say
+		var batch: Array = []
+		for n in layer.get_children():
+			if not keep.has(n) and n is Node3D and (n as Node3D).visible and _static_meshes_only(n):
+				batch.append(n)
+		merged += await GardenProps.merge_static(layer, batch, 16.0)
+		merged_from += batch.size()
+	set_meta("merged", merged)
+	set_meta("merged_from", merged_from)
 	_stream_prepare()
 	quality_tier_changed(Quality.tier_name())
 
 
-## Static woods geometry is grouped by its 24 m map cell. Only the cells around the current clearing are drawn;
-## nothing is rebuilt while walking, so entering a new cell is a visibility change rather than a hitch.
+## Static woods geometry is drawn by distance: each mesh fades out past the stream radius (visibility ranges, set in
+## quality_tier_changed), so nothing is rebuilt or reparented while walking. (It used to be regrouped into 24 m
+## "StreamChunk" nodes; those were always visible by then, so they only scrambled the layers.)
 func _stream_prepare() -> void:
 	var keep := {cam: true, land: true, nursery: true, campfire: true, _ui: true}
-	for n in get_children():
-		if keep.has(n) or n is Camera3D or n is DirectionalLight3D or n is WorldEnvironment:
-			continue
-		if not n is GeometryInstance3D:
-			continue
-		var g := n as GeometryInstance3D
-		var box := g.get_aabb()
-		if maxf(box.size.x, box.size.z) > 40.0:
-			continue
-		var c: Vector3 = box.get_center() + n.position
-		var key := Vector2i(floori(c.x / 24.0), floori(c.z / 24.0))
-		if not _stream_chunks.has(key):
-			var chunk := Node3D.new()
-			chunk.name = "StreamChunk_%d_%d" % [key.x, key.y]
-			chunk.set_meta("stream_key", key)
-			add_child(chunk)
-			_stream_chunks[key] = chunk
-		n.reparent(_stream_chunks[key], true)
-		g.set_meta("woods_stream_static", true)
-		g.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-	_stream_update(true)
+	for layer in layers():
+		for n in layer.find_children("*", "GeometryInstance3D", true, false):
+			var g := n as GeometryInstance3D
+			if g.has_meta("woods_lod_kind") or _inside_kept(g, keep):
+				continue
+			var box := g.get_aabb()
+			if maxf(box.size.x, box.size.z) > 40.0:
+				continue
+			g.set_meta("woods_stream_static", true)
+			g.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 
 
-func _stream_update(force := false) -> void:
-	if _stream_chunks.is_empty() or cam == null:
-		return
-	# Keep all buckets present. GeometryInstance3D visibility ranges do the
-	# actual culling, with a dither fade margin. A parent visibility toggle is a
-	# hard, screen-wide pop at a cell boundary even when the children are distant.
-	for chunk: Node3D in _stream_chunks.values():
-		chunk.visible = true
-	_stream_last = cam.position
+## Whether n is, or is inside, one of the kept nodes (animated or interactive: never streamed).
+func _inside_kept(n: Node, keep: Dictionary) -> bool:
+	var p := n
+	while p != null and p != self:
+		if keep.has(p):
+			return true
+		p = p.get_parent()
+	return false
+
+
+func _stream_update(_force := false) -> void:
+	if cam != null:
+		_stream_last = cam.position
 
 
 func quality_tier_changed(tier: String) -> void:

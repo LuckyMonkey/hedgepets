@@ -139,7 +139,9 @@ func _run() -> void:
 		return _fail("didn't arrive at the nursery (at %s)" % woods._at)
 	print("woods: mossy fork -> the nursery")
 	# nothing solid stands on a trail (the camera walks the trails: it would go straight through)
-	for n in woods.get_children():
+	for n in woods.find_children("*", "Node3D", true, false):
+		if not (n.get_parent() == woods or n.get_parent().has_meta("woods_layer")):   # placed things: in the woods or a layer
+			continue
 		var clear: float = {"Lantern": 1.8, "Sign": 0.95, "OldOak": 4.0, "TrailBoard": 1.5, "RidgeBench": 1.5, "Sunbeam": 2.4}.get(String(n.name).trim_prefix("@").get_slice("@", 0), 0.0)
 		if clear > 0.0:
 			var t: Vector2 = woods._nearest_trail(Vector2(n.position.x, n.position.z))

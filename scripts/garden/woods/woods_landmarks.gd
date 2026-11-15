@@ -521,7 +521,10 @@ func _cellar_hole(rng: RandomNumberGenerator) -> void:
 func _trailhead_board() -> void:
 	var c := node_pos("trailhead")
 	# Keep the board behind the arrival camera's forward cone; it is found by turning back toward home.
-	var at := _off_trail(c + Vector3(HOME_DIR.x, 0, HOME_DIR.y) * 4.5, 1.6)
+	# ...and on the other side of the way home from its "Home to the garden" sign (_sign puts signs to the left of
+	# a trail, 4.2 m out): the board goes to the right, so the two never stand inside each other
+	var home := Vector3(HOME_DIR.x, 0, HOME_DIR.y).normalized()
+	var at := _off_trail(c + home * 4.5 + home.cross(Vector3.UP) * 1.6, 1.6)
 	var r := GardenProps.root(self, "TrailBoard", at, -30.0)
 	_placement("trailhead:sign_home", r, 1.0)
 	var wood := GardenProps.mat("boardwood", Color("6a5038"))

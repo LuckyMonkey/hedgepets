@@ -39,7 +39,7 @@ func _run() -> void:
 		var at: Vector2 = g.woods.NODES[id]["at"]
 		woods_shapes.append([at, 3.0, 12.0])
 	var woods_sun: DirectionalLight3D = null
-	for child in g.woods.get_children():
+	for child in g.woods.find_children("*", "DirectionalLight3D", true, false):
 		if child is DirectionalLight3D:
 			woods_sun = child
 			break
