@@ -123,19 +123,23 @@ func _old_oak(rng: RandomNumberGenerator) -> void:
 		var ridge := GardenProps.part(r, GardenProps.blob(Vector3(0.22, 3.4, 0.22), {"exponent": 2.0}), GardenProps.mat("oakridge", Color("3e3228")), Vector3(cos(a) * 1.45, 3.4, sin(a) * 1.45), Vector3(0, 0, 0), 0.0)
 		ridge.rotation = Vector3(sin(a) * 0.08, 0, -cos(a) * 0.08)
 	GardenProps.part(r, GardenProps.blob(Vector3(0.42, 0.7, 0.3), {"exponent": 2.0}), GardenProps.mat("oakhollow", Color("120e0a")), Vector3(0, 1.7, 1.62), Vector3(-6, 0, 0), 0.0)
-	var crown := GardenProps.mat("oakcrown", Color("2e3c20"))
-	var rust := GardenProps.mat("oakcrown2", Color("5a4a22"))
-	for k in range(6):                                    # the great limbs, each with its own mass of leaves
+	var crowns: Array = []                                # the crown: the same leaf clusters as every tree, just more of them
+	for k in range(6):                                    # the great limbs, each ending in its own mass of leaves
 		var a := k * TAU / 6.0 + rng.randf_range(-0.3, 0.3)
 		var out := Vector3(cos(a), 0, sin(a))
 		var limb := GardenProps.part(r, GardenProps.cyl(0.28, 0.7, 7.0, 10), bark, Vector3(0, 7.0, 0) + out * 2.6 + Vector3(0, 1.6, 0), Vector3.ZERO, 0.015)
 		limb.look_at_from_position(limb.position, limb.position + out * 0.8 + Vector3(0, 0.6, 0), Vector3.UP)
 		limb.rotate_object_local(Vector3.RIGHT, -PI * 0.5)
 		var tip := Vector3(0, 11.0, 0) + out * rng.randf_range(6.0, 7.5)
-		GardenProps.part(r, GardenProps.blob(Vector3(4.2, 2.6, 4.2) * snappedf(rng.randf_range(0.85, 1.1), 0.05), {"exponent": 2.0}), crown if k % 3 else rust, tip, Vector3(0, rng.randf() * 360, 0), 0.0)
-	GardenProps.near_fade(crown)
-	GardenProps.near_fade(rust)
-	GardenProps.part(r, GardenProps.blob(Vector3(7.5, 4.0, 7.5), {"exponent": 2.0}), crown, Vector3(0, 14.0, 0), Vector3.ZERO, 0.0)
+		for j in range(3):
+			var off := Vector3(rng.randf_range(-1.6, 1.6), rng.randf_range(-0.6, 0.9), rng.randf_range(-1.6, 1.6))
+			crowns.append(TreeFactory.crown("oak", tip + off, rng.randi(), rng.randf_range(1.3, 1.6)))
+	for j in range(5):                                    # and the top, over the trunk
+		var off := Vector3(rng.randf_range(-3.0, 3.0), rng.randf_range(0.0, 1.5), rng.randf_range(-3.0, 3.0))
+		crowns.append(TreeFactory.crown("oak", Vector3(0, 13.5, 0) + off, rng.randi(), rng.randf_range(1.5, 1.8)))
+	for n in TreeFactory.build_batch(crowns, Vector3(0, 11.0, 0)):
+		n.name = "Crown_%s" % n.name
+		r.add_child(n)
 
 
 ## The creek: water in its channel the whole way through the woods, rocks and cattails on the banks, and stepping

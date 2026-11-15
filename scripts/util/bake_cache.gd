@@ -25,7 +25,7 @@ const GENERATORS := ["res://scripts/art/rock_factory.gd", "res://scripts/art/fol
 	"res://scripts/garden/woods/woods_landmarks.gd",
 	"res://scripts/garden/woods/woods_finds.gd",
 	"res://scripts/garden/woods/woods_build.gd",
-	"res://scripts/garden/woods_trees.gd"]
+	"res://scripts/garden/woods_trees.gd", "res://scripts/art/tree_factory.gd"]
 
 static var recording := false
 static var _data: BakedData

@@ -47,7 +47,7 @@ const SOURCES := ["res://scripts/garden/woods.gd",
 	"res://scripts/garden/woods/woods_landmarks.gd",
 	"res://scripts/garden/woods/woods_finds.gd",
 	"res://scripts/garden/woods/woods_build.gd",
-	"res://scripts/garden/woods_trees.gd", "res://scripts/garden/distant_land.gd",
+	"res://scripts/garden/woods_trees.gd", "res://scripts/art/tree_factory.gd", "res://scripts/garden/distant_land.gd",
 	"res://scripts/garden/garden_props.gd", "res://scripts/art/foliage_builder.gd", "res://scripts/art/hedge_anatomy.gd"]
 var compiling := false                 # tools/bake/compile_woods.gd: copy what each static step makes
 var recorded := {}                     # compiling: key -> {"nodes": [detached copies], "state": int}
@@ -210,48 +210,17 @@ func _stream_update(force := false) -> void:
 func quality_tier_changed(tier: String) -> void:
 	set_meta("quality_tier", tier)
 	_stream_update(true)
+	TreeFactory.set_detail(tier)                     # how soon far trees thin to their crown leaves
 	for node in find_children("*", "", true, false):
 		if not node is GeometryInstance3D:
 			continue
 		var kind := str(node.get_meta("woods_lod_kind", ""))
-		if kind == "leaves":
+		if kind in ["leaves", "mass", "trunk"]:      # a tree's parts go together: never a bare trunk or a floating crown
 			node.visibility_range_end = _leaf_range(tier)
-			node.visibility_range_end_margin = _fade_margin(tier)
-			var leaves := node as MultiMeshInstance3D
-			if leaves.multimesh != null:
-				if not node.has_meta("woods_full_instances"):
-					node.set_meta("woods_full_instances", leaves.multimesh.instance_count)
-				var full := int(node.get_meta("woods_full_instances"))
-				var centre: Vector3 = node.global_transform * _multimesh_centre(node, leaves.multimesh)
-				var distance := Vector2(cam.global_position.x, cam.global_position.z).distance_to(Vector2(centre.x, centre.z))
-				if tier == "low":
-					var keep := 0.55 if distance < 14.0 else 0.18
-					leaves.multimesh.visible_instance_count = maxi(1, int(full * keep))
-				else:
-					leaves.multimesh.visible_instance_count = -1
-		elif kind == "mass":
-			node.visibility_range_end = 120.0 if tier == "high" else 42.0 if tier == "low" else 58.0
-			node.visibility_range_end_margin = _fade_margin(tier)
-		elif kind == "trunk":
-			node.visibility_range_end = 140.0 if tier == "high" else 48.0 if tier == "low" else 68.0
 			node.visibility_range_end_margin = _fade_margin(tier)
 		elif node.has_meta("woods_stream_static"):
 			node.visibility_range_end = _stream_radius() + 10.0
 			node.visibility_range_end_margin = _fade_margin(tier)
-
-
-func _multimesh_centre(node: Node, multimesh: MultiMesh) -> Vector3:
-	if node.has_meta("woods_local_centre"):
-		return node.get_meta("woods_local_centre")
-	var centre := Vector3.ZERO
-	var samples := 0
-	var step := maxi(1, ceili(multimesh.instance_count / 64.0))
-	for i in range(0, multimesh.instance_count, step):
-		centre += multimesh.get_instance_transform(i).origin
-		samples += 1
-	centre /= maxf(samples, 1)
-	node.set_meta("woods_local_centre", centre)
-	return centre
 
 
 func _stream_radius() -> float:
@@ -265,8 +234,9 @@ func _fade_margin(tier: String) -> float:
 	return 6.0 if tier == "low" else 8.0 if tier == "medium" else 12.0
 
 
+## How far trees (trunks, cores and leaves alike) are drawn.
 func _leaf_range(tier: String) -> float:
-	return 120.0 if tier == "high" else 24.0 if tier == "low" else 36.0
+	return 140.0 if tier == "high" else 48.0 if tier == "low" else 68.0
 
 
 func _static_meshes_only(n: Node) -> bool:

@@ -3,6 +3,7 @@ extends SceneTree
 ## Each place in the woods, facing what it's named for: the ridge's view, the creek, the old oak, the fern hollow,
 ## the mossy fork, the nursery (her at the bench, a line said).
 ##   DISPLAY=:0 godot --path . --script tools/capture/capture_places.gd --disable-vsync   (writes /tmp/hedgepets-views)
+## CAPTURE_ONLY=pond,ridge   only these places.   CAPTURE_NO_LAND=1   hide the miniature land (is it the sky's fault?)
 func _init() -> void:
 	call_deferred("_run")
 
@@ -38,7 +39,14 @@ func _run() -> void:
 		"pond": Vector3(woods.POND_AT.x, 0, woods.POND_AT.y) - woods.node_pos("pond"),
 		"cellar": Vector3(woods.CELLAR_AT.x, 0, woods.CELLAR_AT.y) - woods.node_pos("cellar"),
 	}
+	var only := OS.get_environment("CAPTURE_ONLY").split(",", false)
+	if OS.get_environment("CAPTURE_NO_LAND") != "":
+		for n in woods.land.view.get_children():
+			if n is Node3D:
+				n.visible = false
 	for id in looks:
+		if not only.is_empty() and not only.has(id):
+			continue
 		var d: Vector3 = looks[id]
 		d.y = 0.0
 		woods._at = id

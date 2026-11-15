@@ -12,6 +12,13 @@ uniform float cells = 16.0;
 uniform float gust = 0.0;                 // a tap: every leaf shivers
 uniform float lod_keep = 1.0;             // ranks above this are not drawn (detail levels)
 uniform float lod_scale = 1.0;            // the kept leaves grow so the masses stay whole
+// Detail by distance (trees: TreeFactory.leaf_material; off when distance_lod_far is 0, as for pets and bushes).
+// Between near and far, lod_keep eases to distance_keep and lod_scale to distance_scale: a far tree keeps only its
+// crown leaves, grown bigger, so the crown keeps its shape with a fraction of the cards drawn. Smooth, no pop.
+uniform float distance_lod_near = 0.0;
+uniform float distance_lod_far = 0.0;
+uniform float distance_keep = 0.5;
+uniform float distance_scale = 1.35;
 uniform float detail_ink = 1.0;           // interior ink fades out at lower detail
 uniform vec3 ink_color : source_color = vec3(0.15, 0.19, 0.11);
 uniform float silhouette_ink = 0.85;
@@ -29,10 +36,17 @@ void vertex() {
 	v_cell = INSTANCE_CUSTOM.x;
 	// leaves above the kept rank shrink to their stalk over a soft band, so detail changes and leaves growing in
 	// or falling away are smooth, never a pop
-	float keep = clamp((lod_keep - INSTANCE_CUSTOM.w) / 0.25 + 1.0, 0.0, 1.0);
-	VERTEX *= keep * keep * (3.0 - 2.0 * keep);
 	vec3 world = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-	VERTEX.xy *= lod_scale;
+	float lk = lod_keep;
+	float ls = lod_scale;
+	if (distance_lod_far > 0.0) {
+		float t = smoothstep(distance_lod_near, distance_lod_far, distance(CAMERA_POSITION_WORLD, world));
+		lk = mix(lod_keep, distance_keep, t);
+		ls = mix(lod_scale, distance_scale, t);
+	}
+	float keep = clamp((lk - INSTANCE_CUSTOM.w) / 0.25 + 1.0, 0.0, 1.0);
+	VERTEX *= keep * keep * (3.0 - 2.0 * keep);
+	VERTEX.xy *= ls;
 	v_twist = leaf_deform(VERTEX, UV, INSTANCE_CUSTOM, world, TIME, gust);
 	// watercolour pooling: pigment gathers and thins in slow patches
 	float pool = sin(world.x * 1.7 + world.z * 1.1) * sin(world.y * 2.3 - world.x * 0.7);

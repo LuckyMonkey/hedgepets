@@ -3,7 +3,7 @@ extends "res://scripts/garden/woods/woods_trails.gd"
 ## Woods 3/6 - the scenery: trees and crowns, willows, the forest floor, undergrowth, clearings, the pine flats.
 ##
 ## The bulk of what you see. Trees are batched per patch as MultiMeshes (one draw per patch, not per tree);
-## crowns are shared templates (_crown_template) so 110 leafy crowns cost a handful of meshes. _keep_open() is the
+## clusters are shared (TreeFactory: a few cluster shapes per kind) so the whole wood is a handful of meshes. _keep_open() is the
 ## rule that nothing grows on a trail or in an arrival view. The forest floor, undergrowth and pine flats are all
 ## scattered from seeded RNGs: the order of calls here decides where every plant lands, so do not reorder them.
 ##
@@ -35,8 +35,8 @@ func _asters() -> void:
 		next -= run
 
 
-## The trees (woods_trees.gd): oak, maple, birch and white pine, real trunks and limbs under leafy crowns; with
-## leaves near the trails, dark crown masses further off. Never within 2.8 m of a trail.
+## The trees (woods_trees.gd, made by TreeFactory): oak, maple, birch and white pine, real trunks and limbs under
+## leafy crowns, the same near or far. Never within 2.8 m of a trail.
 func _trees(rng: RandomNumberGenerator) -> void:
 	var maker = preload("res://scripts/garden/woods_trees.gd").new(self)
 	for k in range(1300):
@@ -61,34 +61,9 @@ func _trees(rng: RandomNumberGenerator) -> void:
 			var t := _nearest_trail(p)
 			if t != Vector2.INF:                                 # (not by the way home: no blazes on that)
 				blaze = Vector3(t.x - p.x, 0, t.y - p.y).normalized()
-		maker.tree(kind, Vector3(p.x, height(p.x, p.y), p.y), rng, _near_trail(p, maker.LEAFY_REACH), blaze)
+		maker.tree(kind, Vector3(p.x, height(p.x, p.y), p.y), rng, blaze)
 	await maker.finish()
 	set_meta("trees_rejected", maker.rejected)
-
-
-## Leafy crowns: a few made once with the hedgepets' foliage (fixed seeds, so they bake), shared by every tree near a
-## trail. [leaf sheet, palette].
-const CROWNS := [["hedgeoak", "autumn"], ["hedgemaple", "crimson"], ["hedgeoak", "green"], ["hedgemaple", "autumn"],
-	["hedgeivy", "green"], ["hedgeboxwood", "spring"]]
-var _crowns: Array = []
-
-
-func _crown_template(i: int, sheet := "", palette := "", radii := Vector3(2.4, 1.9, 2.4)) -> Node3D:
-	if sheet == "":
-		while _crowns.size() <= i:
-			_crowns.append(null)
-		if _crowns[i] != null:
-			return _crowns[i]
-		sheet = CROWNS[i][0]
-		palette = CROWNS[i][1]
-	var pal := SpeciesBuilder.palette_of(palette)
-	var inner := Color(SpeciesBuilder.PALETTES[palette][6])
-	var t: Node3D = garden._bush(Vector3.ZERO, radii, sheet, pal, inner, 0.7, 0.9, "dome", 0.0, Color(1.0, 0.98, 0.92), 9100 + i)
-	t.reparent(self, false)
-	t.visible = false
-	if i < _crowns.size():
-		_crowns[i] = t
-	return t
 
 
 ## Weeping willows on the creek banks and round the pond: a leaning trunk, a soft crown of willow leaves, and long
@@ -103,7 +78,6 @@ func _willows(rng: RandomNumberGenerator) -> void:
 		spots.append(_creek_point(along + rng.randf_range(-3, 3)) + CREEK_DIR.orthogonal() * side * rng.randf_range(3.6, 4.6))
 	for k in range(2):
 		spots.append(POND_AT + Vector2.from_angle(k * PI + 0.6) * (POND_R + 2.6))
-	var crown_t := _crown_template(99, "hedgewillow", "spring", Vector3(2.2, 1.5, 2.2))
 	var strand := CylinderMesh.new()
 	strand.top_radius = 0.03
 	strand.bottom_radius = 0.012
@@ -118,10 +92,9 @@ func _willows(rng: RandomNumberGenerator) -> void:
 		var lean := Vector3(rng.randf_range(-0.12, 0.12), 0, rng.randf_range(-0.12, 0.12))
 		GardenProps.part(self, GardenProps.cyl(0.22, 0.38, tall, 9), GardenProps.mat("willowbark", Color("5a4c3a")), Vector3(p.x, y + tall * 0.5 - 0.2, p.y), Vector3(rad_to_deg(lean.z), 0, rad_to_deg(-lean.x)), 0.012)
 		var top := Vector3(p.x, y + tall, p.y) + lean * tall
-		var crown: Node3D = crown_t.duplicate()
-		crown.visible = true
-		crown.position = top
-		add_child(crown)
+		for n in TreeFactory.build_batch([TreeFactory.crown("willow", top, rng.randi())], top):   # the crown: the trees' system
+			n.name = "Willow_%s" % n.name
+			add_child(n)
 		var hang := Node3D.new()                           # the curtain of strands, swaying as one
 		hang.position = top
 		add_child(hang)

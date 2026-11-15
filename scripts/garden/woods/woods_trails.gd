@@ -481,8 +481,12 @@ func _sign(from: String, dir: Vector3, text: String) -> Label3D:
 	holder.rotation.y = atan2(face.x, face.z) + deg_to_rad(32.0)   # facing you, its right-hand point swung down the trail
 	var post := GardenProps.mat("signpost", Color("4a3626"))
 	var board := GardenProps.mat("signboard", Color("5a3e28"))            # stained dark, like a park sign
-	var w := clampf(0.3 + text.length() * 0.08, 0.9, 1.9)
-	GardenProps.part(holder, GardenProps.cyl(0.05, 0.06, 1.75, 7), post, Vector3(-w * 0.5 + 0.12, 0.85, -0.05), Vector3(0, 0, -2), 0.008)
+	# the board fits its words: the text's real width in the sign font, plus a margin each side
+	var text_w := SIGN_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46).x * 0.0041
+	var w := maxf(0.9, text_w + 0.3)
+	# the post holds the board's square end (the pointed end points down the trail), so it never crosses the letters
+	# painted on either face
+	GardenProps.part(holder, GardenProps.cyl(0.05, 0.06, 1.75, 7), post, Vector3(-w * 0.5 - 0.03, 0.85, 0.0), Vector3(0, 0, -2), 0.008)
 	GardenProps.part(holder, GardenProps.box(Vector3(w, 0.32, 0.045)), board, Vector3(0.0, 1.45, 0), Vector3(0, 0, 1.5), 0.01)
 	GardenProps.part(holder, GardenProps.box(Vector3(0.2, 0.2, 0.045)), board, Vector3(w * 0.5, 1.45 + w * 0.5 * 0.026, 0), Vector3(0, 0, 45 + 1.5), 0.01)
 	var paint := Color(0.78, 0.7, 0.54)
@@ -506,7 +510,15 @@ func _sign(from: String, dir: Vector3, text: String) -> Label3D:
 
 
 ## Three chevrons on the ground at the start of a trail, pointing along it: they glow on the one you're facing (the
-## one a tap will take you down).
+## one a tap will take you down; woods.gd fades the material's alpha).
+##
+## All alike, evenly spaced (CHEVRONS metres along the trail), and draped on the trail bed: every vertex sits
+## CHEVRON_LIFT above the bed's own surface (the same formula _ribbon uses), so on a slope they neither sink into the
+## ground nor float. One mesh per trail start.
+const CHEVRONS := [2.2, 3.3, 4.4]
+const CHEVRON_LIFT := 0.03
+
+
 func _chevrons(from: String, way: Dictionary) -> Dictionary:
 	var pts := PackedVector3Array()
 	if way.has("edge"):
@@ -522,49 +534,54 @@ func _chevrons(from: String, way: Dictionary) -> Dictionary:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.albedo_color = Color(1.0, 0.95, 0.78, 0.0)
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var bar := BoxMesh.new()
-	bar.size = Vector3(0.07, 0.02, 0.5)
-	var arrow := _arrow_mesh()
-	for want: float in [2.2, 3.5, 4.6, 5.7]:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for want: float in CHEVRONS:
 		var acc := 0.0
 		for i in range(1, pts.size()):
 			var seg := pts[i].distance_to(pts[i - 1])
 			if acc + seg >= want:
 				var at := pts[i - 1].lerp(pts[i], (want - acc) / maxf(seg, 0.001))
-				var d := pts[i] - pts[i - 1]
-				var chev := Node3D.new()
-				chev.position = at + Vector3(0, 0.1, 0)
-				chev.rotation.y = atan2(d.x, d.z)
-				add_child(chev)
-				if want < 3.0:                                  # first, a big arrow: this way
-					var a := MeshInstance3D.new()
-					a.mesh = arrow
-					a.material_override = m
-					a.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-					chev.add_child(a)
-					break
-				for sgn: float in [-1.0, 1.0]:
-					var arm := MeshInstance3D.new()
-					arm.mesh = bar
-					arm.material_override = m
-					arm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-					arm.rotation.y = -sgn * deg_to_rad(38.0)            # a ^ pointing along the trail
-					arm.position = Vector3(sgn * 0.15, 0, -0.12)
-					chev.add_child(arm)
+				var d := Vector3(pts[i].x - pts[i - 1].x, 0, pts[i].z - pts[i - 1].z).normalized()
+				_chevron(st, at, d)
 				break
 			acc += seg
+	var node := MeshInstance3D.new()
+	node.name = "Chevrons_%s_%s" % [from, str(way.get("to", "stub"))]
+	node.mesh = st.commit()
+	node.material_override = m
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
 	return {"mat": m}
 
 
-## A flat arrow on the ground pointing along +z: a shaft and a broad head.
-func _arrow_mesh() -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var pts := [Vector3(-0.09, 0, -0.55), Vector3(0.09, 0, -0.55), Vector3(0.09, 0, 0.05), Vector3(-0.09, 0, 0.05),
-		Vector3(-0.34, 0, 0.05), Vector3(0.34, 0, 0.05), Vector3(0, 0, 0.6)]
-	for t: Array in [[0, 1, 2], [0, 2, 3], [4, 5, 6]]:
-		for i: int in t:
-			st.set_normal(Vector3.UP)
-			st.add_vertex(pts[i])
-	var m := st.commit()
-	return m
+## One chevron (a ^ pointing along `fwd`) centred on the trail at `at`, draped on the bed. Each arm is a strip
+## subdivided along its length so it follows the ground's curve.
+func _chevron(st: SurfaceTool, at: Vector3, fwd: Vector3) -> void:
+	var side := fwd.cross(Vector3.UP)
+	var tip := Vector2(0.0, 0.2)                          # (across, along) in metres; the tip leads
+	var half := 0.09                                      # half the arm's width
+	for sgn: float in [-1.0, 1.0]:
+		var foot := Vector2(sgn * 0.32, -0.14)
+		var arm := (tip - foot).normalized()
+		var n := Vector2(-arm.y, arm.x) * half
+		var steps := 4
+		for k in range(steps):
+			var f0 := float(k) / steps
+			var f1 := float(k + 1) / steps
+			var a0 := foot.lerp(tip, f0)
+			var a1 := foot.lerp(tip, f1)
+			var quad := [a0 - n, a0 + n, a1 + n, a1 - n]
+			var vs: Array = []
+			for q: Vector2 in quad:
+				var w := at + side * q.x + fwd * q.y
+				w.y = _bed_y(w, at.y) + CHEVRON_LIFT
+				vs.append(w)
+			for idx: int in [0, 1, 2, 0, 2, 3]:
+				st.set_normal(Vector3.UP)
+				st.add_vertex(vs[idx])
+
+
+## The trail bed's surface height at w, for a trail whose centre line is at height centre_y there: as _ribbon makes it.
+func _bed_y(w: Vector3, centre_y: float) -> float:
+	return maxf(height(w.x, w.z), centre_y - 0.3) + 0.06

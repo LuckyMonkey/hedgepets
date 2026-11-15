@@ -84,8 +84,6 @@ func setup(g: Node3D) -> void:
 	_ui.add_child(_binocular_caption)
 
 
-const LEAFY_MAX := 110
-var _leafy := 0
 # ------------------------------------------------------------------ a visit
 func _arrive() -> void:
 	followers.clear()

@@ -360,6 +360,7 @@ func _endless_band(world: Node3D, origin: Vector2, dir: Vector2, seed: int, all_
 	var trunks: Array = []
 	var crowns: Array = []
 	var firs: Array = []
+	var leafy: Array = []
 	var s := 3.4
 	while s < 380.0:
 		await Slicer.tick(self)
@@ -386,11 +387,48 @@ func _endless_band(world: Node3D, origin: Vector2, dir: Vector2, seed: int, all_
 			else:                                         # the canopy: crowns overlapping into one ceiling
 				var w := rng.randf_range(0.8, 1.2) + step * 0.5
 				var c := Color("3a5a30").lerp(Color("a0602c"), clampf(rng.randf() * 1.4 - 0.4, 0.0, 1.0)).lerp(Color("2c4a2a"), 0.35)
-				crowns.append([Transform3D(Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(w, w * 0.45, w)), Vector3(p.x, y + tall * 0.95, p.y)), haze(c, metres)])
+				var crown := [Transform3D(Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(w, w * 0.45, w)), Vector3(p.x, y + tall * 0.95, p.y)), haze(c, metres)]
+				if s < LEAFY_REACH:                       # near enough to make out: the woods' leaf cards (see _leafy_crowns)
+					leafy.append(crown)
+				else:
+					crowns.append(crown)
 		s += step
 	_forest_multimesh(world, _forest_trunk_mesh(), trunks, "EndlessTrunks")
 	_forest_multimesh(world, _forest_cluster_mesh(0), crowns, "EndlessCanopy")
+	print("distant land endless woods: %d leaf cards" % _leafy_crowns(world, leafy, "EndlessCrowns"))
 	_forest_multimesh(world, _forest_pine_mesh(true if all_pine else false), firs, "EndlessFirs")
+
+
+## How far out (in land units from where a band starts) crowns are drawn with leaf cards rather than a lump.
+const LEAFY_REACH := 60.0
+
+
+## Crowns as the woods' own leaf cards (TreeFactory.far_crown: a few big crown leaves each), so the land's nearer forest
+## is the same forest as the woods. A lumpy flat-coloured mesh this near read as a slab hanging in the woods' sky.
+## items: [Transform3D (the crown's size and place), Color (its hazed tint)]. Returns the number of leaf cards.
+func _leafy_crowns(world: Node3D, items: Array, label: String, kind := "oak") -> int:
+	var leaves := {}
+	var n := 0
+	for it: Array in items:
+		var xf: Transform3D = it[0]
+		if not toy_clear(Vector2(xf.origin.x, xf.origin.z)):
+			continue
+		var tint: Color = it[1]
+		var palette: String = "gold" if kind == "birch" else ("green" if tint.g > tint.r else ("crimson" if kind == "maple" else "autumn"))
+		var radii: Vector3 = TreeFactory.KINDS[kind]["radii"]
+		var fit := xf * Transform3D(Basis().scaled(Vector3.ONE / radii.x), Vector3.ZERO)   # the cluster's metres to this crown
+		var sheet: String = TreeFactory.KINDS[kind]["sheet"]
+		if not leaves.has(sheet):
+			leaves[sheet] = []
+		(leaves[sheet] as Array).append_array(TreeFactory.far_crown(kind, palette, n % TreeFactory.VARIANTS, fit, tint))
+		n += 1
+	var cards := 0
+	for node in TreeFactory.leaf_nodes(leaves):
+		node.name = "%s_%s" % [label, node.name]
+		(node as MultiMeshInstance3D).multimesh.custom_aabb = AABB(Vector3(-470.0, -20.0, -470.0), Vector3(940.0, 100.0, 940.0))
+		cards += (node as MultiMeshInstance3D).multimesh.instance_count
+		world.add_child(node)
+	return cards
 
 
 ## Right past the edge of the woods: the forest goes on, tree by tree - trunks you look between, crowns overlapping,
@@ -452,13 +490,13 @@ func _near_forest(world: Node3D) -> void:
 				var w := rng.randf_range(0.5, 0.8) * full
 				var c: Color = autumn[rng.randi_range(0, 4)] if absf(stand.get_noise_2d(p.x * 2.0 + 50.0, p.y * 2.0)) > 0.12 else green[rng.randi_range(0, 2)]
 				crowns[rng.randi_range(0, 1)].append([Transform3D(Basis.from_euler(Vector3(rng.randf_range(-0.1, 0.1), yaw, 0)).scaled(Vector3(w, w * 0.7, w)), Vector3(p.x, y + tall * 0.72, p.y)), haze(c, metres)])
-	_forest_multimesh(world, _forest_cluster_mesh(0), crowns[0], "NearBroadleafA")
-	_forest_multimesh(world, _forest_cluster_mesh(1), crowns[1], "NearBroadleafB")
-	_forest_multimesh(world, _forest_cluster_mesh(2), crowns[2], "NearBirch")
+	# broadleaf and birch crowns: the woods' own leaf cards, so the forest past the woods is the same forest
+	var cards := _leafy_crowns(world, crowns[0], "NearCrownsA", "oak") + _leafy_crowns(world, crowns[1], "NearCrownsB", "maple") \
+		+ _leafy_crowns(world, crowns[2], "NearCrownsBirch", "birch")
 	_forest_multimesh(world, _forest_pine_mesh(false), crowns[3], "NearPine")
 	_forest_multimesh(world, _forest_trunk_mesh(), trunks, "NearTrunks")
 	_forest_multimesh(world, _forest_trunk_mesh(), snags, "NearSnags")
-	print("distant land near forest: %d trees, %d snags" % [trunks.size(), snags.size()])
+	print("distant land near forest: %d trees, %d snags, %d leaf cards" % [trunks.size(), snags.size(), cards])
 
 
 ## The old cone-and-ball layer is deliberately kept as a far-horizon texture. This second layer is the woodland:
@@ -563,7 +601,9 @@ func _forest_canopy_shelves(world: Node3D) -> void:
 	var shelf_b: Array = []
 	var vista_a: Array = []
 	var vista_b: Array = []
-	var bands := [[16.0, 18], [33.0, 24], [62.0, 30], [112.0, 38], [190.0, 46]]
+	# (no shelves nearer than 62 units: the near forest's own trees cover that distance, and a shelf that close reads
+	# as a flat slab hanging in the woods' sky - the pond and the ridge showed it)
+	var bands := [[62.0, 30], [112.0, 38], [190.0, 46]]
 	for band_i: int in bands.size():
 		await Slicer.tick(self)
 		var band: Array = bands[band_i]
@@ -582,7 +622,7 @@ func _forest_canopy_shelves(world: Node3D) -> void:
 			var y := height(p.x, p.y)
 			if y > 28.0:
 				continue
-			var far := float(band_i) / float(bands.size() - 1)
+			var far := float(band_i + 2) / 4.0              # as when the list began with two nearer bands: same sizes
 			var width := lerpf(1.25, 5.6, far) * rng.randf_range(0.78, 1.24)
 			var crown_height := lerpf(0.82, 1.85, far) * rng.randf_range(0.78, 1.18)
 			var crown_y := y + lerpf(0.72, 1.28, far) + rng.randf_range(-0.16, 0.22)
@@ -594,18 +634,18 @@ func _forest_canopy_shelves(world: Node3D) -> void:
 	# Two overlapping north-facing lanes are intentional landmarks: the oak's rolling canopy sea and the fork's
 	# view through trunks. They are high enough to meet the horizon, but sparse enough to preserve glimpses of haze.
 	var lanes := [-1.43, -1.18, -0.92]
-	var depths := [14.0, 27.0, 50.0, 92.0, 158.0]
+	var depths := [50.0, 92.0, 158.0]                  # (not nearer: see the bands above)
 	for lane_i in lanes.size():
 		for depth_i in depths.size():
 			var radius: float = depths[depth_i]
-			var count := 6 + depth_i * 3
+			var count := 6 + (depth_i + 2) * 3
 			for i in count:
 				var angle: float = lanes[lane_i] + lerpf(-0.24, 0.24, float(i) / maxf(1.0, count - 1.0)) + rng.randf_range(-0.055, 0.055)
 				var p := Vector2(cos(angle), sin(angle)) * (radius + rng.randf_range(-radius * 0.12, radius * 0.12))
 				var y := height(p.x, p.y)
 				if y > 28.0:
 					continue
-				var far := float(depth_i) / float(depths.size() - 1)
+				var far := float(depth_i + 2) / 4.0
 				var width := lerpf(1.2, 4.8, far) * rng.randf_range(0.82, 1.2)
 				var crown_height := lerpf(0.92, 1.68, far) * rng.randf_range(0.8, 1.16)
 				var crown_y := y + lerpf(0.9, 1.48, far) + rng.randf_range(-0.12, 0.2)
