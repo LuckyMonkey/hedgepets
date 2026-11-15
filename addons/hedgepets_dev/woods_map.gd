@@ -11,7 +11,7 @@ var _hover := ""
 
 
 func _ready() -> void:
-	var w = load("res://scripts/garden/woods.gd")
+	var w = load("res://scripts/garden/woods/woods_ground.gd")   # the map (NODES, EDGES) is in the first woods layer
 	_nodes = w.NODES
 	_edges = w.EDGES
 	mouse_filter = Control.MOUSE_FILTER_STOP

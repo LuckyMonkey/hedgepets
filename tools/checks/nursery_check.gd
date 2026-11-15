@@ -55,7 +55,14 @@ func _run() -> void:
 		for k in line.get("when", {}):
 			if not known.has(k):
 				return _fail("line %s has an unknown condition %s" % [line["id"], k])
-	for path in ["res://assets/talk/nursery.json", "res://scripts/garden/nursery.gd", "res://scripts/garden/heredity.gd", "res://scripts/garden/woods.gd", "res://scripts/garden/garden_game.gd", "res://scripts/garden/porch_watcher.gd"]:
+	for path in ["res://assets/talk/nursery.json", "res://scripts/garden/nursery.gd", "res://scripts/garden/heredity.gd", "res://scripts/garden/woods.gd",
+		"res://scripts/garden/woods/woods_ground.gd",
+		"res://scripts/garden/woods/woods_trails.gd",
+		"res://scripts/garden/woods/woods_scenery.gd",
+		"res://scripts/garden/woods/woods_landmarks.gd",
+		"res://scripts/garden/woods/woods_finds.gd",
+		"res://scripts/garden/woods/woods_build.gd",
+		"res://scripts/garden/garden_game.gd", "res://scripts/garden/porch_watcher.gd"]:
 		var text := FileAccess.get_file_as_string(path).to_lower()
 		for word in NEVER:
 			var re := RegEx.create_from_string("\\b" + word.replace(".", "\\.") + "\\b")
