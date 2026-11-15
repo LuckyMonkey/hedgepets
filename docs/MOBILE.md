@@ -126,5 +126,5 @@ None of these are installed yet:
 ## Checks that need no templates
 
     godot --headless --path . --export-pack "Web" build/packtest/hedgepets.pck   # the exported content
-    cd /tmp && godot --main-pack ~/Projects/hedgepets/build/packtest/hedgepets.pck   # run the game from it
+    cd /tmp && godot --main-pack ~/work/hedgepets/build/packtest/hedgepets.pck   # run the game from it
     godot --headless --path . --script tools/boot_time.gd                         # startup, part by part

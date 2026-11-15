@@ -150,7 +150,7 @@ Deterministic: the same seed rebuilds identically; another seed differs.
 
 ## The goal-image pass (2026-10-08)
 
-`docs/acceptance/goal_compare.png`: hedgepetsGoal.jpg beside Gerald.
+`docs/acceptance/goal_compare.png`: docs/images/hedgepets_goal.jpg beside Gerald.
 
 - **All plant, except feet and tail.** Head, face, muzzle and ears are leaves. Only the eyes, nose and teeth are
   features. The face is younger, lighter leaves (a region `tint`, like the drawing's lighter face area). The leafy

@@ -135,7 +135,7 @@ func _build() -> void:
 
 
 ## The ivy cover: big shingled leaves over the whole body and the back of the head, pointing out and a little up,
-## parting round the face. Rim leaves are the fullest and catch the most wind (hedgepetsGoal.jpg).
+## parting round the face. Rim leaves are the fullest and catch the most wind (docs/images/hedgepets_goal.jpg).
 func _draw_crown_foliage() -> void:
 	var masses := [[Creature.BODY_CENTER, Creature.BODY_RADII, 340.0], [Creature.HEAD_CENTER, Creature.HEAD_RADII, 170.0]]
 	var rng := RandomNumberGenerator.new()   # a real generator: a sine hash over consecutive keys lays leaves on a spiral

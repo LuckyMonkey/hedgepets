@@ -4,8 +4,8 @@ Same rules as the earlier woods briefs (no git; `--audio-driver Dummy`; work onl
 owns rock SHAPES in `~/work/hp-rocks` - don't touch `rock_factory.gd`/`garden_props.gd` rocks). **Lean tests: one
 quick run of what you change.** Pass 2 is live; the owner is testing on an iPhone.
 
-Captures (software GL, clear weather) are attached: `docs/codex/shots/all.png` (creek, fork, oak, pine flats, ridge,
-trailhead) and `docs/codex/shots/oak_ridge.png` (full size). Fix, in order:
+Captures (software GL, clear weather) are attached: `docs/archive/codex/shots/all.png` (creek, fork, oak, pine flats, ridge,
+trailhead) and `docs/archive/codex/shots/oak_ridge.png` (full size). Fix, in order:
 
 1. **The ridge doesn't read as a ravine.** From the lookout, a hump of the near ground (5-15 m out along `VIEW_DIR`)
    hides the drop: you see dirt, then far treetops. Shape the land so that from the bench/lookout the ground falls
@@ -31,5 +31,5 @@ trailhead) and `docs/codex/shots/oak_ridge.png` (full size). Fix, in order:
 7. The trail itself: the trail ground is very dark brown in the foreground of every view - lighten it toward the
    art direction's leaf-litter browns so it reads as a path, not a hole.
 
-Recompile the woods and re-bake at the end. Report: `docs/codex/REPORT_WOODS3_2026-11-13.md` - each item, what you
+Recompile the woods and re-bake at the end. Report: `docs/archive/codex/REPORT_WOODS3_2026-11-13.md` - each item, what you
 changed, and the exact poses Claude should capture to check it.

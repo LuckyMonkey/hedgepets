@@ -57,4 +57,4 @@ rock-only geometry is now bounded by the table above; Claude should run those to
 the resulting garden/woods totals in the dated report before shipping.
 
 For visual review, run `tools/rock_shots.gd` under X with the Compatibility renderer. It writes a six-row by
-three-variation grid to `docs/codex/shots/rocks_grid_v3.png`.
+three-variation grid to `docs/archive/codex/shots/rocks_grid_v3.png`.

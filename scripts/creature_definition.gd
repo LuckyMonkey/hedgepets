@@ -4,7 +4,7 @@ extends RefCounted
 ## Authored creature grammar. Plant composition reads this data but never
 ## needs to know how the face is drawn.
 ##
-## The pet is a beaver made of ivy - a botanical creature, not an animal under plants (hedgepetsGoal.jpg), seen three-quarters from the front-right: a big
+## The pet is a beaver made of ivy - a botanical creature, not an animal under plants (docs/images/hedgepets_goal.jpg), seen three-quarters from the front-right: a big
 ## rounded body, the head forward and to the right, the flat tail behind, four little feet (the far ones smaller).
 ## Everything is in viewport pixels (1080 x 1920).
 const BODY_CENTER := Vector2(505.0, 1045.0)

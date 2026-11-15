@@ -60,6 +60,6 @@ DISPLAY=:79 <godot command with --rendering-driver opengl3 --resolution 540x960 
 
 ## Report
 
-`docs/codex/REPORT_LOOPS_2026-11-13.md`: the design (each loop, why it's fun, how it feeds the wishes), what you built,
+`docs/archive/codex/REPORT_LOOPS_2026-11-13.md`: the design (each loop, why it's fun, how it feeds the wishes), what you built,
 files changed, the new want keys and which pets got them, checks run with results, captures, open questions for the
 owner. Also list the How to play changes the go page `/hedgepets/howto` needs (it lives in fridge-go; Claude makes them).

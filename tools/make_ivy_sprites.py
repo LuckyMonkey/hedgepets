@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Draw real ivy for the ivy profile: lobed leaves with a heart-shaped base, a fine dark outline and pale veins,
-plus the white five-petal flower - the look in hedgepetsGoal.jpg. Same layout as bake_leaf_sprites.py (16 cells,
+plus the white five-petal flower - the look in docs/images/hedgepets_goal.jpg. Same layout as bake_leaf_sprites.py (16 cells,
 row 0 fill, row 1 ink, glyph units x -0.6..0.6, y -0.05..1.15, stalk at y = 0), so the renderer is unchanged.
 
     python3 tools/make_ivy_sprites.py      (after bake_leaf_sprites.py; overwrites assets/sprites/hedgeivy.png)

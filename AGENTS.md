@@ -43,6 +43,9 @@
 | Animation behavior | `docs/MOTION.md` |
 | Visual and performance regression | `docs/VISUAL_REGRESSION.md`, `docs/PERFORMANCE_BASELINE.md` |
 | Generated world/editor | `docs/WORLD_ARCHITECTURE.md`, `docs/WORLD_EDITOR.md` |
-| Device/export/deploy | `docs/MOBILE.md`, `docs/OWNER_QUICKSTART.md` |
+| Running, checks, traps, deploy, go pages, telemetry | `docs/OPERATIONS.md` |
+| Device/export | `docs/MOBILE.md`, `docs/OWNER_QUICKSTART.md` |
+| Owner's unbuilt ideas | `docs/ideas/` |
+| Old Codex briefs/reports (dated, historical) | `docs/archive/codex/` |
 
 Do not edit dated documents to pretend old tests or deployments happened today. Update only the live rules and the documentation affected by the change.

@@ -28,7 +28,7 @@
 - Core game loop: `tools/game_check.gd`. Other subsystem checks: `tools/*_check.gd`.
 - Visual baseline: `tools/golden_capture.gd`, `tools/image_compare.py`, `tests/baseline/`.
 - GitHub Actions: `.github/workflows/review.yml` for PR smoke checks; `pages.yml` for main-branch Pages exports. **PR checks do not replace visual review.**
-- Performance, export, and deployment procedure: [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md), [MOBILE.md](MOBILE.md), [OWNER_QUICKSTART.md](OWNER_QUICKSTART.md).
+- **How to run, check, deploy, and the traps:** [OPERATIONS.md](OPERATIONS.md). Performance and export: [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md), [MOBILE.md](MOBILE.md).
 
 ## Historical observations (2026-11-13, **not re-verified**)
 - Pet build slicing, sky redraw-on-change and first-draw warm-up were reported live; iPhone reportedly held 30 fps in the garden.

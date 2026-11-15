@@ -118,6 +118,6 @@ add a check for the introduction and the garden page (state is saved and restore
 
 ## Report
 
-Write `docs/codex/REPORT_2026-11-12.md`: what you measured (before/after numbers), each cause found, each change,
+Write `docs/archive/codex/REPORT_2026-11-12.md`: what you measured (before/after numbers), each cause found, each change,
 files changed, checks run with results, golden views changed and why, anything you tried and dropped, and open
 questions for the owner. Do not claim a fix you did not measure.

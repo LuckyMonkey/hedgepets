@@ -1,7 +1,7 @@
 # Codex brief (2026-11-13): the woods - lag spikes, pop-in, broken seams
 
 Read `AGENTS.md`, `docs/HANDOFF.md` (the owner's design rules are non-negotiable), `docs/PERFORMANCE_BASELINE.md`,
-`docs/codex/REPORT_2026-11-12.md` if present, and `git log -5` is NOT available to you (no git): Claude reviews,
+`docs/archive/codex/REPORT_2026-11-12.md` if present, and `git log -5` is NOT available to you (no git): Claude reviews,
 commits and deploys. Offscreen Godot runs ALWAYS take `--audio-driver Dummy`. Godot `~/.local/bin/godot` (4.7.2).
 This laptop is a 2012 MacBook Air: the game must hold ~30 fps on it. You work in this worktree only
 (`~/work/hp-woods`); another Codex works on gameplay in another worktree and Claude on the garden camera/fences:
@@ -58,5 +58,5 @@ change foliage/anatomy code re-bake (`tools/bake_cache.gd`). Run `tools/woods_ch
 
 ## Report
 
-`docs/codex/REPORT_WOODS_2026-11-13.md`: before/after numbers, each cause, each change, files changed, checks run with
+`docs/archive/codex/REPORT_WOODS_2026-11-13.md`: before/after numbers, each cause, each change, files changed, checks run with
 results, views changed and why, anything dropped. Do not claim a fix you did not measure.

@@ -42,7 +42,7 @@ restocking remains visit-based. Offering geometry is one shared dish recipe with
 - `scripts/garden/woods.gd`
 - `pets/species.json`
 - `tools/collect_check.gd`
-- `docs/codex/REPORT_LOOPS_2026-11-13.md`
+- `docs/archive/codex/REPORT_LOOPS_2026-11-13.md`
 
 ## Checks and captures
 

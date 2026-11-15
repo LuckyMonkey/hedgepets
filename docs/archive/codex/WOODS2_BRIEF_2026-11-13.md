@@ -1,6 +1,6 @@
 # Codex brief (2026-11-13, pass 2): the woods - the 3D skybox, clipping, the ravine, binoculars, the garden in view
 
-Same rules as `docs/codex/WOODS_BRIEF_2026-11-13.md` (read it and your `REPORT_WOODS_2026-11-13.md`). No git. Work only
+Same rules as `docs/archive/codex/WOODS_BRIEF_2026-11-13.md` (read it and your `REPORT_WOODS_2026-11-13.md`). No git. Work only
 in `~/work/hp-woods`. Another Codex is replacing how rocks are made (`scripts/art/rock_factory.gd`, `garden_props.gd`
 rocks) in `~/work/hp-rocks`: don't change rock shapes; keep rock placement code where it is.
 
@@ -56,6 +56,6 @@ re-bake (`tools/bake_cache.gd`) at the end.
 
 ## Report
 
-`docs/codex/REPORT_WOODS2_2026-11-13.md`: what the skybox check found and fixed (numbers), clipping spots fixed, the
+`docs/archive/codex/REPORT_WOODS2_2026-11-13.md`: what the skybox check found and fixed (numbers), clipping spots fixed, the
 ravine and binoculars (how they work, the details placed and where), the garden miniature, performance, what Claude
 should capture and look at (exact positions/poses).

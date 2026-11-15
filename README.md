@@ -1,8 +1,8 @@
 # HedgePets
 
-A Godot 4.7 garden-creature game (GL Compatibility, portrait 1080 × 1920), with a playable garden, woods, and botanical pets. Design notes: `hedgepets, part.md`. Engineering rules: [AGENTS.md](AGENTS.md); review protocol: [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md).
+A Godot 4.7 garden-creature game (GL Compatibility, portrait 1080 × 1920), with a playable garden, woods, and botanical pets. Design notes: [docs/ideas/scientists.md](docs/ideas/scientists.md). Engineering rules: [AGENTS.md](AGENTS.md); review protocol: [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md).
 
-![Gerald](docs-gerald.png)
+![Gerald](docs/images/gerald.png)
 
 ## The garden (the main scene, `garden.tscn`)
 
@@ -25,7 +25,7 @@ for a hop and a heart.
 ![acceptance sheet](docs/acceptance/sheet.png)
 
 
-Seen from above and to the side like `hedgepetsGoal.jpg`. Everything is built in `scripts/hedge_pet_3d.gd`: leafy
+Seen from above and to the side like `docs/images/hedgepets_goal.jpg`. Everything is built in `scripts/hedge_pet_3d.gd`: leafy
 masses for the body and head (deep shade inside, no fur), about 2,000 ivy leaves as MultiMeshes placed on the
 surface (the same sprites and normal maps as the 2D version), vines hanging off his sides, a woven-twig tail, root
 feet, berry eyes, a seed nose and seed teeth, leaf ears, a warm sun with real shadows. The wind runs on the GPU
@@ -39,7 +39,7 @@ The 2D version is still `main.tscn` (open it in the editor, or set it as the mai
 ## What is here (2D)
 
 - **Gerald**, a fully botanical beaver - a plant in the shape of a beaver, not an animal under plants - seen
-  three-quarters (the target is `hedgepetsGoal.jpg`). Base layer (`scripts/hedge_pet.gd`): a paddle tail of woven twigs
+  three-quarters (the target is `docs/images/hedgepets_goal.jpg`). Base layer (`scripts/hedge_pet.gd`): a paddle tail of woven twigs
   with leaves sprouting from its edge, root clumps for feet, deep leafy shade under the ivy (no fur anywhere), moss over
   the muzzle. Top layer: a glossy berry eye, a seed nose, two pale seed teeth, a vine mouth, a cupped-leaf ear.
 - **The ivy** (`scripts/growth_renderer.gd`): an ivy cover over the body and the back of the head, vines from the

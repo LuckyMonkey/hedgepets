@@ -66,5 +66,5 @@ possible, or skip and say so - Claude will capture. Re-bake the cache (`tools/ba
 
 ## Report
 
-`docs/codex/REPORT_ROCKS_2026-11-13.md`: the research and choice, the API, each role, where it's used, numbers, checks
+`docs/archive/codex/REPORT_ROCKS_2026-11-13.md`: the research and choice, the API, each role, where it's used, numbers, checks
 run, what Claude should look at in captures.

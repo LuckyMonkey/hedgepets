@@ -3,7 +3,7 @@
 Same rules as before (no git, `--audio-driver Dummy`, only `~/work/hp-woods`, lean tests). Rocks now come from
 `RockFactory` (merged): use its roles (`ledge`, `boulder`, `stepping_stone`…) for any rock you touch.
 
-Attached captures after pass 3 (`docs/codex/shots/merge1_all.png`: garden wall, overview, ridge, oak, trailhead;
+Attached captures after pass 3 (`docs/archive/codex/shots/merge1_all.png`: garden wall, overview, ridge, oak, trailhead;
 `woods_after3.png`: pass 3 vs a lighter ambient - oak and trailhead).
 
 ## Leftovers (each small; fix, don't redesign)
@@ -32,4 +32,4 @@ The garden has one (`docs/WORLD_EDITOR.md`, `scripts/world/world_editor.gd`, `wo
   same controls as the garden editor, Ctrl+S saves; the compiled woods respect overrides (recompile picks them up).
 - update `docs/WORLD_EDITOR.md` and `docs/OWNER_QUICKSTART.md` (owner-facing, plain words).
 
-Report: `docs/codex/REPORT_WOODS4_2026-11-13.md` - what changed, and the poses for Claude to capture.
+Report: `docs/archive/codex/REPORT_WOODS4_2026-11-13.md` - what changed, and the poses for Claude to capture.
