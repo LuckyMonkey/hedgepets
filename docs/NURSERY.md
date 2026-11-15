@@ -179,12 +179,12 @@ anything on one is walked through. `woods_check` fails if one is too close.
 - **Mossy fork:** mossy boulders.
 - **Fern hollow:** thick ferns.
 - **Ridge:** the land falls away to the east-northeast. You look out past lichened rocks over a misty valley, hills
-  behind hills, a few porch lights and the moon. There's a weathered bench and a cairn.
+  behind hills in the daytime haze. There's a weathered bench and a cairn.
 - **Creek crossing:** a winding creek in its channel, about 90 m long, with banks of rocks and cattails. Both trails
   cross it on stepping stones.
 - **Old oak:** one huge tree alone in a glade, with furrowed bark, roots, a hollow and a crown of six great limbs.
 - **Trailhead:** a roofed board.
-- **Beaver pond** (a dead end south of the creek crossing): still water in a bowl, a lodge of sticks and mud, a dam,
+- **Beaver pond** (connected to both the creek crossing and the old oak): still water in a bowl, a lodge of sticks and mud, a dam,
   lily pads, cattails, and stumps gnawed to a point.
 - **Cellar hole** (off the trailhead and fern hollow): the stone-lined pit of a long-gone farmhouse, with a granite
   step, a chimney base, a huge old lilac, and the dooryard apple tree (apples for the basket, wild rose seeds).
