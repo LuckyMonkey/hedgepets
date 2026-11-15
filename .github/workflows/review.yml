@@ -1,0 +1,36 @@
+name: Review — Godot smoke checks
+
+on:
+  pull_request:
+    paths:
+      - "**/*.gd"
+      - "**/*.tscn"
+      - "**/*.tres"
+      - "project.godot"
+      - ".github/workflows/review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install project's Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+      - name: Import and parse project
+        run: godot --headless --audio-driver Dummy --path . --editor --quit
+      - name: Description helper contract
+        run: HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/descriptions_check.gd
+      - name: Core garden loop
+        run: HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/game_check.gd --fixed-fps 60
