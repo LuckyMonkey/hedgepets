@@ -4,7 +4,7 @@ extends RefCounted
 ## Pure helpers extracted from GardenGame; keep output byte-for-byte compatible.
 
 ## What a plant looks like, said plainly: tall or short, in flower or not, and the colour when it's unexpected.
-static func _plant_line(pl: Dictionary) -> String:
+static func plant_line(pl: Dictionary) -> String:
 	var name: String = SpeciesBuilder.PLANT_NAMES.get(pl["species"], pl["species"])
 	var stage: int = pl["stage"]
 	var g: String = pl["genes"]
@@ -28,13 +28,13 @@ static func _plant_line(pl: Dictionary) -> String:
 
 
 # ------------------------------------------------------------------ words
-static func _thing_name(kind: String) -> String:
+static func thing_name(kind: String) -> String:
 	return {"lawn_chair": "lawn chair", "grill": "rusty grill", "sprinkler": "broken sprinkler", "tire": "old tire",
 		"pot": "flowerpot", "wheelbarrow": "wheelbarrow", "bucket": "paint bucket", "planter": "big pot", "well": "old well",
 		"burrow": "burrow", "woodpile": "woodpile", "brush_pile": "brush pile", "chair": "lawn chair", "barrel": "trash barrel", "branch": "branch", "stick": "stick", "rock": "rock", "leaf_pile": "leaf pile"}.get(kind, kind)
 
 
-static func _thing_line(t: Dictionary) -> String:
+static func thing_line(t: Dictionary) -> String:
 	return {"lawn_chair": "A tipped-over lawn chair. Cosy underneath, if you're small.",
 		"grill": "A rusty grill. Nobody's cooked on it in years.",
 		"sprinkler": "The sprinkler's broken - it just leaks. There's a nice puddle, though. Hold ✋ on it to fix it." if not t.get("fixed", false) else "💦 The sprinkler. Every minute it sweeps about and waters the plants it reaches.",
