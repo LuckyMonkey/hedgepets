@@ -36,6 +36,7 @@
 ## Documentation map
 | Work | Read |
 | --- | --- |
+| How the code is built (layer chains, trees, sky, seeds, budget) | `docs/ARCHITECTURE.md` |
 | Garden gameplay, economy, save, pet wishes | `docs/GARDEN.md` |
 | Garden world/props/camera | `docs/BACKYARD.md`, `docs/GARDEN.md` |
 | Woods, nursery, lore boundaries | `docs/NURSERY.md` |

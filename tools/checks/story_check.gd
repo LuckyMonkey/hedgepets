@@ -81,9 +81,9 @@ func _run() -> void:
 	fresh.introduced = (back.get("introduced", []) as Array).filter(func(n) -> bool: return n is String)
 	if not fresh.introduced.has(p.pet_name):
 		return _fail("introductions don't survive a save")
-	var save_src := FileAccess.get_file_as_string("res://scripts/garden/garden_game.gd")
+	var save_src := FileAccess.get_file_as_string("res://scripts/garden/game/game_save.gd")   # (save() / _load())
 	if not save_src.contains("\"introduced\": story.introduced") or not save_src.contains("data.get(\"introduced\""):
-		return _fail("garden_game.save()/_load() don't carry introductions")
+		return _fail("game_save.gd save()/_load() don't carry introductions")
 	print(story.page())
 	print("PASS story_check")
 	quit(0)

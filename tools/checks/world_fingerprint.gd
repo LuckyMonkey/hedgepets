@@ -10,7 +10,7 @@ extends SceneTree
 ##   HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/checks/world_fingerprint.gd -- out.txt
 ##
 ## Left out on purpose: the pets and butterflies (they move from the first frame, on the global RNG) and anything that
-## follows the clock (the sun, the camera), which would differ between two runs of the same code.
+## follows the clock (the sun, its light shafts, the camera), which would differ between two runs of the same code.
 
 const SKIP_TYPES := ["Camera3D", "DirectionalLight3D", "WorldEnvironment", "AudioStreamPlayer", "AudioStreamPlayer3D", "Timer"]
 
@@ -69,4 +69,4 @@ func _r(v: Vector3) -> String:
 
 func _is_butterfly(n: Node) -> bool:
 	var s: Script = n.get_script()
-	return s != null and s.resource_path.ends_with("butterfly.gd")
+	return s != null and s.resource_path.ends_with("butterfly.gd") or str(n.name).begins_with("LightShaft")

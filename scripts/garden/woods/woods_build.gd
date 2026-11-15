@@ -83,15 +83,28 @@ func _layer(name_: String) -> Node3D:
 ## with a warning) - unless res://world/woods.lock exists, which keeps the compiled woods as they are (a saved version).
 const COMPILED := "res://world/woods_compiled.scn"
 const LOCK := "res://world/woods.lock"
-const SOURCES := ["res://scripts/garden/woods.gd",
+const SOURCES := [
+	"res://scripts/garden/woods.gd",
 	"res://scripts/garden/woods/woods_ground.gd",
 	"res://scripts/garden/woods/woods_trails.gd",
 	"res://scripts/garden/woods/woods_scenery.gd",
 	"res://scripts/garden/woods/woods_landmarks.gd",
 	"res://scripts/garden/woods/woods_finds.gd",
 	"res://scripts/garden/woods/woods_build.gd",
-	"res://scripts/garden/woods_trees.gd", "res://scripts/art/tree_factory.gd", "res://scripts/garden/distant_land.gd",
-	"res://scripts/garden/garden_props.gd", "res://scripts/art/foliage_builder.gd", "res://scripts/art/hedge_anatomy.gd"]
+	"res://scripts/garden/woods_trees.gd",
+	"res://scripts/art/tree_factory.gd",
+	"res://scripts/garden/distant_land.gd",
+	"res://scripts/garden/land/land_terrain.gd",
+	"res://scripts/garden/land/land_forest.gd",
+	"res://scripts/garden/land/land_landmarks.gd",
+	"res://scripts/garden/garden_props.gd",
+	"res://scripts/garden/props/props_kit.gd",
+	"res://scripts/garden/props/props_yard.gd",
+	"res://scripts/garden/props/props_builds.gd",
+	"res://scripts/garden/props/props_surroundings.gd",
+	"res://scripts/art/foliage_builder.gd",
+	"res://scripts/art/hedge_anatomy.gd",
+]
 var compiling := false                 # tools/bake/compile_woods.gd: copy what each static step makes
 var recorded := {}                     # compiling: key -> {"nodes": [detached copies], "state": int}
 var _compiled: Node                    # the instanced compiled scene while building from it, or null

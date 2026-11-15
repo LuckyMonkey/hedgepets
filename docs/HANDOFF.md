@@ -10,18 +10,18 @@
 - The owner reported the current game working on 2026-11-15. That is **not** a claim that every test has passed.
 
 ## Code map
-| Responsibility | Entry |
-| --- | --- |
-| Garden world/camera/pet movement/build | `scripts/garden/garden.gd` |
-| Garden state, tools, wishes, saves, HUD | `scripts/garden/garden_game.gd` |
-| Stateless garden description copy | `scripts/garden/garden_descriptions.gd` |
-| Procedural yard props | `scripts/garden/garden_props.gd` |
-| Drag/haul/fence/wheelbarrow interactions | `scripts/garden/garden_grab.gd` |
-| Woods/trails/finds/streaming | `scripts/garden/woods.gd` |
-| Procedural woods trees and miniature backdrop | `scripts/garden/woods_trees.gd`, `scripts/garden/distant_land.gd` |
-| Creature behavior / generated art | `scripts/pet/`, `scripts/art/`, `pets/` |
-| Animation and telemetry | `scripts/anim/motion.gd`, `scripts/telemetry.gd` |
-| World editor and filmmaker | `scripts/world/`, `scripts/film/`, `docs/WORLD_EDITOR.md`, `docs/FILMMAKER.md` |
+The full map, and why it is shaped this way: [ARCHITECTURE.md](ARCHITECTURE.md). In short, the big scripts are layer
+chains (a folder of files, each extending the one before, the original file on top):
+`garden.gd` (+ `garden/`), `garden_game.gd` (+ `game/`), `woods.gd` (+ `woods/`), `garden_props.gd` (+ `props/`),
+`distant_land.gd` (+ `land/`), `pet/hedge_pet_node.gd` (+ `pet/node/`). Trees: `scripts/art/tree_factory.gd`.
+
+## State on 2026-11-15
+- Restructure done: layer chains, unused code and caches removed, tools grouped. Proven unchanged by
+  `tools/checks/world_fingerprint.gd` (diff before/after).
+- New woods trees (TreeFactory), clean trail chevrons, signs that fit, woods layers in the scene tree. Deployed as
+  telemetry 2026.11.15b; check the frame-time report after the owner's next iPhone session.
+- Open: an editor round trip for the woods (open a built woods view in the editor, move things, save them as
+  overrides); the toy garden / garden-from-woods view was not re-checked after the land change.
 
 ## Review/test locations
 - Focused check for the first extraction: `tools/checks/descriptions_check.gd`.

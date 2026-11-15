@@ -18,7 +18,14 @@ const PATH := "res://assets/baked/garden.res"
 ## (woods.gd places, woods_trees.gd builds), the grass by its inputs but not its algorithm (garden.gd). A change to any
 ## of these makes the editor ignore the bake (built live, with a warning) instead of reading stale geometry.
 const GENERATORS := ["res://scripts/art/rock_factory.gd", "res://scripts/art/foliage_builder.gd", "res://scripts/art/hedge_anatomy.gd", "res://scripts/util/bake_cache.gd",
-	"res://scripts/garden/garden.gd", "res://scripts/garden/woods.gd",
+	"res://scripts/garden/garden.gd",
+	"res://scripts/garden/garden/garden_layout.gd",
+	"res://scripts/garden/garden/garden_sky.gd",
+	"res://scripts/garden/garden/garden_plants.gd",
+	"res://scripts/garden/garden/garden_world.gd",
+	"res://scripts/garden/garden/garden_pets.gd",
+	"res://scripts/garden/garden/garden_camera.gd",
+	"res://scripts/garden/woods.gd",
 	"res://scripts/garden/woods/woods_ground.gd",
 	"res://scripts/garden/woods/woods_trails.gd",
 	"res://scripts/garden/woods/woods_scenery.gd",

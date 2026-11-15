@@ -55,14 +55,7 @@ func _run() -> void:
 		for k in line.get("when", {}):
 			if not known.has(k):
 				return _fail("line %s has an unknown condition %s" % [line["id"], k])
-	for path in ["res://assets/talk/nursery.json", "res://scripts/garden/nursery.gd", "res://scripts/garden/heredity.gd", "res://scripts/garden/woods.gd",
-		"res://scripts/garden/woods/woods_ground.gd",
-		"res://scripts/garden/woods/woods_trails.gd",
-		"res://scripts/garden/woods/woods_scenery.gd",
-		"res://scripts/garden/woods/woods_landmarks.gd",
-		"res://scripts/garden/woods/woods_finds.gd",
-		"res://scripts/garden/woods/woods_build.gd",
-		"res://scripts/garden/garden_game.gd", "res://scripts/garden/porch_watcher.gd"]:
+	for path in ["res://assets/talk/nursery.json"] + _scripts("res://scripts"):   # every script: the rule is for all code
 		var text := FileAccess.get_file_as_string(path).to_lower()
 		for word in NEVER:
 			var re := RegEx.create_from_string("\\b" + word.replace(".", "\\.") + "\\b")
@@ -178,3 +171,14 @@ func _run() -> void:
 		return _fail("sowing the nursery's seed (plant %s, coins %d -> %d)" % [bed2["plant"], coins, game.coins])
 	print("PASS nursery_check")
 	quit(0)
+
+
+## Every .gd file under dir, recursively.
+func _scripts(dir: String) -> Array:
+	var out: Array = []
+	for f in DirAccess.get_files_at(dir):
+		if f.ends_with(".gd"):
+			out.append(dir.path_join(f))
+	for d in DirAccess.get_directories_at(dir):
+		out.append_array(_scripts(dir.path_join(d)))
+	return out
