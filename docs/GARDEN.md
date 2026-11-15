@@ -164,8 +164,8 @@ arranging and the save rule.
 aren't pouring. A pet in a bucket you're carrying is out of the garden's hands until you set the bucket down. Both are
 saved.
 
-**The woods** (`woods.gd`, over the footbridge: tap the bridge): a dark, hilly hiking trail at night - lanterns at
-every clearing, fireflies, the moon over the ridge. You stand in a clearing and turn (drag anywhere); the trails out of
+**The woods** (`woods.gd`, over the footbridge: tap the bridge): a hilly daytime trail under dark blue-green tree shade, with lanterns at
+every clearing, sunbeams between trunks and a misty vista from the ridge. You stand in a clearing and turn (drag anywhere); the trails out of
 it are signed, and the one you're facing lights up. Tap and you walk it, up and down the hills, to the next clearing:
 the trailhead, the mossy fork (the hub), fern hollow, the ridge (an overlook), creek crossing (a real creek), the old oak,
 and the nursery off the fork, where the lady potting at her bench has something to say and seeds for you. Each clearing
