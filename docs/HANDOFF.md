@@ -1,209 +1,46 @@
-# HedgePets: handoff for the next agent
+# HedgePets — concise handoff
 
-Read this first, then the doc for whatever you're touching. The owner calls themselves luckymonkey. Last updated
-2026-11-13.
+**Instructions are now centralized in [../AGENTS.md](../AGENTS.md).** Review procedure: [CODE_REVIEW.md](CODE_REVIEW.md). This file is a map and a *dated snapshot*, not a second policy. If old notes disagree with the running game, inspect code and verify. Current game behavior is the baseline; do not "fix" it to match stale prose.
 
-## Now (2026-11-13) - read this part first
+## Working project
+- Game: Godot 4.7.2, GL Compatibility, main `garden.tscn`; standalone pet viewer `main3d.tscn`.
+- Owner's working copy as documented 2026-11-13: `~/work/hedgepets` (not the older `~/Projects/hedgepets`).
+- Local Godot: `~/.local/bin/godot`. Owner workflow and environment: [OWNER_QUICKSTART.md](OWNER_QUICKSTART.md), [DEV_ENVIRONMENT.md](DEV_ENVIRONMENT.md).
+- Website previously documented: `go.fridge.run/hedgepets`. A PR does not deploy there; do not assume the deployed copy matches the repo.
+- The owner reported the current game working on 2026-11-15. That is **not** a claim that every test has passed.
 
-**Working copy on the owner's laptop: `~/work/hedgepets`** (not ~/Projects). Owner quick-start:
-`docs/OWNER_QUICKSTART.md`. Ship = commit, push, `tools/deploy_web.sh`.
+## Code map
+| Responsibility | Entry |
+| --- | --- |
+| Garden world/camera/pet movement/build | `scripts/garden/garden.gd` |
+| Garden state, tools, wishes, saves, HUD | `scripts/garden/garden_game.gd` |
+| Stateless garden description copy | `scripts/garden/garden_descriptions.gd` |
+| Procedural yard props | `scripts/garden/garden_props.gd` |
+| Drag/haul/fence/wheelbarrow interactions | `scripts/garden/garden_grab.gd` |
+| Woods/trails/finds/streaming | `scripts/garden/woods.gd` |
+| Procedural woods trees and miniature backdrop | `scripts/garden/woods_trees.gd`, `scripts/garden/distant_land.gd` |
+| Creature behavior / generated art | `scripts/pet/`, `scripts/art/`, `pets/` |
+| Animation and telemetry | `scripts/anim/motion.gd`, `scripts/telemetry.gd` |
+| World editor and filmmaker | `scripts/world/`, `scripts/film/`, `docs/WORLD_EDITOR.md`, `docs/FILMMAKER.md` |
 
-**Owner's rules this week:** don't overtest (one quick check per change; they'd rather debug); commit often and keep
-this section current; Codex does engineering in its own worktree, Claude owns how things look; the 3D skybox is a
-"very important feature" and must not regress.
+## Review/test locations
+- Focused check for the first extraction: `tools/descriptions_check.gd`.
+- Core game loop: `tools/game_check.gd`. Other subsystem checks: `tools/*_check.gd`.
+- Visual baseline: `tools/golden_capture.gd`, `tools/image_compare.py`, `tests/baseline/`.
+- GitHub Actions: `.github/workflows/review.yml` for PR smoke checks; `pages.yml` for main-branch Pages exports. **PR checks do not replace visual review.**
+- Performance, export, and deployment procedure: [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md), [MOBILE.md](MOBILE.md), [OWNER_QUICKSTART.md](OWNER_QUICKSTART.md).
 
-**Live (deployed 2026-11-13):** pet build slicing + sky redraw-on-change + first-draw warm-up (iPhone: steady 30 fps
-in the garden); frame-time telemetry (go: /hedgepets/telemetry/report, "Frame times"); "Your garden" journal,
-cause-and-effect captions, first-arrival introductions (`garden_story.gd`); collecting loop (forage → basket →
-offering dishes, collection page, favourites: `docs/codex/REPORT_LOOPS_2026-11-13.md`); woods pass 1 (no 12 Hz sky
-redraw, fades instead of cell pop: `REPORT_WOODS_2026-11-13.md`); tap the lawn with ✋ to frame the camera; fences
-without z-fighting; next door's yards match the white house's lawn; weather of the day (`garden.gd` `weather()`).
+## Historical observations (2026-11-13, **not re-verified**)
+- Pet build slicing, sky redraw-on-change and first-draw warm-up were reported live; iPhone reportedly held 30 fps in the garden.
+- Woods passes added a ridge/ravine, six binocular details, arrival views, daylight, more controlled streaming, and a world-placement editor.
+- There was an open issue with old oak arrival framing, and `life_check` / `collision_check` had shown intermittent failures.
+- Previous agents used worktrees `~/work/hp-<name>`; Codex could not open X, and visual captures needed a private Xvfb `:77`.
+- Notes on weather, features, and docs from October or early November may be historical. Never treat an old “open” item as current without checking.
+- Separate Fridge Go PHP endpoints handle access, feedback, how-to, and web telemetry; they are *not* in this repository.
 
-**Also live (later 2026-11-13):** woods passes 2-4 (ridge as the ravine with strata ledges, mounted binoculars with six
-details to find, a toy of home seen from the woods, skybox_check, lighter woods ground, arrival views kept clear);
-the rock factory (`scripts/art/rock_factory.gd`, `data/rocks.json`, `docs/ROCKS_SPEC.md`: plane-cut low-poly rocks,
-15-22 tris, every rock in the game); woods hand-placement editor (`world_editor.tscn -- --woods=<place>`,
-`world/woods_overrides.tres`); deploys ping the owner's phone with a link (ntfy).
-Worktrees `~/work/hp-<name>` / branches `codex-<name>` are merged; reuse them for the next Codex job.
+## Next extraction priorities (suggestions, not approved changes)
+- Garden UI/journal, provided game state stays the owner.
+- Woods trail geometry/indexing, preserving path positions, terrain and seeded randomness.
+- Atmosphere/camera and procedural prop families only after baseline captures.
 
-**Gotchas learned:** Godot front faces wind clockwise (generated meshes); Godot 4 has MODEL_MATRIX, not WORLD_MATRIX
-(a failed shader silently falls back - grep deploy logs for "SHADER ERROR"); Codex's sandbox can't open X - Claude
-renders captures on a private Xvfb (`:77`) and hands Codex the PNGs (`codex exec -i a.png -i b.png -- "prompt"`).
-
-**Open:** a hand-placement editor for the woods (stable IDs for woods placements + the overrides file, like
-`docs/WORLD_EDITOR.md`); mesh consolidation in the neighbourhood/distant land; the old oak's arrival view still has its crown overhead; `life_check` is flaky (random pet
-life) and `collision_check` failed once after the fence change (not chased); How to play on go needs the collecting
-loop and binoculars once they're final (fridge-go `src/hedgepets_howto.php`).
-
-## What it is
-
-A Godot 4.7 garden game. Creatures made of plants ("hedgepets", modelled on New England animals) come to an
-ordinary backyard at the edge of the woods if you grow and build what they like.
-
-- **Live:** go.fridge.run/hedgepets (WebAssembly). Members, or guests after a captcha (`/play`).
-- **Repo:** `~/Projects/hedgepets`, private GitHub `LuckyMonkey/hedgepets`, branch `main`.
-- **Godot:** `~/.local/bin/godot` (4.7.2). The main scene is `garden.tscn`; `main3d.tscn` is the pet viewer.
-
-## Design rules the owner set (don't break these)
-
-- **A place, not a treadmill.** No timers, urgency, streaks, daily rewards, grinding, punishment for absence or
-  reflex tests. Watching is valid play. Nothing decays while you're away.
-- **They aren't Pokémon.** You don't catch them all. A garden holds 2 to 6 hedgepets (`capacity()`), drawn by the
-  plants you grow (`grows_for`). Every garden ends up different.
-- **Looks:**
-  - A hedgepet is all plant except its feet and tail.
-  - Eyes have no whites, just a crisp light dot.
-  - The style is autumn, "magical creatures in an ordinary backyard", and never spooky.
-  - The woods are a daytime place: dark blue-green shade with sunbeams.
-- **Motion:** every visible change eases through `scripts/anim/motion.gd`. Never jump a visible property.
-  `tools/motion_check.gd` must pass.
-- **Roster:** closed at 47 pets. Polish before adding animals. Names must not echo any franchise character.
-- **Lore secrets:** the nursery lady and the porch man are never named in game text, code or comments.
-  `docs/private/LORE.md` holds who they are; `docs/*` is never exported. `tools/nursery_check.gd` fails if a name
-  appears.
-- **Ship often:** commit, push and deploy each verified piece (the owner hits usage limits).
-
-## Where things are
-
-| Area | Files | Doc |
-|---|---|---|
-| Garden loop, tools, wishes, capacity, digging/dirt, pouring/following, bucket carry | `scripts/garden/garden_game.gd` | `docs/GARDEN.md` |
-| World build, camera, input, pets' wandering, gates | `scripts/garden/garden.gd` | `docs/GARDEN.md`, `docs/BACKYARD.md` |
-| Yard work: yank, haul, bin, mend, wheelbarrow | `scripts/garden/garden_grab.gd` | `docs/GARDEN.md` |
-| Hideouts (bucket, pot, well, burrow) | `scripts/garden/hideouts.gd` | |
-| Woods (trails, places, finds, sunbeams, wild hedgepets, chevrons) | `scripts/garden/woods.gd` | `docs/NURSERY.md` |
-| Nursery + her lines | `scripts/garden/nursery.gd`, `assets/talk/nursery.json` | `docs/NURSERY.md`, `docs/private/LORE.md` |
-| Plant inheritance (flower colour, height) | `scripts/garden/heredity.gd` | `docs/NURSERY.md` |
-| Porch man | `scripts/garden/porch_watcher.gd` | `docs/private/LORE.md` |
-| The land beyond the woods (1:16 3D skybox) | `scripts/garden/distant_land.gd`, `shaders/distant_sky.gdshader` | `docs/NURSERY.md` |
-| Woods trees (oak, maple, birch, pine; batched per patch; clear of the walk) | `scripts/garden/woods_trees.gd` | `docs/NURSERY.md` |
-| Fire pit / campfire | `scripts/garden/fire_pit.gd` | |
-| Places away (burrow, woods): staged build behind a loading card | `scripts/garden/elsewhere.gd`, `den.gd`, `loading_card.gd` | |
-| Pets: profiles, data species, art | `scripts/art/*`, `pets/*.tres`, `pets/species.json` | `docs/ART_DIRECTION.md` |
-| Telemetry (web only) | `scripts/telemetry.gd` (`Telemetry.event(name, data)`) | below |
-| Bake cache (startup speed) | `tools/bake_cache.gd` → `assets/baked/garden.res` | `docs/MOBILE.md` |
-| Web page around the game | `deploy/web/shell.html` | `docs/MOBILE.md` |
-
-## Development environment (2026-10-14)
-
-`docs/DEV_ENVIRONMENT.md`. The Godot editor has a HedgePets dock (`addons/hedgepets_dev`): play from any place, a
-clickable woods map, the world editor, the filmmaker, and checks. Start anywhere with `-- --start=woods:<place>`. Debug
-coins: 🪙+ / F9 in the editor, `?debug` on the web, `-- --debug` in a terminal. The sound menu is 🔊 (settings in
-`user://settings.cfg`).
-
-**The woods are one loop with no dead ends** (pine flats between the nursery and the ridge; pond to the old oak).
-Keep it that way.
-
-## World editor, filmmaker, regression and benchmarks (2026-10-14 runbook)
-
-- **The rule:** these tools must never change how the game looks, sounds or plays. The golden views prove it.
-- **Architecture:** `docs/WORLD_ARCHITECTURE.md` (what's generated, the stable IDs, why overrides are post-build).
-- **World editor:** `godot --path . res://world_editor.tscn`.
-  - Overrides are stored in `res://world/garden_overrides.tres` (`WorldOverrides`, applied before the player's
-    save).
-  - The check is `tools/world_editor_check.gd`. Doc: `docs/WORLD_EDITOR.md`.
-- **Filmmaker:** `res://filmmaker.tscn -- --film=res://films/demo/project.tres` (preview).
-  - Render with `tools/film_render.sh <film> <out>` (Movie Maker, reproducible frames and audio).
-  - Doc: `docs/FILMMAKER.md`.
-- **Golden regression:** `tools/golden_capture.gd` + `tools/image_compare.py` against `tests/baseline/f72b9bd`.
-  Never update the baseline silently. Doc: `docs/VISUAL_REGRESSION.md`.
-- **Hitches:** `tools/hitch_trace.gd` (where the frame goes, which step hangs; see the 2026-10-24 section of
-  `docs/PERFORMANCE_BASELINE.md`). The woods build behind their card on the way in, not in the background.
-- **Benchmarks:** `tools/bench_world.sh` (procedural / cached; `--gpu` for frame times).
-  Docs: `docs/PERFORMANCE_BASELINE.md`, `docs/MAP_COMPILATION_BENCHMARK.md`.
-- **Offscreen Godot runs always take `--audio-driver Dummy`**, or the soundscape plays through the owner's speakers.
-
-## The pet viewer and debugger
-
-- **Desktop:** `godot --path . res://main3d.tscn`.
-- **Web:** `go.fridge.run/hedgepets/?viewer`, linked as "🔍 Pet viewer" on the page beside the game.
-- **Controls:** ‹ › or arrow keys change pet, and 🍃 or F regrows it in the next plant (every leaf style). 🛠 Debug
-  or F1 opens the developer view (`art_debug.gd`) with parts, regions, leaves and sliders. On the web, 🏡 Garden goes
-  back.
-- **Side-by-side tuning** (desktop): `godot --path . res://dev/swatches.tscn`.
-
-## The contraband (cannabis, pet 48's look)
-
-Your notes asked for "the weed HedgePet". It isn't a new animal; it's a slow, rare change to a resident (usually
-Clover): "leaves look different", then "smells really strong", then the journal identifies it as cannabis
-(`garden_game._tend_contraband`).
-
-- **Its leaves:** the glyph font `HedgeCannabis` (`tools/generate_hedgeink.py`: fans of saw-edged leaflets, a frosty
-  bud) and the sheet `assets/sprites/hedgecannabis.png`, made with
-  `python3 tools/bake_leaf_sprites.py hedgecannabis` and `make_normal_maps.py`. The plant is `cannabis` in
-  `SpeciesBuilder.PLANTS`, on the `hemp` palette. It's never sold.
-- **Odds:** about 1.2% per minute of play while there's a likely resident; the stages are 10 real minutes apart.
-  `HEDGEPETS_CONTRABAND=1` forces it, and so does `game._tend_contraband("Clover")`.
-- **Behaviour:** it wants the sun by the street gate, in view of the porch, where the porch man photographs it
-  furiously. No meter and no penalty. Lure it back with water, or regraft it (✂️) and it settles (stage 4).
-
-## Running and checking
-
-All checks run headless. Run them before every commit that touches what they cover:
-
-```
-HEDGEPETS_FRESH=1 godot --headless --path . --script tools/<check>.gd --fixed-fps 60
-```
-
-The checks are `game_check`, `woods_check`, `den_check`, `life_check`, `grab_check`, `hide_check`, `motion_check`,
-`collision_check`, `nursery_check` and `yard_check`. `collision_check` is borderline flaky: its baseline is 110 to 130
-of an allowed 180.
-
-To look at something, run `DISPLAY=:0 godot --path . --script tools/capture_<x>.gd --disable-vsync`. It writes to
-`/tmp/hedgepets-views`. The captures are `capture_places` (woods), `capture_yard`, `capture_survey`,
-`capture_garden` and `capture_roster`. Judge by the captures, never by "it runs".
-
-Traps:
-
-- After adding a `class_name`, run `godot --headless --path . --import` once, or scripts fail to parse.
-- Godot core-dumps ("double free") on quit after captures. It's harmless.
-- `HEDGEPETS_FRESH=1` keeps checks off the player's save. `Motion.speed = 0` makes transitions instant.
-- Never use `Image.load_from_file` on `res://` (exports ship no raw PNG). Use `Assets.image()`.
-- Changed foliage, anatomy or scenery? The deploy rebakes the cache. Anything built with random seeds won't cache:
-  use fixed seeds (`garden._bush(..., fixed_seed)`).
-- Checks that enter the woods call `woods.build_now()` first (the real path builds in steps behind a loading card).
-
-## Deploying
-
-`tools/deploy_web.sh` bakes the cache, exports the Web preset to `build/web`, rsyncs to
-`fridge:/srv/apps/hedgepets/web`, and restarts the `hedgepets` nginx container. It needs `ssh fridge@fridge`. The
-first load is about 50 MB.
-
-## The pages around the game (in the go app, not this repo)
-
-These live in `~/Projects/fridge-go`, a PHP app on fridge.
-
-| Route | File | What |
-|---|---|---|
-| `/play` | `src/play.php` | Captcha that gives guests a 30-day pass (cookie path `/hedgepets`) |
-| `/hedgepets/feedback` (+ `/results`, `/results.json` for the owner) | `src/hedgepets_feedback.php` | Survey with screenshots (`public/assets/hedgepets-feedback/`) |
-| `/hedgepets/howto` | `src/hedgepets_howto.php` | How to play |
-| `POST /hedgepets/telemetry`, `/hedgepets/telemetry/report` (owner) | `src/hedgepets_telemetry.php` | Play events and the "where are they stuck" report |
-
-- **Tests:** `ops/tests/ply.php`, `hpf.php` and `hpt.php`, run through `ops/tests/test-all.sh`.
-- **Deploy go:** `git push origin main`, then on fridge `sudo -A git -c safe.directory=/srv/apps/go pull --ff-only`
-  in `/srv/apps/go`. Fetch first. The live nightly job pushes snapshots.
-- **Caddy** (`/home/fridge/fridge-homepage/Caddyfile`, root-owned):
-  - `@hp_feedback` routes feedback, howto and telemetry to go. It must stay above `@hedgepets` (the game's static
-    files, gated by `forward_auth realm=play`).
-  - To edit: write with `sudo -A tee` (keeps the inode for the bind mount), run `caddy validate`, then
-    `caddy reload`.
-
-**Telemetry:**
-
-- **Events:** `session`, `tool`, `dig`, `fill`, `unplant`, `sow`, `grew`, `pour`, `follow`, `bucket_in`,
-  `bucket_carry`, `build`, `clear`, `yank`, `bin`, `mend`, `fire`, `journal`, `den`, `woods`, `trail`, `find`,
-  `wild_tap`, `nursery`, `talk`, `noticed`, `visiting`, `resident`, `left`, `open_howto`, `open_feedback`, `hidden`,
-  `beat` (every 60 s), and `say` (every toast: refusals show where people get stuck).
-- **Adding an event:** call `Telemetry.event("name", {...})`. Names must match `[a-z_]{1,24}`. Keep data small.
-- **The report's funnel** is `HPT_FUNNEL` in the PHP.
-
-## Open items and ideas the owner has raised
-
-- **The scientists** (`hedgepets, part.md`) aren't built. The nursery lady is never on their side. The porch man is
-  "hiding something", reserved.
-- **Pets carrying their plant's inheritance** (a white-flowered plant's pet blooms white) is reserved.
-- **Weather** doesn't exist. Her weather lines wait for it.
-- **Android/iOS export:** templates, JDK and SDK aren't installed (`docs/MOBILE.md`).
-- **Not tested by hand:** touch on real phones (pouring, trail choosing), the porch man's timing, the wild hedgepets'
-  feel, and whether telemetry arrives from real browsers (check the report after a real session).
+**Keep this handoff short.** Put durable project rules in `AGENTS.md`, review procedure in `CODE_REVIEW.md`, and topic-specific detail in the corresponding topic doc. Remove superseded status lines instead of accumulating more.
