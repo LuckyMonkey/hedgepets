@@ -1,7 +1,6 @@
 # HedgePets
 
-A tiny Godot 4.7 (GL Compatibility, portrait 1080 × 1920) garden-creature lab. The design notes are
-`hedgepets, part.md` ("we're going to care about these things way too much").
+A Godot 4.7 garden-creature game (GL Compatibility, portrait 1080 × 1920), with a playable garden, woods, and botanical pets. Design notes: `hedgepets, part.md`. Engineering rules: [AGENTS.md](AGENTS.md); review protocol: [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md).
 
 ![Gerald](docs-gerald.png)
 
