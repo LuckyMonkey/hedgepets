@@ -14,7 +14,7 @@ first. Hypotheses are labelled as hypotheses.
 | Fences / walls | `FENCE_SECTIONS` (5 sections), 2 stone walls | Baked static. The fence sections are mendable and rebuilt by `mend_fence`. |
 | Grass / lawn | `_build_grass`, `_build_ground` | MultiMesh; the grass buffer is cached in BakeCache (its own 20-float layout). |
 | Bush / tree foliage | `garden._bush`, `FoliageBuilder`, `HedgeAnatomy` | Cached by a key over every input (`BakeCache.key`). |
-| BakeCache | `scripts/util/bake_cache.gd`, `tools/bake_cache.gd`, `assets/baked/garden.res` | **Exists as described.** Key = hash of the inputs; SALT = hash of the generator sources (editor rejects a stale bake; exports trust it). Startup from cache: 3.75 s on this machine under llvmpipe (1427 hits, 0 misses). |
+| BakeCache | `scripts/util/bake_cache.gd`, `tools/bake/bake_cache.gd`, `assets/baked/garden.res` | **Exists as described.** Key = hash of the inputs; SALT = hash of the generator sources (editor rejects a stale bake; exports trust it). Startup from cache: 3.75 s on this machine under llvmpipe (1427 hits, 0 misses). |
 | Woods | `scripts/garden/woods.gd` (1976 lines), `woods_trees.gd`, `elsewhere.gd` | `NODES` (9 places) and `EDGES` (10 trails); **matches the runbook.** Built on first visit, in steps (`build_steps()`); trees merged per 24 m patch, as MultiMesh leaf cards, with fixed-seed RNGs per builder. |
 | Skybox | `scripts/garden/distant_land.gd`, `shaders/distant_sky.gdshader` | `SCALE = 16`, `RES = 0.6`, in its own SubViewport + camera copying the woods camera (position / 16), composited per pixel by direction. Built once (fixed seeds); renders only in the woods. **Matches.** |
 | Camera (garden) | `garden._place_camera` | An orbit: `_target`, `_yaw`, `_elev`, `_distance` (each eased toward `_goal_*`), FOV 46, `KEEP_WIDTH`. Close zoom lowers the elevation. |
@@ -26,7 +26,7 @@ first. Hypotheses are labelled as hypotheses.
 | Shaders using TIME | grass, lawn, leaf, leaf_ink_shell, creek, water, light_shaft | Their animation depends on engine time, so captures must step a fixed number of `--fixed-fps` frames. |
 | Per-frame scripts | 20 files with `_process` | garden, garden_game, woods, pet nodes, soundscape, butterflies, porch watcher, … Not yet profiled. |
 | Renderer | `gl_compatibility` (desktop and mobile); viewport 1080×1920, window 540×960, stretch `canvas_items` | |
-| Tests | `tools/*_check.gd` (headless, `--fixed-fps 60`), `tools/capture_*.gd` | No golden-image regression existed before `tools/golden_capture.gd` + `tools/image_compare.py`. |
+| Tests | `tools/*_check.gd` (headless, `--fixed-fps 60`), `tools/capture_*.gd` | No golden-image regression existed before `tools/capture/golden_capture.gd` + `tools/capture/image_compare.py`. |
 
 ## Consequences for the editor
 

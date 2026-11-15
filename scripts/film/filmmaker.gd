@@ -8,7 +8,7 @@ extends Node
 ##     N new shot at the playhead · C toggles the free camera (WASD / QE / RF, wheel, right-drag) · Ctrl+S save.
 ##     The camera always follows the timeline exactly; the world itself runs live (scrubbing doesn't rewind pets).
 ##
-##   Render (offline, exact):  see tools/film_render.sh. Godot's Movie Maker (--write-movie) steps the engine at the
+##   Render (offline, exact):  see tools/film/film_render.sh. Godot's Movie Maker (--write-movie) steps the engine at the
 ##     project's fixed frame rate and records the audio mix in lockstep, so frame n is the world simulated from the
 ##     start for n fixed steps: same project, same build -> the same frames and the same sound. Never screen capture.
 ##

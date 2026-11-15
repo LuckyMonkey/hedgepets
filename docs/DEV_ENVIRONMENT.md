@@ -13,7 +13,7 @@ So the tools work inside the game instead:
 | **HedgePets dock** (editor, right side) | Play from anywhere; a woods map; run checks | Open the project in Godot. The dock is enabled in `project.godot` |
 | **Woods map** (in the dock) | The trail loop, top-down. Click a place to start the game standing there | The dock |
 | **World editor** | Move, turn, scale or hide the garden's things; undo; saves to `world/garden_overrides.tres` | The dock, "World editor" |
-| **Filmmaker** | Camera shots in the garden or the woods; renders video with sound | The dock, "Filmmaker". Render: `FILM_GPU=1 tools/film_render.sh res://films/demo/project.tres out/` |
+| **Filmmaker** | Camera shots in the garden or the woods; renders video with sound | The dock, "Filmmaker". Render: `FILM_GPU=1 tools/film/film_render.sh res://films/demo/project.tres out/` |
 | **VS Code** (optional) | Editing scripts, with tasks to run the game and checks | `code .` (Godot Tools extension; `.vscode/` is set up) |
 
 **Debug coins:**
@@ -40,5 +40,5 @@ The dock runs any `tools/*_check.gd` and shows its output. From a terminal:
 `HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/<check>.gd --fixed-fps 60`.
 
 The world-specific ones are `woods_clip_check` (anything the walk passes through; it needs a renderer:
-`xvfb-run -a godot --audio-driver Dummy --rendering-driver opengl3 --path . --script tools/woods_clip_check.gd`) and
+`xvfb-run -a godot --audio-driver Dummy --rendering-driver opengl3 --path . --script tools/checks/woods_clip_check.gd`) and
 `world_editor_check`.

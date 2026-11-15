@@ -75,7 +75,7 @@ Done in this pass. The desktop game behaves the same; every existing check still
   - Now both ignore emulated mouse events (`InputEvent.DEVICE_ID_EMULATION`), and a touch landing on a visible HUD control is left to the HUD (`garden_game.ui_blocks`).
   - Desktop mouse input is unchanged.
 - **Startup time.** The garden took **23 s** to build on this desktop CPU (minutes on a phone), and every arriving pet stalled the game for about **2 s**.
-  - Tree and hedge foliage, stone and slate meshes and every pet's native foliage are now read from a baked cache. That's `res://assets/baked/garden.res`, made by `tools/bake_cache.gd`.
+  - Tree and hedge foliage, stone and slate meshes and every pet's native foliage are now read from a baked cache. That's `res://assets/baked/garden.res`, made by `tools/bake/bake_cache.gd`.
   - Startup is **about 2 s**, and a pet arrives in at most **0.3 s**.
   - The bake rebuilds everything, reads it back and checks all 1,309 entries are identical. In the editor the cache is ignored automatically whenever the generator code has changed since the bake.
   - Rebake before every export.
@@ -118,7 +118,7 @@ None of these are installed yet:
 3. **iOS:** an Apple Developer Team ID in the iOS preset. Then export the Xcode project here and build and sign on a Mac with Xcode.
 4. Then:
 
-       godot --headless --path . --script tools/bake_cache.gd        # always first
+       godot --headless --path . --script tools/bake/bake_cache.gd        # always first
        godot --headless --path . --export-debug "Web" build/web/index.html
        godot --headless --path . --export-debug "Android" build/android/HedgePets.apk
        godot --headless --path . --export-debug "iOS" build/ios/HedgePets.ipa
@@ -127,4 +127,4 @@ None of these are installed yet:
 
     godot --headless --path . --export-pack "Web" build/packtest/hedgepets.pck   # the exported content
     cd /tmp && godot --main-pack ~/work/hedgepets/build/packtest/hedgepets.pck   # run the game from it
-    godot --headless --path . --script tools/boot_time.gd                         # startup, part by part
+    godot --headless --path . --script tools/perf/boot_time.gd                         # startup, part by part

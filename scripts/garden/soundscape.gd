@@ -4,7 +4,7 @@ extends Node3D
 ## somewhere behind the trees, a branch creaking, the neighbours' wind chimes (often), and the ordinary
 ## neighbourhood far off: a leaf blower, a dog, a car out front, a screen door, a church bell from town. Then
 ## quiet again. Every sound comes from a place (trees, the houses), so turning the camera turns the yard.
-## Sounds are made by tools/make_soundscape.py (assets/audio). M mutes / unmutes.
+## Sounds are made by tools/art/make_soundscape.py (assets/audio). M mutes / unmutes.
 
 const EVENTS := {
 	# name: [files, gap seconds (min, max), volume dB, where: "trees" | "houses" | "near" | "road" | "town"]

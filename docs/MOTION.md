@@ -32,6 +32,6 @@ value) when the player can see it. Use a `Motion` verb, or add one here.
 
 ## Check
 
-    godot --headless --path . --script tools/motion_check.gd --fixed-fps 60
+    godot --headless --path . --script tools/checks/motion_check.gd --fixed-fps 60
 
 The check drives every transition above in real time and fails on any frame-to-frame jump over its limit.

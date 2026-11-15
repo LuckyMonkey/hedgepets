@@ -135,7 +135,7 @@ func height(x: float, z: float) -> float:
 		return own
 	var t := smoothstep(0.0, 90.0, out)
 	# under the woods themselves (out < 0) it sinks well below their ground, which is always drawn over it: the sky
-	# camera (the woods camera / SCALE) must never end up under it, or the sky goes dark (tools/sky_clip_check.gd)
+	# camera (the woods camera / SCALE) must never end up under it, or the sky goes dark (tools/checks/sky_clip_check.gd)
 	var under := 0.03 + 0.5 * smoothstep(0.0, -12.0, out)
 	return lerpf(_woods.height(clampf(mx, -62.0, 64.0), clampf(mz, -112.0, 28.0)) / SCALE - under, own, t)
 

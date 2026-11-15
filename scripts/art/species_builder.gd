@@ -44,7 +44,7 @@ const PALETTES := {
 	"aster": ["263a24", "38542e", "52703c", "6e8a46", "647a5e", "a8ba84", "34482c"],
 	"glossy": ["17331d", "1f4426", "2e5e32", "467a3a", "3e6448", "88ac74", "152a18"],
 }
-## Every plant a pet can be made of (a leaf sheet baked from a font or drawn by tools/make_leaf_styles.py), with the
+## Every plant a pet can be made of (a leaf sheet baked from a font or drawn by tools/art/make_leaf_styles.py), with the
 ## look it brings: its palette, the colour of its bloom (cell 13) and how much it blooms.
 const PLANTS := {
 	"ivy": ["green", "fffaf0", 0.35], "clover": ["spring", "fffaf0", 0.3], "fern": ["green", "fffaf0", 0.15],

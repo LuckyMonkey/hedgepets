@@ -31,6 +31,6 @@ jobs:
       - name: Import and parse project
         run: godot --headless --audio-driver Dummy --path . --editor --quit
       - name: Description helper contract
-        run: HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/descriptions_check.gd
+        run: HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/checks/descriptions_check.gd
       - name: Core garden loop
-        run: HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/game_check.gd --fixed-fps 60
+        run: HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/checks/game_check.gd --fixed-fps 60

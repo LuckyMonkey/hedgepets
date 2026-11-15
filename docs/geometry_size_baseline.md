@@ -13,13 +13,13 @@ changes listed below. MB = 10^6 bytes.
 | **First load** | | | | **≈ 80.3 MB** |
 
 **The cache.** `index.pck` is almost all `assets/baked/garden.res` (50.7 MB, already zstd-compressed inside, so
-gzip barely touches it). By label and generator (build/cache_manifest.json, tools/bake_cache.gd):
+gzip barely touches it). By label and generator (build/cache_manifest.json, tools/bake/bake_cache.gd):
 
 - garden: 24.8 MB zstd (FoliageBuilder 14.0, HedgeAnatomy 4.6, bushes 4.4, grass 1.5)
 - woods: 13.7 MB (tree patches 11.9)
 - 47 pets: 13.7 MB (HedgeAnatomy 11.4, FoliageBuilder 2.2); the largest is 0.39 MB, the smallest 0.13 MB.
 
-**Used vs shipped** (tools/cache_usage.gd: every runtime path – garden build, woods build, all 47 pets – with fetch
+**Used vs shipped** (tools/bake/cache_usage.gd: every runtime path – garden build, woods build, all 47 pets – with fetch
 tracking):
 
 - **21.0 MB zstd (998 entries) is never read.** These are the pieces of composite builds: a garden bush is cached
@@ -47,8 +47,8 @@ tracking):
 | `scripts/garden/garden.gd` | `_bush` marks its build as a composite; `node_for` builds visitors lazily in the compact profile |
 | `scripts/garden/garden_props.gd` | `blob` marks its build as a composite |
 | `scripts/pet/hedge_pet_node.gd` | Lazy, budgeted, hidden recipe materialisation (`sliced`), used only when `hedgepets/pets_baked = "starters"`; default `all` (unchanged behaviour) |
-| `tools/bake_cache.gd` | Labels, `build/cache_manifest.json`, starters-only bake in the compact profile |
-| `tools/cache_usage.gd`, `tools/pet_parity_check.gd`, `tools/visitor_stall.gd`, `tools/size_manifest.py` | New diagnostics and gates |
+| `tools/bake/bake_cache.gd` | Labels, `build/cache_manifest.json`, starters-only bake in the compact profile |
+| `tools/bake/cache_usage.gd`, `tools/checks/pet_parity_check.gd`, `tools/perf/visitor_stall.gd`, `tools/perf/size_manifest.py` | New diagnostics and gates |
 
 ## Phase F: A/B results
 
@@ -93,16 +93,16 @@ tracking):
 ## Foliage restoration (2026-10-14): the same forest, kept exactly
 
 ### Root cause of the missing leaves, and prevention
-- **Cause:** `tools/bake_cache.gd` runs headless, and headless Godot keeps no MultiMesh instance data. Every MultiMesh
+- **Cause:** `tools/bake/bake_cache.gd` runs headless, and headless Godot keeps no MultiMesh instance data. Every MultiMesh
   saved into `garden.res` (garden bushes, woods tree patches) was saved empty, so production's cached bushes and
   trees showed only their dark cores. The bake's "round trip identical" was vacuous: both sides read back empty. A
   MultiMesh loaded from a resource also reads back zeros to scripts on a GPU, so readback can't verify it either.
 - **Fix:** foliage is cached as numbers, never as a MultiMesh. Bushes store `[leaf floats, count, mass vertices,
   mass normals]`; woods patches store `["leaves", floats, sheet, count, origin]`. `HedgeAnatomy.grid_mesh()` puts
   back the exact mass mesh (the uvs and triangles are the same for every grid).
-- **Prevention:** `tools/foliage_validate.gd` runs inside the bake, before saving and after reloading. It rejects
+- **Prevention:** `tools/bake/foliage_validate.gd` runs inside the bake, before saving and after reloading. It rejects
   any MultiMesh with instances, any empty or degenerate leaf set, and any mismatch between the leaves the
-  generators made and the leaves read back (the bake exits 1). `tools/foliage_bake_check.gd` reopens the bake in a
+  generators made and the leaves read back (the bake exits 1). `tools/checks/foliage_bake_check.gd` reopens the bake in a
   separate process, checks it against the counts the bake recorded (`build/cache_manifest.json` "foliage"), and
   self-tests that a populated headless MultiMesh is caught. On the old production bake it reports 483 problems; on
   this one, 0 (484 leaf sets, 432,117 leaves).
@@ -161,7 +161,7 @@ cluster bushes 0.42. Woods patch masses: 0 (rebuilt).
 - **Woods sky going dark, an edge across it:** the 1:16 land's ground was a coarse fan under the woods. In 271 of
   1,034 trail samples the sky camera was *below* it (by up to 5.4 m). The miniature ground now sinks well under
   the woods' own ground (drawn over it) and meets it exactly at the woods' edge, with dense rings across the woods.
-  `tools/sky_clip_check.gd`: 0 of 1,034.
+  `tools/checks/sky_clip_check.gd`: 0 of 1,034.
 - **Garden skybox square edge:** real lawn pieces behind the fence painted over next door's houses (real things
   draw over the skybox). The east and west pieces now stop short of next door's yards. The real creek ends at the
   fence line and continues in the skybox (neighborhood.gd `_creek`); next door's shed and house moved off its

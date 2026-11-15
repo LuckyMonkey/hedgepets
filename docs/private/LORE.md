@@ -1,7 +1,7 @@
 # The People Who Came Before (development only, never shipped)
 
 This file must stay out of every build. `docs/*` is in `exclude_filter` for every export preset. Its contents must
-never appear in player-facing text, UI, data files, code comments or credits. `tools/nursery_check.gd` fails if a
+never appear in player-facing text, UI, data files, code comments or credits. `tools/checks/nursery_check.gd` fails if a
 name from its `NEVER` list shows up in the dialogue or the garden scripts.
 
 ## The two influences
@@ -56,7 +56,7 @@ His botanical fingerprint (from the first brief) stands. It is never stated, and
   are two of the seven traits in the original pea experiments, and purple over white was one of them.
 - **What a player can live through without being told:** her white, short lavender crossed with shop lavender gives
   self-sown children that are all purple and tall. Their children bring white back in about a quarter (3:1), short
-  in about a quarter, and both in about a sixteenth (9:3:3:1). `tools/nursery_check.gd` verifies the proportions.
+  in about a quarter, and both in about a sixteenth (9:3:3:1). `tools/checks/nursery_check.gd` verifies the proportions.
 - **The bench tableau:** four potted lavenders, three purple and one white, tall and short mixed.
 - **The setting:** a seed cabinet of identically labelled drawers ("unusually systematic"), and beehives.
 - **Her lines that touch it** (she never explains): `t-bees` (beekeeping), `t-count`, `t-many` (large samples),

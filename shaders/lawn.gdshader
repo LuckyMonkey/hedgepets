@@ -2,7 +2,7 @@ shader_type spatial;
 render_mode diffuse_lambert_wrap, specular_disabled;
 
 // The lawn: soft colour patches and bald spots (macro, 60 x 60 units) with fine blade grain on top (detail,
-// tools/make_lawn_detail.py) so the ground holds up at pet scale. Both mapped in world space.
+// tools/art/make_lawn_detail.py) so the ground holds up at pet scale. Both mapped in world space.
 uniform sampler2D macro : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D detail : filter_linear_mipmap, repeat_enable;
 uniform float detail_scale = 0.55;       // detail repeats per world unit

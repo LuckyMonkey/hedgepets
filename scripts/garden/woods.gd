@@ -383,7 +383,7 @@ func _apply_overrides() -> void:
 
 # ------------------------------------------------------------------ the compiled woods
 ## A hybrid: the woods' BASE MAP - ground, trail beds, litter, the creek and footbridge home, the undergrowth, and the
-## 1:16 land's world - is compiled once (tools/compile_woods.gd) into res://world/woods_compiled.scn and loaded
+## 1:16 land's world - is compiled once (tools/bake/compile_woods.gd) into res://world/woods_compiled.scn and loaded
 ## instead of generated. The TREES stay code-driven entities (built by woods_trees.gd, from the bake cache), and so
 ## does everything you interact with (signs, finds, the nursery, willows, the campfire, sunbeams, trinkets), drawing
 ## the same random numbers it always did (each skipped step's generator state is stored): it lands exactly where it did.
@@ -393,7 +393,7 @@ const COMPILED := "res://world/woods_compiled.scn"
 const LOCK := "res://world/woods.lock"
 const SOURCES := ["res://scripts/garden/woods.gd", "res://scripts/garden/woods_trees.gd", "res://scripts/garden/distant_land.gd",
 	"res://scripts/garden/garden_props.gd", "res://scripts/art/foliage_builder.gd", "res://scripts/art/hedge_anatomy.gd"]
-var compiling := false                 # tools/compile_woods.gd: copy what each static step makes
+var compiling := false                 # tools/bake/compile_woods.gd: copy what each static step makes
 var recorded := {}                     # compiling: key -> {"nodes": [detached copies], "state": int}
 var _compiled: Node                    # the instanced compiled scene while building from it, or null
 var compiled_used := false
@@ -423,7 +423,7 @@ func _open_compiled() -> bool:
 	var root := ps.instantiate()
 	var live := source_stamp()
 	if live != "" and live != str(root.get_meta("stamp", "")) and not FileAccess.file_exists(LOCK):
-		push_warning("Woods: the generators changed since %s was compiled; building live. Run tools/compile_woods.gd." % COMPILED)
+		push_warning("Woods: the generators changed since %s was compiled; building live. Run tools/bake/compile_woods.gd." % COMPILED)
 		root.free()
 		return false
 	_compiled = root

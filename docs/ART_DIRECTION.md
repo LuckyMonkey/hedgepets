@@ -9,7 +9,7 @@ the renderer builds the three separately so none can destroy the others. Accepta
 | File | Role |
 |---|---|
 | `scripts/art/character_art_profile.gd` | `CharacterArtProfile` resource: every art number, as data. `gerald()` holds Gerald's defaults. |
-| `pets/gerald.tres` | Gerald's profile (re-save with `godot --headless --path . --script tools/save_profile.gd`). Future pets = new profiles. |
+| `pets/gerald.tres` | Gerald's profile (re-save with `godot --headless --path . --script tools/art/save_profile.gd`). Future pets = new profiles. |
 | `scripts/art/hedge_anatomy.gd` | Region geometry (ellipsoid surface points and normals), head-local facial anchors, smooth face protection. |
 | `scripts/art/foliage_builder.gd` | Seeded hierarchical foliage: region -> clusters -> leaves -> flowers. |
 | `scripts/hedge_pet_3d.gd` | Assembles the pet from the profile: world, regions, face, foliage, life, detail levels, view presets. |
@@ -50,7 +50,7 @@ body), MUZZLE cushion, TAIL paddle (exponent 4), EARS small cups, FEET flat dome
 ## Pets
 
 Every pet is a `CharacterArtProfile` (`CharacterArtProfile.<name>()`, saved to `pets/<name>.tres` by
-`tools/save_profile.gd`) on the same renderer (`scripts/hedge_pet_3d.gd`). Per pet: `leaf_sheet` (the plant),
+`tools/art/save_profile.gd`) on the same renderer (`scripts/hedge_pet_3d.gd`). Per pet: `leaf_sheet` (the plant),
 `palette`, `features` (teeth, mouth style beaver/bunny/smile, cheeks, nose size), `frame_target`/`frame_distance`, and
 regions with optional `shape`, `rotation`, `mirror`, `flowers` (a region made of blossom), `outline`, `color`.
 
@@ -64,8 +64,8 @@ regions with optional `shape`, `rotation`, `mirror`, `flowers` (a region made of
 | Bramble | tortoise | jasmine (flowering) | domed shell (flat_bottom 0.42), sage egg head, dome legs, teardrop tail |
 
 Controls: drag to turn (turntable, momentum eases out), drag up/down to tilt, wheel to zoom, tap for a hop; ‹ › or
-arrow keys switch pets. Captures ignore live input (`tools/capture_pets.gd`, `tools/capture_views.gd`);
-`tools/rotation_check.gd` drives a scripted drag.
+arrow keys switch pets. Captures ignore live input (`tools/capture/capture_pets.gd`, `tools/capture/capture_views.gd`);
+`tools/checks/rotation_check.gd` drives a scripted drag.
 
 ## Silhouette ink
 
@@ -132,10 +132,10 @@ strength, shadow softness (regrows from the same seed). Detail: AUTO / CLOSE / M
 
 ## Acceptance
 
-`DISPLAY=:0 godot --path . --script tools/capture_views.gd && python3 tools/contact_sheet.py` renders FRONT, SIDE,
+`DISPLAY=:0 godot --path . --script tools/capture/capture_views.gd && python3 tools/capture/contact_sheet.py` renders FRONT, SIDE,
 THREE-QUARTER, DISTANT and LOW, MEDIUM, FULL, FLOWERING into `/tmp/hedgepets-views` (copies in `docs/acceptance/`;
-`phone_small.png` is the distant view at real phone-thumbnail size). Also `tools/capture_debug.gd`,
-`tools/perf_levels.gd`, `tools/determinism_check.gd`.
+`phone_small.png` is the distant view at real phone-thumbnail size). Also `tools/capture/capture_debug.gd`,
+`tools/perf/perf_levels.gd`, `tools/checks/determinism_check.gd`.
 
 Constraints (enforced by the data above): eyes and mouth never obscured (protected zones + clear muzzle); head
 distinct (separate region, smaller leaves, tighter displacement); tail and feet carry no foliage; flowers never near
@@ -155,7 +155,7 @@ Deterministic: the same seed rebuilds identically; another seed differs.
 - **All plant, except feet and tail.** Head, face, muzzle and ears are leaves. Only the eyes, nose and teeth are
   features. The face is younger, lighter leaves (a region `tint`, like the drawing's lighter face area). The leafy
   muzzle keeps leaves off only the nose and mouth.
-- **Hand-drawn watercolour leaves** (`tools/make_ivy_sprites.py`: `HandInk`, `watercolor_cell`, shared by
+- **Hand-drawn watercolour leaves** (`tools/art/make_ivy_sprites.py`: `HandInk`, `watercolor_cell`, shared by
   `make_leaf_styles.py`):
   - a fine pen line that wanders, swells with pressure and lifts off once or twice
   - paint slightly off the line, a darker wet edge, soft blooms, paper grain, pale veins
@@ -208,7 +208,7 @@ Before and after: `docs/acceptance/roster_before_cute.png`, `docs/acceptance/ros
   - Picks are saved to `res://pets/tuning.json` and apply everywhere (`SpeciesBuilder.tune`).
   - Keys: ← → pet, ↑ ↓ feature, R reset, 1-9 pick.
 - **More leaf fonts:** HedgeNeedlepoint, HedgeHeartIvy, HedgePersianIvy, HedgeGoldchild (golden margin), HedgeFig
-  (`tools/generate_hedgeink.py`: `IVY_TYPES`).
-  - Every font sheet now bakes with the hand-drawn pen and watercolour fill (`tools/bake_leaf_sprites.py`).
+  (`tools/art/generate_hedgeink.py`: `IVY_TYPES`).
+  - Every font sheet now bakes with the hand-drawn pen and watercolour fill (`tools/art/bake_leaf_sprites.py`).
   - They're plants (palettes, variant names "Needlepoint Fox", "Goldchild Beaver"...) and seeds, so ✂️ can reskin any
     pet with them.

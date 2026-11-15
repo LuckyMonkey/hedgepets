@@ -55,7 +55,7 @@ convincingly mundane, so a little shrub with eyes bouncing out of the woods is t
 The player then adds the birdbath, flowers, a nest box... and the yard gradually becomes their garden, still a real,
 slightly messy patch of New England underneath.
 
-## The soundscape (`scripts/garden/soundscape.gd`, sounds from `tools/make_soundscape.py`)
+## The soundscape (`scripts/garden/soundscape.gd`, sounds from `tools/art/make_soundscape.py`)
 
 **Birds first.** A New England backyard chorus, someone singing every few seconds, never all at once:
 - chickadee ("fee-bee")

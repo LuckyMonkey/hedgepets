@@ -10,8 +10,8 @@ extends RefCounted
 ##     live, as before.
 ##   - SALT = a fingerprint of the generator code. In the editor, if the generators changed since the bake, the whole
 ##     cache is ignored (everything is built live) and a warning says to rebake. In an export the code can't be
-##     read, so the baked fingerprint is trusted: rebake before exporting (tools/bake_cache.gd).
-##   - Nothing is ever written during play: only tools/bake_cache.gd (BakeCache.recording = true) writes the file.
+##     read, so the baked fingerprint is trusted: rebake before exporting (tools/bake/bake_cache.gd).
+##   - Nothing is ever written during play: only tools/bake/bake_cache.gd (BakeCache.recording = true) writes the file.
 
 const PATH := "res://assets/baked/garden.res"
 ## Code whose output is cached but not fully described by its keys: the woods' tree patches are keyed by patch only
@@ -27,14 +27,14 @@ static var hits := 0
 static var _memory := {}           # this run's own results (never saved): a tuned pet reuses its unchanged parts
 static var misses := 0
 ## Recording only: what each entry belongs to ("garden", "woods", "pet:Gerald"...) and which generator made it, for the
-## size manifest tools/bake_cache.gd writes (build/cache_manifest.json). Never shipped in the cache itself.
+## size manifest tools/bake/bake_cache.gd writes (build/cache_manifest.json). Never shipped in the cache itself.
 static var label := ""
 static var labels := {}
-## Diagnostics (tools/cache_usage.gd): with `track` on, every key read from the baked data is noted in `touched`.
+## Diagnostics (tools/bake/cache_usage.gd): with `track` on, every key read from the baked data is noted in `touched`.
 static var track := false
 static var touched := {}
 ## A composite build (a garden bush: its core mesh + its leaves, stored together under one key) doesn't record the
-## pieces it was made from: the game reads the composite, never the pieces (measured: tools/cache_usage.gd).
+## pieces it was made from: the game reads the composite, never the pieces (measured: tools/bake/cache_usage.gd).
 static var _composite := 0
 
 
@@ -75,7 +75,7 @@ static func _ready_data() -> bool:
 		return false
 	var live := live_salt()
 	if live != "" and live != _data.salt:
-		push_warning("BakeCache: the foliage / anatomy code changed since %s was baked; building live. Run tools/bake_cache.gd." % PATH)
+		push_warning("BakeCache: the foliage / anatomy code changed since %s was baked; building live. Run tools/bake/bake_cache.gd." % PATH)
 		_data = null
 		return false
 	_usable = 1

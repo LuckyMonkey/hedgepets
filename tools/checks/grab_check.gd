@@ -1,0 +1,179 @@
+extends SceneTree
+
+## Yard work, driven like a real hand at 60 fps:
+##   a stick yanks free with a few jerks and hauls to the wheelbarrow (sold, cleared, coins up);
+##   a big rock does NOT come free for a steady pull, but does with jerks;
+##   the tipped chair rights itself when yanked free; the grill scrubs clean in circles.
+##   godot --headless --path . --script tools/checks/grab_check.gd --fixed-fps 60
+var garden: Node
+var grab: Node
+
+
+func _init() -> void:
+	call_deferred("_run")
+
+
+func _fail(msg: String) -> void:
+	print("FAIL: ", msg)
+	quit(1)
+
+
+func screen_of(p: Vector3) -> Vector2:
+	return garden.camera.unproject_position(p)
+
+
+func frames(n: int) -> void:
+	for i in range(n):
+		await process_frame
+
+
+## Hold on `t` and work it: jerk = big fast back-and-forth, else a steady pull toward `toward`.
+func work(t: Dictionary, toward: Vector3, seconds: float, jerk: bool) -> void:
+	if OS.get_environment("SHOTS") != "":         # frame it, for the screenshots
+		garden._goal_target = t["node"].position
+		garden._target = garden._goal_target
+		garden._goal_distance = 8.0
+		garden._distance = 8.0
+		await frames(2)
+	var start := screen_of(t["node"].position)
+	if not grab.begin(start):
+		return
+	grab.move(start + Vector2(20, 0))
+	var goal := screen_of(toward)
+	for i in range(int(seconds * 60.0)):
+		var pull := start.lerp(goal, clampf(i / 20.0, 0.0, 1.0))
+		if jerk:
+			pull += Vector2(70.0 if (i / 3) % 2 == 0 else -70.0, 0)
+		grab.move(pull)
+		await process_frame
+		if i == 40 and OS.get_environment("SHOTS") != "":
+			root.get_texture().get_image().save_png("/tmp/hedgepets-views/yank_%s.png" % t["kind"])
+		if t["stuck"] <= 0.0:
+			break
+
+
+func _run() -> void:
+	OS.set_environment("HEDGEPETS_FRESH", "1")
+	garden = (load("res://garden.tscn") as PackedScene).instantiate()
+	root.add_child(garden)
+	garden.set_process_unhandled_input(false)
+	await frames(3)
+	var game: Node = garden.game
+	grab = game.grab
+	var of := func(kind: String) -> Array: return garden.things.filter(func(t) -> bool: return t["kind"] == kind)
+	# a stick: yank, haul to the barrow, sell
+	var stick: Dictionary = of.call("stick")[0]
+	var coins0: int = game.coins
+	var sticks0: int = of.call("stick").size()
+	await work(stick, stick["node"].position + Vector3(2, 0, 0), 4.0, true)
+	if stick["stuck"] > 0.0:
+		return _fail("stick never came free")
+	print("stick free")
+	var barrow: Vector3 = grab.barrel["node"].position
+	var from := screen_of(stick["node"].position)
+	for i in range(150):
+		grab.move(from.lerp(screen_of(barrow), clampf(i / 90.0, 0.0, 1.0)))
+		await process_frame
+		if i == 70 and OS.get_environment("SHOTS") != "":
+			root.get_texture().get_image().save_png("/tmp/hedgepets-views/haul_stick.png")
+	grab.end(screen_of(barrow))
+	await frames(40)
+	if of.call("stick").size() != sticks0 - 1 or grab.contents.size() != 1:
+		return _fail("stick not binned (sticks %d -> %d, barrel %d)" % [sticks0, of.call("stick").size(), grab.contents.size()])
+	print("stick binned: %d/%d lb" % [grab.fill_lb(), grab.BARREL_CAP])
+	# the barrel: too-heavy refused, pickup costs, then a cooldown
+	grab.contents.append({"kind": "tire", "lb": 90.0, "value": 4})
+	var rocks0: Array = of.call("rock")
+	grab._bin(rocks0[0])
+	if not garden.things.has(rocks0[0]):
+		return _fail("an overfull barrel took a rock")
+	print("full barrel refuses a rock")
+	# the truck: nothing to call, no fee; once it's due it just comes and empties the barrel, paying scrap
+	game.coins = 20
+	grab.barrel_tapped()
+	if grab.contents.is_empty():
+		return _fail("tapping the barrel emptied it")
+	grab.next_pickup = Time.get_unix_time_from_system() - 1.0
+	await frames(40)
+	if not grab.contents.is_empty() or game.coins != 20 + 5:
+		return _fail("truck: contents %d, coins %d (want 25: scrap, no fee)" % [grab.contents.size(), game.coins])
+	print("truck came on its own: emptied, scrap paid, no fee")
+	grab.contents.clear()
+	grab._show_fill()
+	# the biggest rock: a steady pull is not enough; jerks are
+	var rocks: Array = of.call("rock")
+	rocks.sort_custom(func(a, b) -> bool: return a["radius"] > b["radius"])
+	var rock: Dictionary = rocks[0]
+	grab.grabbable(rock)
+	# no reflexes needed: a slow steady pull frees even the biggest rock; jerks are only quicker
+	var t0 := Time.get_ticks_msec()
+	var f0 := Engine.get_process_frames()
+	await work(rock, rock["node"].position + Vector3(2.5, 0, 0), 15.0, false)
+	grab.end(screen_of(rock["node"].position))
+	var steady_s := (Engine.get_process_frames() - f0) / 60.0
+	if rock["stuck"] > 0.0:
+		return _fail("a %d lb rock never came free for a steady pull" % rock["lb"])
+	if steady_s < 2.5:
+		return _fail("a %d lb rock came free in %.1f s: too easy for its weight" % [rock["lb"], steady_s])
+	var rock2: Dictionary = rocks[1]
+	grab.grabbable(rock2)
+	f0 = Engine.get_process_frames()
+	await work(rock2, rock2["node"].position + Vector3(2.5, 0, 0), 15.0, true)
+	grab.end(screen_of(rock2["node"].position))
+	print("rock (%d lb): steady pull %.1f s; rock (%d lb) with jerks %.1f s" % [rock["lb"], steady_s, rock2["lb"], (Engine.get_process_frames() - f0) / 60.0])
+	# the chair rights itself
+	var chair: Dictionary = of.call("lawn_chair")[0]
+	await work(chair, chair["node"].position + Vector3(0, 0, 2.5), 8.0, true)
+	grab.end(screen_of(chair["node"].position))
+	await frames(50)
+	if chair["tipped"]:
+		return _fail("chair still tipped")
+	print("chair righted")
+	# the grill scrubs clean in circles
+	var grill: Dictionary = of.call("grill")[0]
+	var c := screen_of(grill["node"].position + Vector3(0, 0.9, 0))
+	if not grab.begin(screen_of(grill["node"].position)):
+		return _fail("couldn't get hold of the grill")
+	for i in range(60 * 8):
+		var a := i * 0.12
+		grab.move(c + Vector2(cos(a), sin(a)) * 80.0)
+		await process_frame
+		if not grill["rusty"]:
+			break
+	grab.end(c)
+	if grill["rusty"]:
+		return _fail("grill still rusty (scrub %.2f)" % grill["scrub"])
+	print("grill scrubbed clean")
+	# mending: hold on a run of fence, and on the sprinkler (no pulling, just holding)
+	var sec_x: float = (garden.fence_sections[0]["from"] + garden.fence_sections[0]["to"]) * 0.5
+	var fence_screen := screen_of(Vector3(sec_x, 0.0, -11.0))
+	garden._goal_target = Vector3(sec_x, 0, -9.0)
+	garden._target = garden._goal_target
+	await frames(2)
+	fence_screen = screen_of(Vector3(sec_x, 0.0, -11.0))
+	if not grab.begin(fence_screen):
+		return _fail("couldn't get hold of the fence")
+	await frames(int(60 * (grab.MEND_SECONDS + 0.3)))
+	grab.end(fence_screen)
+	if not garden.fence_sections[0]["mended"]:
+		return _fail("holding on the fence didn't mend it")
+	print("fence mended by holding")
+	var spr: Dictionary = of.call("sprinkler")[0]
+	garden._goal_target = spr["node"].position
+	garden._target = garden._goal_target
+	await frames(2)
+	var sp_screen := screen_of(spr["node"].position)
+	grab.begin(sp_screen)
+	await frames(int(60 * (grab.MEND_SECONDS + 0.3)))
+	grab.end(sp_screen)
+	if not spr.get("fixed", false):
+		return _fail("the sprinkler didn't get fixed")
+	var bed: Dictionary = game._dig(Vector2(spr["at"].x + 1.5, spr["at"].y))
+	var pl: Dictionary = game._plant("ivy", bed, 1, 0.0)
+	grab._spray_t = 10.0                                   # its spray cycle on
+	await frames(90)
+	if pl["water"] < 0.9:
+		return _fail("the working sprinkler didn't water the plant beside it (water %.2f)" % pl["water"])
+	print("sprinkler fixed and watering")
+	print("PASS")
+	quit(0)

@@ -46,9 +46,9 @@ The 2D version is still `main.tscn` (open it in the editor, or set it as the mai
   growth curves trailing off the edges with curling tendrils, white flowers. Every leaf is lit by where it sits on the
   round body and foreshortened at the rim. The layout is built once; every frame the leaves rustle in a wind that
   rolls across him (rim leaves most; a tap shivers them all). Leaves are baked sprites
-  (`assets/sprites/*.png` from `tools/bake_leaf_sprites.py`; real lobed ivy from `tools/make_ivy_sprites.py`), so 670
+  (`assets/sprites/*.png` from `tools/art/bake_leaf_sprites.py`; real lobed ivy from `tools/art/make_ivy_sprites.py`), so 670
   rustling leaves run at the display's frame rate.
-- **Light and shadow** (Godot 2D lighting): every leaf sprite has a normal map (`tools/make_normal_maps.py`: a
+- **Light and shadow** (Godot 2D lighting): every leaf sprite has a normal map (`tools/art/make_normal_maps.py`: a
   gentle dome and pressed-in veins) and is drawn as a `CanvasTexture`; a warm `PointLight2D` ("Sun") from the upper
   left over a slightly dimmed `CanvasModulate` shapes each leaf, and leaves glint as they turn. Each leaf on the body
   drops a soft shadow on whatever lies beneath it.
@@ -64,6 +64,6 @@ The 2D version is still `main.tscn` (open it in the editor, or set it as the mai
 
 ```
 xvfb-run -a -s "-screen 0 1080x1920x24" godot --path . --rendering-driver opengl3 --script tools/capture_screenshot.gd   # /tmp/hedgepets-headless.png
-xvfb-run -a -s "-screen 0 1080x1920x24" godot --path . --rendering-driver opengl3 --script tools/capture_frames.gd       # 6 frames with a tap
-DISPLAY=:0 godot --path . --script tools/fps_check.gd                                                                        # frame rate on the real GPU
+xvfb-run -a -s "-screen 0 1080x1920x24" godot --path . --rendering-driver opengl3 --script tools/capture/capture_frames.gd       # 6 frames with a tap
+DISPLAY=:0 godot --path . --script tools/checks/fps_check.gd                                                                        # frame rate on the real GPU
 ```

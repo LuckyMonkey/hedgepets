@@ -11,11 +11,11 @@ fi
 if [ -f world/woods.compile ]; then                     # opt-in: ship the compiled woods (faster woods, ~16 MB more download)
   echo "== compile the woods"
   xvfb-run -a -s "-screen 0 320x240x24" godot --audio-driver Dummy --rendering-driver opengl3 --resolution 320x240 --path . \
-    --script tools/compile_woods.gd 2>&1 | grep -E "compiled woods|built from it" || true
+    --script tools/bake/compile_woods.gd 2>&1 | grep -E "compiled woods|built from it" || true
 fi
 echo "== bake the startup cache (always before an export)"
-godot --headless --audio-driver Dummy --path . --script tools/bake_shadows.gd | grep -E "baked shadows|shadow"
-godot --headless --path . --script tools/bake_cache.gd | grep -E "round trip|cache file"
+godot --headless --audio-driver Dummy --path . --script tools/bake/bake_shadows.gd | grep -E "baked shadows|shadow"
+godot --headless --path . --script tools/bake/bake_cache.gd | grep -E "round trip|cache file"
 echo "== export the Web preset"
 rm -rf build/web && mkdir -p build/web
 godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | grep -E "ERROR|savepack|DONE" | tail -3

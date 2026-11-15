@@ -22,7 +22,7 @@ films/demo/
   `emote`. These are existing behaviours only.
 - **Cuts:** a cut is a shot boundary.
 
-Make the demo with `godot --headless --path . --script tools/film_make_demo.gd`.
+Make the demo with `godot --headless --path . --script tools/film/film_make_demo.gd`.
 
 ## Preview (interactive)
 
@@ -43,7 +43,7 @@ The camera follows the timeline exactly. The world runs live: scrubbing back doe
 
 ## Render (offline, exact)
 
-`tools/film_render.sh res://films/demo/project.tres OUT_DIR [540x960] [30]`
+`tools/film/film_render.sh res://films/demo/project.tres OUT_DIR [540x960] [30]`
 
 This uses Godot's **Movie Maker** (`--write-movie`):
 
@@ -81,7 +81,7 @@ The demo film (`films/demo`) opens on the garden and dollies down to Gerald, tra
 | Check | Result |
 |---|---|
 | Render | 211 frames (0 to 7.0 s inclusive), `frame.wav` at 48 kHz stereo, `film.mp4` H.264 + AAC, 7.03 s |
-| Two renders, same project | **211/211 frames pixel-identical** (`tools/image_compare.py`) |
+| Two renders, same project | **211/211 frames pixel-identical** (`tools/capture/image_compare.py`) |
 | Audio, first build | **Not reproducible:** the soundscape seeded its event RNG with `randomize()`, and the wind swell followed the wall clock |
 | Audio fix | `HEDGEPETS_SOUND_SEED` (set by the filmmaker): seeded events and the swell on game time. The game itself keeps `randomize()` and the wall clock, so play is unchanged |
 | Render speed | About 0.25 frames/s under software GL; a GPU display would be far faster |

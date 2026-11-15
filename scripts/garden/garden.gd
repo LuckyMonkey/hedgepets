@@ -98,8 +98,8 @@ var _leaf_mats := {}
 var _bald_noise: FastNoiseLite
 
 
-var walk_stats := {"arrived": 0, "close_enough": 0, "gave_up": 0, "most_in_a_row": 0}   # tools/stuck_check.gd
-var boot_ms := {}                                 # how long each part of building the garden took (tools/boot_time.gd)
+var walk_stats := {"arrived": 0, "close_enough": 0, "gave_up": 0, "most_in_a_row": 0}   # tools/checks/stuck_check.gd
+var boot_ms := {}                                 # how long each part of building the garden took (tools/perf/boot_time.gd)
 
 
 signal built                                      # the garden is up and playable (after a staged build)
@@ -1351,7 +1351,7 @@ func _build_grass() -> void:
 	add_child(node)
 	# The tufts come from the seeded RNG and what's in the way, so they're the same every time: an exported game reads
 	# them from the startup cache (with the RNG's state after them) instead of placing ~31k one by one. The editor
-	# always places them live, so a change here shows at once; the bake (tools/bake_cache.gd) records them.
+	# always places them live, so a change here shows at once; the bake (tools/bake/bake_cache.gd) records them.
 	var cached := BakeCache.recording or BakeCache.live_salt() == ""
 	var key := BakeCache.key(["grass", 4, _rng.state, _grass_inputs()])
 	var hit = BakeCache.fetch(key) if cached else null

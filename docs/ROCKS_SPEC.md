@@ -43,7 +43,7 @@ Archetypes live in a data file (`data/rocks.json` or a `.tres`), e.g.:
   "weathering": 0.35, "preserve_facets": true, "material": "granite", "max_triangles": 48, "max_displacement": 0.08}}
 ```
 
-The rock lab (`tools/rock_lab.tscn`) edits these values live in the inspector and saves them back to the data file.
+The rock lab (`tools/art/rock_lab.tscn`) edits these values live in the inspector and saves them back to the data file.
 
 ## Process (insist on this)
 

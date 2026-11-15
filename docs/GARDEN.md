@@ -62,20 +62,20 @@ Everything is heavier than it looks, in pounds: stick 2, pot 15, branch 15, chai
 **Collisions.** Everything solid is a circle: trunks, walls, junk, things you built, the barrel, every pet (sticks
 and leaf piles you walk over). Pets steer around what's ahead, give up on a spot they're boxed out of, and are pushed
 out of anything they end up in, including junk you haul into them. Hauled junk stops against trunks, walls and other
-things. `tools/collision_check.gd`: a dozen pets roam for 40 s and never sit inside anything.
+things. `tools/checks/collision_check.gd`: a dozen pets roam for 40 s and never sit inside anything.
 
 **Never stuck.** Every place a pet heads for (a random spot, beside a favourite thing, a gate's first steps) is
 moved to where *that* pet fits (`free_spot`, by its own radius), and straight-line paths are checked at its size.
 Steering is smoothed so it can't flip sides every frame, and pets shuffle forward while turning (no spinning in
 place). Progress, not motion, decides when it's blocked: no 0.25 m closer in 1.5 s means "close enough" near the goal,
-or a new goal far from it. `tools/stuck_check.gd`: 12 pets for 90 s, no stuck stretch over 4 s, under 15% of walks
+or a new goal far from it. `tools/checks/stuck_check.gd`: 12 pets for 90 s, no stuck stretch over 4 s, under 15% of walks
 abandoned, never more than 3 in a row (Gerald alone: none).
 
 **Camera vs trees.** Everything in the garden dissolves right in front of the camera (an ordered dither,
 `shaders/near_fade.gdshaderinc`, and StandardMaterial's pixel-dither distance fade), so the camera can pass a trunk or
 through a crown without a screenful of leaves.
 
-Moved, loosened, righted and scrubbed things, and the barrel, are saved. `tools/grab_check.gd --fixed-fps 60` drives all of it like
+Moved, loosened, righted and scrubbed things, and the barrel, are saved. `tools/checks/grab_check.gd --fixed-fps 60` drives all of it like
 a real hand: a stick yanked and binned, a full barrel refusing a rock, a pickup with its fee and cooldown, a 132 lb rock that holds against a steady pull but comes with jerks, the chair,
 the grill.
 
@@ -109,8 +109,8 @@ node is only built the first time it comes by.
 
 **Adding a pet** = one entry in `pets/species.json`: plan (quadruped sitter bird round long snail), plant, palette,
 size/leg/neck/head/eyes, ears, snout, tail, extras, colours, wants and hints. The full vocabulary is at the top of
-`species_builder.gd`. Check it with `DISPLAY=:0 godot --path . --script tools/capture_roster.gd && python3
-tools/roster_sheet.py` (docs/acceptance/roster.png).
+`species_builder.gd`. Check it with `DISPLAY=:0 godot --path . --script tools/capture/capture_roster.gd && python3
+tools/capture/roster_sheet.py` (docs/acceptance/roster.png).
 
 Residents live in it: they wander to the things and plants they wished for (`garden_game.gd:favourite()`) and
 show it (💧 at the puddle, 💤 in the chair or tire, 🍂 in the leaves, 🌸 at a flowering plant). When idle they turn
@@ -130,7 +130,7 @@ bobs in the grass until you tap it (any tool). Gifts never disappear (they're sa
   have flowered, the truck has been, gifts are where they fell.
 - **No scores.** The journal shows who you've met and the variants you've seen them as, by name: no totals.
 
-`tools/life_check.gd` checks all of it (17 naps and 5 curl-ups in 3 minutes with six residents; a 3-day absence).
+`tools/checks/life_check.gd` checks all of it (17 naps and 5 curl-ups in 3 minutes with six residents; a 3-day absence).
 
 A visitor whose wishes stop being met lingers a long while (4 minutes inside, 1.5 at the fence) before wandering home for now. Junk isn't all bad: Gerald wants sticks and the
 puddle, Juniper the tipped chair, Bramble rocks. Clear everything and you lose them.
@@ -157,7 +157,7 @@ out of one. Where everything stands is saved from where it really is (moved with
 **The burrow** (`den.gd`): tap the burrow with ✋ when nobody's in the doorway, or the 🕳️ button. Down below is a round
 room with roots through the ceiling, a jar of fireflies for a lamp and daylight down the tunnel; up to five residents
 curl up asleep on moss beds, and a tap makes one stir. The garden waits while you're down there (paused, its sounds
-muffled overhead) and every pet is back exactly where it was when you come up. `tools/den_check.gd` checks the visit,
+muffled overhead) and every pet is back exactly where it was when you come up. `tools/checks/den_check.gd` checks the visit,
 arranging and the save rule.
 
 **Friends:** the 🐾 tool is gone; water does it now (see 💧). Followers keep near whatever you're looking at when you
@@ -171,7 +171,7 @@ the trailhead, the mossy fork (the hub), fern hollow, the ridge (an overlook), c
 and the nursery off the fork, where the lady potting at her bench has something to say and seeds for you. Each clearing
 has things to find: litter and dumped junk (coins), forage for the nursery's basket, and wild seeds. See docs/NURSERY.md. Your followers trail behind you and gather round when you stop; a pet in the
 bucket sits beside you in it, and *Let out* makes it one more follower, home with you afterwards.
-The burrow and the woods share `elsewhere.gd` (going, coming back, borrowing pets); `tools/woods_check.gd`.
+The burrow and the woods share `elsewhere.gd` (going, coming back, borrowing pets); `tools/checks/woods_check.gd`.
 
 **Saving:** every 8 s and the moment you leave (tab hidden, app backgrounded, window closed). On the web the save also
 goes to the browser's localStorage, written at once; loading takes whichever copy is newer (`WebSave`).
@@ -197,17 +197,17 @@ over the lawn (`_leaf_litter`). Static scenery is merged into one mesh per mater
 The scenery: a real puddle (`shaders/water.gdshader`: muddy rim, sky sheen, drip ripples; no grass in it), a New
 England dry-stone wall down the side, maple leaves drifting from the oak crowns, six butterflies that visit flowering
 plants, and a soft contact shadow under every pet. Tall oaks (leaning trunk, forked branches, a leaf clump per branch) and tiered pines whose crowns run
-off the top of the screen and whose shade falls across the lawn; ankle-high grass tufts (22k, `tools/make_grass_sprites.py`)
-over a lawn with fine blade grain (`shaders/lawn.gdshader`, `tools/make_lawn_detail.py`). Leaf styles for pets and plants:
-ivy, clover, fern, jasmine, and `tools/make_leaf_styles.py`: oak (acorns), pine (cones), sage (lilac sprigs), maple
+off the top of the screen and whose shade falls across the lawn; ankle-high grass tufts (22k, `tools/art/make_grass_sprites.py`)
+over a lawn with fine blade grain (`shaders/lawn.gdshader`, `tools/art/make_lawn_detail.py`). Leaf styles for pets and plants:
+ivy, clover, fern, jasmine, and `tools/art/make_leaf_styles.py`: oak (acorns), pine (cones), sage (lilac sprigs), maple
 (winged seeds), boxwood, willow (catkins), rose, lavender; the
 cell-13 bloom is tinted by `CharacterArtProfile.flower_color`.
 
-Plants as fonts: the leaf sheets are baked from glyph fonts in `assets/fonts` (`tools/generate_hedgeink.py`, then
-`tools/bake_leaf_sprites.py <name>`). HedgeMoss (star-moss tufts, feather moss, spore capsules as blooms) and HedgeHolly
+Plants as fonts: the leaf sheets are baked from glyph fonts in `assets/fonts` (`tools/art/generate_hedgeink.py`, then
+`tools/art/bake_leaf_sprites.py <name>`). HedgeMoss (star-moss tufts, feather moss, spore capsules as blooms) and HedgeHolly
 (spined leaves, red berries) are the newest. Any pet can be regrown in any plant: 🍃 / F in the viewer, ✂️ shears in
 the garden (regraft a pet in the chosen seed's plant for its price; saved). `SpeciesBuilder.PLANTS` gives each plant
-its palette and bloom; `tools/capture_plants.gd` -> docs/acceptance/plants.png.
+its palette and bloom; `tools/capture/capture_plants.gd` -> docs/acceptance/plants.png.
 
 📖 is the journal. Progress autosaves to `user://garden.json`.
 
@@ -220,10 +220,10 @@ its palette and bloom; `tools/capture_plants.gd` -> docs/acceptance/plants.png.
 
 ## Checks
 
-    godot --headless --path . --script tools/game_check.gd     # plays the loop: clear, plant, grow, a pet moves in
-    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/capture_garden.gd   # /tmp/hedgepets-views/garden.png
+    godot --headless --path . --script tools/checks/game_check.gd     # plays the loop: clear, plant, grow, a pet moves in
+    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/capture/capture_garden.gd   # /tmp/hedgepets-views/garden.png
                                                                # FRAMES=700 later in time, DIST=30 zoomed out
-    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/garden_fps.gd       # ~3.5 ms/frame on the RTX 3050 (close other game windows first)
+    HEDGEPETS_FRESH=1 DISPLAY=:0 godot --path . --script tools/perf/garden_fps.gd       # ~3.5 ms/frame on the RTX 3050 (close other game windows first)
 
 HEDGEPETS_FRESH=1 starts from a new garden and never reads or writes the player's save.
 
@@ -243,4 +243,4 @@ HEDGEPETS_FRESH=1 starts from a new garden and never reads or writes the player'
   spring does the easing; any drag takes over) and a card names it: its animal, the plant it's made of, what drew it
   in, what would make it stay, its hint. Once per hedgepet per garden; saved as `introduced` (older saves: whoever is
   visiting or resident already counts as met). The journal marks them "met in your garden". Telemetry `introduced`.
-- No timers in any of it. Check: `tools/story_check.gd`.
+- No timers in any of it. Check: `tools/checks/story_check.gd`.

@@ -6,7 +6,7 @@ extends VBoxContainer
 ##   Play     - the garden, the woods at any place (click it on the map), the pet viewer, the world editor, the
 ##              filmmaker; "Debug" adds the 🪙+ coin button and F9.
 ##   Woods map- the trail graph from woods.gd (places and trails), top-down; click a place to play from there.
-##   Checks   - run any tools/*_check.gd headless and read its output here.
+##   Checks   - run any tools/checks/*_check.gd headless and read its output here.
 const WOODS := "res://scripts/garden/woods.gd"
 
 var _debug: CheckBox
@@ -41,7 +41,7 @@ func _ready() -> void:
 	add_child(row3)
 	_check = OptionButton.new()
 	_check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var dir := DirAccess.open("res://tools")
+	var dir := DirAccess.open("res://tools/checks")
 	if dir:
 		for f in dir.get_files():
 			if f.ends_with("_check.gd"):
@@ -85,7 +85,7 @@ func _run_check() -> void:
 	_out.text = "running %s ...\n" % name
 	OS.set_environment("HEDGEPETS_FRESH", "1")
 	_proc = OS.execute_with_pipe(OS.get_executable_path(), ["--headless", "--audio-driver", "Dummy", "--path",
-		ProjectSettings.globalize_path("res://"), "--script", "res://tools/%s.gd" % name, "--fixed-fps", "60"], false)
+		ProjectSettings.globalize_path("res://"), "--script", "res://tools/checks/%s.gd" % name, "--fixed-fps", "60"], false)
 
 
 func _process(_delta: float) -> void:

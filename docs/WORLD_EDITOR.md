@@ -45,7 +45,7 @@ Delete hides, `R` resets, `G` toggles the 0.25 m grid, Ctrl+Z / Ctrl+Y undo and 
 
 ## Verified
 
-`tools/world_editor_check.gd` passes 10/10 (headless). It checks that:
+`tools/checks/world_editor_check.gd` passes 10/10 (headless). It checks that:
 
 - the editor opens on exactly the generated layout (38 things);
 - moving and turning work;

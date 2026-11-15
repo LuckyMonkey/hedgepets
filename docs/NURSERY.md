@@ -30,7 +30,7 @@ a water butt. She stands behind the bench, potting by lantern light, and now and
 - **The basket.** She buys what you've foraged in the woods: cones and acorns 🪙1 each, mushrooms and feathers 🪙2
   each, with a line about what she'll do with them.
 - **Adding lines.** Keep her a person: practical, dry and observant, with the occasional strange specific. She is
-  not an oracle, a quest-giver or a tutorial. She never explains herself. Run `tools/nursery_check.gd`; it fails on
+  not an oracle, a quest-giver or a tutorial. She never explains herself. Run `tools/checks/nursery_check.gd`; it fails on
   any name in the list at its top.
 
 ## What plants pass on (`scripts/garden/heredity.gd`)
@@ -83,14 +83,14 @@ out past the ridge, a blue haze between the trunks, canopy shadows, and about 40
   trail a tap would take.
 - **Signs** are dark stained boards with routed-look cream lettering (`assets/fonts/SignBookman-Demi.otf`, URW Bookman
   Demi). Each has an arrow end pointing down its trail.
-- **Walkthrough capture:** `tools/capture_walk.gd` (`WALK_EDGES=0,2` for some trails) saves a frame every 2.5 m along
+- **Walkthrough capture:** `tools/capture/capture_walk.gd` (`WALK_EDGES=0,2` for some trails) saves a frame every 2.5 m along
   every trail.
 - **Spacing.** Trails leave and reach every clearing straight on, for the first 5 m (`_trail`), so they never bunch
   up.
 - **Water.** No trail dips under water: over the creek or the pond it rides on the stones (`water_at`). The creek runs
   off the map at both ends.
 - **Building.** The first visit builds in steps (`build_steps`) behind a loading card (`Elsewhere._build_staged`,
-  the garden's `loading_card.gd`). The woods are in the bake (`tools/bake_cache.gd`: `woods.build_now()`), so with the
+  the garden's `loading_card.gd`). The woods are in the bake (`tools/bake/bake_cache.gd`: `woods.build_now()`), so with the
   cache they build in about 0.5 s on desktop (9.9 s without).
 
 ## The land beyond (3D skybox, `distant_land.gd`)
@@ -149,7 +149,7 @@ mountains barely move.
 - **The mossy fork** (`woods.FORK_VIEW`, `_endless_woods`): looking north-north-west, the ground runs level, the
   playable trees thin, and in the miniature about 4,000 tall old-growth trunks go on under a closed canopy for
   kilometres. Spacing widens with distance.
-- **Captures:** `tools/capture_forest_vistas.gd` (oak, fork, east, hollow, ridge; also saves each miniature's raw
+- **Captures:** `tools/capture/capture_forest_vistas.gd` (oak, fork, east, hollow, ridge; also saves each miniature's raw
   picture).
 
 ## Nothing stands on a trail
@@ -190,5 +190,5 @@ anything on one is walked through. `woods_check` fails if one is too close.
   step, a chimney base, a huge old lilac, and the dooryard apple tree (apples for the basket, wild rose seeds).
 - **Campfire** in fern hollow: tap it to light it.
 
-Checks: `tools/nursery_check.gd --fixed-fps 60` (headless) and `tools/woods_check.gd`. To see each place:
-`DISPLAY=:0 godot --path . --script tools/capture_places.gd --disable-vsync`.
+Checks: `tools/checks/nursery_check.gd --fixed-fps 60` (headless) and `tools/checks/woods_check.gd`. To see each place:
+`DISPLAY=:0 godot --path . --script tools/capture/capture_places.gd --disable-vsync`.

@@ -23,8 +23,8 @@ Make a candidate set (silent, offscreen; about 4 minutes under software GL):
 ```
 GOLDEN_OUT=/tmp/hp-cand GOLDEN_ONLY=garden_overview,garden_closeup,garden_pet,garden_to_woods,garden_east,moving \
   xvfb-run -a -s "-screen 0 540x960x24" godot --path . --audio-driver Dummy --rendering-driver opengl3 \
-  --resolution 540x960 --fixed-fps 60 --disable-vsync --script tools/golden_capture.gd
-python3 tools/image_compare.py tests/baseline/f72b9bd /tmp/hp-cand /tmp/hp-cand/compare
+  --resolution 540x960 --fixed-fps 60 --disable-vsync --script tools/capture/golden_capture.gd
+python3 tools/capture/image_compare.py tests/baseline/f72b9bd /tmp/hp-cand /tmp/hp-cand/compare
 ```
 
 `image_compare.py` exits non-zero on any channel difference above `--tolerance` (default 0, so pixel-exact). It

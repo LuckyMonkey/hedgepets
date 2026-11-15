@@ -14,7 +14,7 @@ Deploy only when the owner asks (AGENTS.md); this file says *how*.
 - Debug coins: 🪙+ / F9 in the editor, `?debug` on the web, `-- --debug` in a terminal. Sound settings: 🔊, saved in `user://settings.cfg`.
 - **Pet viewer:** `godot --path . res://main3d.tscn`, or `go.fridge.run/hedgepets/?viewer`. ‹ › change pet, 🍃/F regrows it in the next plant, 🛠/F1 opens the developer view (`art_debug.gd`). Side-by-side tuning: `res://dev/swatches.tscn`.
 - **World editor:** `godot --path . res://world_editor.tscn` (garden) or `-- --woods=<place>`. Overrides: `world/garden_overrides.tres`, `world/woods_overrides.tres`. Docs: [WORLD_EDITOR.md](WORLD_EDITOR.md), [WORLD_ARCHITECTURE.md](WORLD_ARCHITECTURE.md).
-- **Filmmaker:** `res://filmmaker.tscn -- --film=res://films/demo/project.tres`; render with `tools/film_render.sh <film> <out>`. Doc: [FILMMAKER.md](FILMMAKER.md).
+- **Filmmaker:** `res://filmmaker.tscn -- --film=res://films/demo/project.tres`; render with `tools/film/film_render.sh <film> <out>`. Doc: [FILMMAKER.md](FILMMAKER.md).
 - The editor, filmmaker and benchmarks must never change how the game looks, sounds or plays.
 
 ## Checking
@@ -28,8 +28,8 @@ HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/
 - **Flaky:** `life_check` (random pet life; fails at different points even seeded). `collision_check` is borderline: baseline 110–130 of an allowed 180.
 - The owner's rule: one relevant check per change, not the whole suite.
 - **Looking at things:** `DISPLAY=:0 godot --path . --script tools/capture_<x>.gd --disable-vsync` → `/tmp/hedgepets-views`. Captures: `capture_places` (woods), `capture_yard`, `capture_survey`, `capture_garden`, `capture_roster`. Judge by captures, never by "it runs".
-- **Golden regression:** `tools/golden_capture.gd` + `tools/image_compare.py`; see [VISUAL_REGRESSION.md](VISUAL_REGRESSION.md). Never refresh a baseline silently. (On the owner's laptop numpy isn't installed, so `image_compare.py` fails; PIL works.)
-- **Hitches / benchmarks:** `tools/hitch_trace.gd`, `tools/bench_world.sh` (`--gpu` for frame times). Docs: [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md), [MAP_COMPILATION_BENCHMARK.md](MAP_COMPILATION_BENCHMARK.md).
+- **Golden regression:** `tools/capture/golden_capture.gd` + `tools/capture/image_compare.py`; see [VISUAL_REGRESSION.md](VISUAL_REGRESSION.md). Never refresh a baseline silently. (On the owner's laptop numpy isn't installed, so `image_compare.py` fails; PIL works.)
+- **Hitches / benchmarks:** `tools/perf/hitch_trace.gd`, `tools/perf/bench_world.sh` (`--gpu` for frame times). Docs: [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md), [MAP_COMPILATION_BENCHMARK.md](MAP_COMPILATION_BENCHMARK.md).
 - **No X for agents:** the laptop has no system Xvfb and no sudo; a private copy lives in `~/work/xvfb-local/root` (PATH + LD_LIBRARY_PATH; `deploy_web.sh` sets it up). Codex's sandbox can't open X: Claude renders captures on a private Xvfb (`:77`) and hands Codex the PNGs (`codex exec -i a.png -i b.png -- "prompt"`).
 
 ## Traps
@@ -38,7 +38,7 @@ HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/
 - Godot front faces wind **clockwise** (generated meshes).
 - Godot 4 shaders have `MODEL_MATRIX`, not `WORLD_MATRIX`. A failed shader silently falls back — grep deploy output for `SHADER ERROR`.
 - Never `Image.load_from_file` on `res://` (exports ship no raw PNG). Use `Assets.image()`.
-- Changing pet/foliage/anatomy/scenery code invalidates `assets/baked/garden.res` (re-bake: `tools/bake_cache.gd`; the deploy does it). Anything built with random seeds won't cache: use fixed seeds (`garden._bush(..., fixed_seed)`).
+- Changing pet/foliage/anatomy/scenery code invalidates `assets/baked/garden.res` (re-bake: `tools/bake/bake_cache.gd`; the deploy does it). Anything built with random seeds won't cache: use fixed seeds (`garden._bush(..., fixed_seed)`).
 - Changing `woods.gd` invalidates `world/woods_compiled.scn` (the deploy recompiles it; needs Xvfb).
 - Checks that enter the woods call `woods.build_now()` first (the real path builds in steps behind a loading card).
 - Godot core-dumps ("double free") on quit after captures. Harmless. Leaked-RID errors at exit in headless checks are harmless too.
@@ -76,7 +76,7 @@ HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/
 
 ## The contraband
 
-Not a new animal: a slow, rare change to a resident (usually Clover) — "leaves look different", "smells really strong", then the journal names it (`garden_game._tend_contraband`). Leaves: glyph font `HedgeCannabis` (`tools/generate_hedgeink.py`), sheet `assets/sprites/hedgecannabis.png` (`tools/bake_leaf_sprites.py hedgecannabis` + `make_normal_maps.py`); plant `cannabis` on the `hemp` palette, never sold. ~1.2%/min while a likely resident exists, stages 10 real minutes apart; `HEDGEPETS_CONTRABAND=1` forces it. It wants the sun by the street gate in view of the porch. No meter, no penalty; water lures it back, regrafting (✂️) settles it.
+Not a new animal: a slow, rare change to a resident (usually Clover) — "leaves look different", "smells really strong", then the journal names it (`garden_game._tend_contraband`). Leaves: glyph font `HedgeCannabis` (`tools/art/generate_hedgeink.py`), sheet `assets/sprites/hedgecannabis.png` (`tools/art/bake_leaf_sprites.py hedgecannabis` + `make_normal_maps.py`); plant `cannabis` on the `hemp` palette, never sold. ~1.2%/min while a likely resident exists, stages 10 real minutes apart; `HEDGEPETS_CONTRABAND=1` forces it. It wants the sun by the street gate in view of the porch. No meter, no penalty; water lures it back, regrafting (✂️) settles it.
 
 ## Ideas the owner has raised (not built)
 

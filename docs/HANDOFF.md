@@ -24,9 +24,9 @@
 | World editor and filmmaker | `scripts/world/`, `scripts/film/`, `docs/WORLD_EDITOR.md`, `docs/FILMMAKER.md` |
 
 ## Review/test locations
-- Focused check for the first extraction: `tools/descriptions_check.gd`.
-- Core game loop: `tools/game_check.gd`. Other subsystem checks: `tools/*_check.gd`.
-- Visual baseline: `tools/golden_capture.gd`, `tools/image_compare.py`, `tests/baseline/`.
+- Focused check for the first extraction: `tools/checks/descriptions_check.gd`.
+- Core game loop: `tools/checks/game_check.gd`. Other subsystem checks: `tools/*_check.gd`.
+- Visual baseline: `tools/capture/golden_capture.gd`, `tools/capture/image_compare.py`, `tests/baseline/`.
 - GitHub Actions: `.github/workflows/review.yml` for PR smoke checks; `pages.yml` for main-branch Pages exports. **PR checks do not replace visual review.**
 - **How to run, check, deploy, and the traps:** [OPERATIONS.md](OPERATIONS.md). Performance and export: [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md), [MOBILE.md](MOBILE.md).
 

@@ -35,7 +35,7 @@ building nodes in GDScript. It can't beat B at generation, because B does no gen
 
 ## The woods, compiled (2026-10-14, measured)
 
-`tools/compile_woods.gd` builds the woods once. It saves their static geometry to `res://world/woods_compiled.scn`:
+`tools/bake/compile_woods.gd` builds the woods once. It saves their static geometry to `res://world/woods_compiled.scn`:
 the ground, trails, litter, the creek home, the trees, the undergrowth, and the 1:16 land's world (without clouds).
 It also saves the generator state after each step and a fingerprint of the generator code. With that file present,
 `woods.gd` loads those parts instead of generating them, and builds everything interactive by code as before.

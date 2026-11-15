@@ -3,3 +3,8 @@
 /screens/
 __pycache__/
 build/
+
+# Build caches: rebuilt by tools/deploy_web.sh before every export, never committed
+# (each re-bake added ~37 MB to the history). Without them the game builds live.
+/assets/baked/garden.res
+/world/woods_compiled.scn

@@ -27,8 +27,8 @@ Extract one cohesive unit per PR. Do **not** rename scene callbacks, change game
 ```bash
 git diff --check
 godot --headless --audio-driver Dummy --path . --editor --quit
-HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/descriptions_check.gd
-HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/game_check.gd --fixed-fps 60
+HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/checks/descriptions_check.gd
+HEDGEPETS_FRESH=1 godot --headless --audio-driver Dummy --path . --script tools/checks/game_check.gd --fixed-fps 60
 ```
 
 Run only the tests relevant to the touched behavior, unless the risk warrants more. The PR workflow checks import, description formatting, and the garden loop. Visual review is still manual; a headless exit code is not a screenshot.

@@ -5,7 +5,7 @@ Measured 2026-10-14 at commit 69c9791. The game code is unchanged from f72b9bd a
 **Machine:** i7-3770 (8 threads, no AVX2), RTX 3050. Firefox was using about 1.2 cores at the time; the
 spread across runs stayed within ±1.5%.
 
-**Tool:** `tools/bench_world.sh out.jsonl 3 "procedural cached"`, which runs `tools/bench_world.gd` once per
+**Tool:** `tools/perf/bench_world.sh out.jsonl 3 "procedural cached"`, which runs `tools/perf/bench_world.gd` once per
 process. The raw data is in `tests/results/2026-10-14_bench_headless.jsonl`.
 
 ## Headless (build cost, nodes, memory), 3 runs each, medians
@@ -87,7 +87,7 @@ The shipped changes are:
   0.75× and 0.6× 3D scale, then eases the tilt-shift mix off and disables remaining dynamic shadows. Recovery waits
   five seconds below 15 ms. Web canvas DPR is capped at 2.
 
-Run `tools/render_cost.gd` with an X display after the cache bake to record the after numbers. It intentionally does
+Run `tools/perf/render_cost.gd` with an X display after the cache bake to record the after numbers. It intentionally does
 not use GPU timer queries because Mesa stops drawing after a short period on the target hardware.
 
 ## 2026-11-08: round 2
@@ -98,13 +98,13 @@ woods **1885 / 3.13M**, with woods at **1180 / 1.78M** when shadows were disable
 Wayland display, so round-2 GPU draw/primitive numbers could not be collected here; the headless renderer reports zero
 for those counters and is not a valid substitute.
 
-Round 2 removes the live sun shadow maps entirely. `tools/bake_shadows.gd` creates deterministic garden and woods
+Round 2 removes the live sun shadow maps entirely. `tools/bake/bake_shadows.gd` creates deterministic garden and woods
 shadow atlases under `assets/baked/`, and the lawn, grass, woods ground, path and litter materials multiply them at
 the same soft 0.72 opacity. The atlas is intentionally low-resolution and blurred by linear filtering to preserve
 the painted miniature look; pets retain their live contact blobs.
 
 Woods static geometry is now grouped into 24 m proximity chunks. Chunks within 43 m of the camera remain visible;
-walking changes visibility only, never rebuilds geometry. `tools/render_cost.gd` disables the adaptive `Quality`
+walking changes visibility only, never rebuilds geometry. `tools/perf/render_cost.gd` disables the adaptive `Quality`
 autoload while measuring so scale/tilt-shift fallback cannot hide the renderer cost.
 
 ## 2026-11-08: round 3
@@ -145,7 +145,7 @@ around their own authored origins, so renderer range and frustum culling no long
 the trailhead. Quality changes recurse into streamed chunks and find a nested garden through the
 `hedgepets_garden` group instead of assuming it is the current scene.
 
-`tools/tier_primitives.gd` is the display-independent guard. It embeds the garden under a harness scene, applies all
+`tools/perf/tier_primitives.gd` is the display-independent guard. It embeds the garden under a harness scene, applies all
 three tiers through the group lookup, and counts visible geometry plus MultiMesh instances using streamed-parent
 visibility and authored ranges. The regenerated compiled woods measured:
 
@@ -156,7 +156,7 @@ visibility and authored ranges. The regenerated compiled woods measured:
 | High | 1,161,999 | 180,387 | 35 |
 
 The guard requires Low to stay below 400k triangles and below 30% of Medium's visible leaf instances. A real-window
-`tools/tier_cost.gd` rerun remains the authoritative GPU timing and submitted-primitive measurement.
+`tools/perf/tier_cost.gd` rerun remains the authoritative GPU timing and submitted-primitive measurement.
 
 ### LightmapGI investigation
 
@@ -170,7 +170,7 @@ is not installed. There is no command-line lightmap bake mode.
 
 The current woods are also not bake-ready. Their procedural ArrayMesh and PrimitiveMesh surfaces have no UV2 unwrap,
 are not marked for static baked GI, and are assembled into `world/woods_compiled.scn` by a headless tool. PrimitiveMesh
-surfaces cannot be baked directly. LightmapGI therefore cannot replace `tools/bake_shadows.gd` without a new offline
+surfaces cannot be baked directly. LightmapGI therefore cannot replace `tools/bake/bake_shadows.gd` without a new offline
 mesh/UV2 pipeline. Texture cost is unmeasured until that exists; for scale, one uncompressed RGBA8 1024² page is 4 MiB
 and a 2048² page is 16 MiB before any extra directional/shadowmask data or pack compression. That is material beside
 the round-4 3.6 MB woods resource pack.
@@ -180,10 +180,10 @@ Vulkan-capable editor machine: convert one 24 m static chunk to UV2-unwrapped Ar
 low-density 1024-page lightmap, export it to Compatibility/Web, and compare captures, frame cost, and compressed
 `woods.pck` size. Scale it beyond one chunk only if the Web result is stable and adds no more than about 4 MB.
 
-## 2026-10-24: hitches moved behind cards (`tools/hitch_trace.gd`)
+## 2026-10-24: hitches moved behind cards (`tools/perf/hitch_trace.gd`)
 
 The owner reported stutter, and stalls in the wrong places: during play instead of behind loading cards. Measured
-headless (CPU only) with `tools/hitch_trace.gd`, which turns off headless Godot's ~6.9 ms per-frame sleep. **Earlier
+headless (CPU only) with `tools/perf/hitch_trace.gd`, which turns off headless Godot's ~6.9 ms per-frame sleep. **Earlier
 headless ms/frame numbers, `garden_fps.gd` included, were mostly that sleep.**
 
 | Where | Before | After |

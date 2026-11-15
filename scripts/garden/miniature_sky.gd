@@ -23,7 +23,7 @@ var _last_pos := Vector3.ZERO
 var _last_basis := Basis.IDENTITY
 var _last_fov := -1.0
 var _last_aspect := -1.0
-var redraws := 0                                      # tools/pan_trace.gd: requested miniature frames
+var redraws := 0                                      # tools/perf/pan_trace.gd: requested miniature frames
 var last_follow_frame := -1                            # the host frame whose pose is in the texture
 
 

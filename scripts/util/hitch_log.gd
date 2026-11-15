@@ -1,7 +1,7 @@
 class_name HitchLog
 extends RefCounted
 
-## Frame-time evidence shared by the live game and tools/pan_trace.gd. Expensive synchronous operations add a tag
+## Frame-time evidence shared by the live game and tools/perf/pan_trace.gd. Expensive synchronous operations add a tag
 ## while they run; Quality closes the frame on its next _process call. Live play keeps only aggregated samples and
 ## the last few long frames. No player data is recorded.
 

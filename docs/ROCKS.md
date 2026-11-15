@@ -34,7 +34,7 @@ Counts are from the lab's reference seed set (17 plus the role index); seeds can
 
 ## Lab and fitting
 
-Open `res://tools/rock_lab.tscn` in the Godot editor. The Inspector exposes role, seed, size, roughness, facets, and
+Open `res://tools/art/rock_lab.tscn` in the Godot editor. The Inspector exposes role, seed, size, roughness, facets, and
 flatten. The row shows every archetype; the wall and crossing below it exercise the fitting functions. Edit one
 reference at a time—start with `wall_stone` and `boulder`—then toggle `save_archetype`. Only after the silhouette is
 convincing should seeds and fitting variations be explored.
@@ -56,5 +56,5 @@ machine before/after total could not be collected in this sandbox: headless Godo
 rock-only geometry is now bounded by the table above; Claude should run those tools on the normal machine and record
 the resulting garden/woods totals in the dated report before shipping.
 
-For visual review, run `tools/rock_shots.gd` under X with the Compatibility renderer. It writes a six-row by
+For visual review, run `tools/capture/rock_shots.gd` under X with the Compatibility renderer. It writes a six-row by
 three-variation grid to `docs/archive/codex/shots/rocks_grid_v3.png`.
