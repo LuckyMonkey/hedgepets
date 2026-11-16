@@ -21,6 +21,12 @@ rm -rf build/web && mkdir -p build/web
 godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | grep -E "ERROR|savepack|DONE" | tail -3
 godot --headless --path . --export-pack "Woods Pack" build/web/woods.pck 2>&1 | grep -E "ERROR|savepack|DONE" | tail -3
 cp deploy/web/manifest.webmanifest deploy/web/icon-180.png deploy/web/icon-192.png deploy/web/icon-512.png build/web/   # the app bits (shell.html is the page)
+# Godot appends its own apple-touch-icon (index.apple-touch-icon.png) after ours, Safari takes the LAST one, and that file
+# isn't on Caddy's public list (only icon-180/192/512 + the manifest are), so iOS got a redirect and the home-screen tile
+# had no icon (owner 2026-11-15). Keep only ours.
+sed -i '/href="index.apple-touch-icon.png"/d' build/web/index.html
+rm -f build/web/index.apple-touch-icon.png build/web/index.apple-touch-icon.png.import
+grep -c 'rel="apple-touch-icon"' build/web/index.html | grep -qx 1 || { echo "expected exactly one apple-touch-icon in index.html"; exit 1; }
 ls -la build/web
 echo "== upload to fridge:/srv/apps/hedgepets"
 ssh fridge@fridge 'SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A mkdir -p /srv/apps/hedgepets/web && SUDO_ASKPASS=/home/fridge/.sudo-askpass sudo -A chown -R fridge:fridge /srv/apps/hedgepets'
