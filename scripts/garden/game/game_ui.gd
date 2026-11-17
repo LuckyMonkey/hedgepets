@@ -157,9 +157,13 @@ func _fill_journal() -> void:
 	# rumours: a few of the ones you haven't met, the nearest to noticing first
 	lines += "[b]Around the neighbourhood[/b]\n\n"
 	unseen.sort_custom(func(a, b) -> bool: return _missing(a.wants["notice"], counts) < _missing(b.wants["notice"], counts))
+	var locked: Array = unseen.filter(func(p) -> bool: return not FruitUnlocks.unlocked(p))
+	unseen = unseen.filter(func(p) -> bool: return FruitUnlocks.unlocked(p))
 	for p: CharacterArtProfile in unseen.slice(0, 4):
 		var vs: Array = SpeciesBuilder.variants_of(p).map(func(v) -> String: return SpeciesBuilder.PLANT_NAMES.get(v, v))
 		lines += "🐾 %s [color=#7a6a50]Seen near gardens growing %s.[/color]\n\n" % [p.hints["notice"], " or ".join(vs.slice(0, 2)) if vs.size() <= 2 else ", ".join(vs.slice(0, vs.size() - 1)) + " or " + vs[vs.size() - 1]]
+	if not locked.is_empty():             # visitors unlocked with Fruit on fridge.run (scripts/fruit_unlocks.gd)
+		lines += "🔒 [color=#7a6a50]%s could visit too, once you unlock them at the [url=fruit]Fruitstand[/url].[/color]\n\n" % ", ".join(locked.map(func(p) -> String: return "%s the %s" % [p.pet_name, p.species]))
 	lines += "\n[url=howto]❓ How to play[/url]     [url=feedback]💬 Tell us what you think[/url]\n"
 	_journal_text.text = lines
 
@@ -389,7 +393,10 @@ func _build_ui() -> void:
 	_journal_text.meta_clicked.connect(func(meta) -> void:
 		if str(meta) in ["feedback", "howto"]:          # the survey / the guide, on their own pages (a new tab on the web)
 			Telemetry.event("open_" + str(meta))
-			OS.shell_open("https://go.fridge.run/hedgepets/" + str(meta)))
+			OS.shell_open("https://go.fridge.run/hedgepets/" + str(meta))
+		elif str(meta) == "fruit":                      # unlock visitors with Fruit, on fridge.run
+			Telemetry.event("open_fruit")
+			OS.shell_open("https://go.fridge.run/fruit/stand#hp-hedgerow"))
 	_journal.add_child(_journal_text)
 	_ui.add_child(_journal)
 

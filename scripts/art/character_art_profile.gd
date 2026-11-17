@@ -26,6 +26,7 @@ extends Resource
 @export var wants := {"notice": {}, "visit": {}, "resident": {}}
 @export var hints := {"notice": "", "visit": "", "resident": ""}
 @export var starts_resident := false
+@export var dlc := ""                      # a Fruitstand add-on id (go.fridge.run/fruit): locked until owned (FruitUnlocks)
 
 ## Framing: what the camera looks at, and from how far, in the default three-quarter view.
 @export var frame_target := Vector3(0.15, 0.85, 0.0)

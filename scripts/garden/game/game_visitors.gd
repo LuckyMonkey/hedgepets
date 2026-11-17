@@ -92,7 +92,7 @@ func _visitors() -> void:
 		var next := state
 		match state:
 			"away":
-				if guests < capacity() and _notice_wait <= 0.0 and _met(p.wants["notice"], counts) and grows_for(p):
+				if guests < capacity() and _notice_wait <= 0.0 and _met(p.wants["notice"], counts) and grows_for(p) and FruitUnlocks.unlocked(p):
 					guests += 1
 					_notice_wait = notice_gap()
 					next = "noticed"

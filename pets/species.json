@@ -1,1510 +1,1622 @@
 [
- {
-  "name": "Russet",
-  "species": "red fox",
-  "plan": "quadruped",
-  "plant": "maple",
-  "palette": "crimson",
-  "wants": {
-   "notice": {
-    "leaf_pile": 1
-   },
-   "visit": {
-    "maple_planted": 1
-   },
-   "resident": {
-    "maple_grown": 2,
-    "branches": 1
-   }
+  {
+    "name": "Russet",
+    "species": "red fox",
+    "plan": "quadruped",
+    "plant": "maple",
+    "palette": "crimson",
+    "wants": {
+      "notice": {
+        "leaf_pile": 1
+      },
+      "visit": {
+        "maple_planted": 1
+      },
+      "resident": {
+        "maple_grown": 2,
+        "branches": 1
+      }
+    },
+    "hints": [
+      "A fox likes a leaf pile to pounce in.",
+      "A maple, for the colour.",
+      "Two maples and a branch to watch from."
+    ],
+    "skin": "c8642c",
+    "skin2": "f2e6d2",
+    "dark": "3a2620",
+    "ears": "pointy",
+    "snout": "long",
+    "tail": "bushy",
+    "tip": true,
+    "leg": 0.25,
+    "body": [
+      0.95,
+      0.9,
+      0.9
+    ],
+    "bloom": "b0502a"
   },
-  "hints": [
-   "A fox likes a leaf pile to pounce in.",
-   "A maple, for the colour.",
-   "Two maples and a branch to watch from."
-  ],
-  "skin": "c8642c",
-  "skin2": "f2e6d2",
-  "dark": "3a2620",
-  "ears": "pointy",
-  "snout": "long",
-  "tail": "bushy",
-  "tip": true,
-  "leg": 0.25,
-  "body": [
-   0.95,
-   0.9,
-   0.9
-  ],
-  "bloom": "b0502a"
- },
- {
-  "name": "Pocket",
-  "species": "eastern chipmunk",
-  "plan": "sitter",
-  "plant": "oak",
-  "palette": "autumn",
-  "wants": {
-   "notice": {
-    "rocks": 2
-   },
-   "visit": {
-    "woodpile": 1,
-    "oak_planted": 1
-   },
-   "resident": {
-    "oak_flowering": 1,
-    "log_pile": 1,
-    "acorn": 1
-   }
+  {
+    "name": "Pocket",
+    "species": "eastern chipmunk",
+    "plan": "sitter",
+    "plant": "oak",
+    "palette": "autumn",
+    "wants": {
+      "notice": {
+        "rocks": 2
+      },
+      "visit": {
+        "woodpile": 1,
+        "oak_planted": 1
+      },
+      "resident": {
+        "oak_flowering": 1,
+        "log_pile": 1,
+        "acorn": 1
+      }
+    },
+    "hints": [
+      "Chipmunks live under stone walls. Keep some rocks.",
+      "The woodpile is a fine place to live. And an oak sapling.",
+      "Acorns and a log pile to stash them in."
+    ],
+    "size": 0.55,
+    "skin": "b07848",
+    "skin2": "f0dcc0",
+    "ears": "round",
+    "snout": "short",
+    "tail": "thin",
+    "tail_color": "8a5a34",
+    "extras": [
+      "stripes",
+      "hands"
+    ],
+    "dark": "3a2a1e",
+    "teeth": true,
+    "eyes": 1.15
   },
-  "hints": [
-   "Chipmunks live under stone walls. Keep some rocks.",
-   "The woodpile is a fine place to live. And an oak sapling.",
-   "Acorns and a log pile to stash them in."
-  ],
-  "size": 0.55,
-  "skin": "b07848",
-  "skin2": "f0dcc0",
-  "ears": "round",
-  "snout": "short",
-  "tail": "thin",
-  "tail_color": "8a5a34",
-  "extras": [
-   "stripes",
-   "hands"
-  ],
-  "dark": "3a2a1e",
-  "teeth": true,
-  "eyes": 1.15
- },
- {
-  "name": "Dapple",
-  "species": "white-tailed fawn",
-  "plan": "quadruped",
-  "plant": "fern",
-  "palette": "bark",
-  "wants": {
-   "notice": {
-    "brush_pile": 1
-   },
-   "visit": {
-    "apples": 1,
-    "fern_grown": 1
-   },
-   "resident": {
-    "fern_flowering": 1,
-    "clover_grown": 2,
-    "apple": 1
-   }
+  {
+    "name": "Dapple",
+    "species": "white-tailed fawn",
+    "plan": "quadruped",
+    "plant": "fern",
+    "palette": "bark",
+    "wants": {
+      "notice": {
+        "brush_pile": 1
+      },
+      "visit": {
+        "apples": 1,
+        "fern_grown": 1
+      },
+      "resident": {
+        "fern_flowering": 1,
+        "clover_grown": 2,
+        "apple": 1
+      }
+    },
+    "hints": [
+      "A fawn slips out of the woods where there's cover: a brush pile.",
+      "Apples. Fawns love windfalls.",
+      "Ferns to hide in and clover to nibble."
+    ],
+    "skin": "b07848",
+    "skin2": "f2e6d2",
+    "dark": "3a2a1e",
+    "ears": "pointy",
+    "snout": "long",
+    "tail": "cotton",
+    "leg": 0.55,
+    "body": [
+      0.85,
+      0.85,
+      0.8
+    ],
+    "flowering": 0.85,
+    "bloom": "f6f0e0",
+    "eyes": 1.15
   },
-  "hints": [
-   "A fawn slips out of the woods where there's cover: a brush pile.",
-   "Apples. Fawns love windfalls.",
-   "Ferns to hide in and clover to nibble."
-  ],
-  "skin": "b07848",
-  "skin2": "f2e6d2",
-  "dark": "3a2a1e",
-  "ears": "pointy",
-  "snout": "long",
-  "tail": "cotton",
-  "leg": 0.55,
-  "body": [
-   0.85,
-   0.85,
-   0.8
-  ],
-  "flowering": 0.85,
-  "bloom": "f6f0e0",
-  "eyes": 1.15
- },
- {
-  "name": "Mulberry",
-  "species": "black bear cub",
-  "plan": "sitter",
-  "plant": "boxwood",
-  "palette": "dark",
-  "wants": {
-   "notice": {
-    "apples": 1
-   },
-   "visit": {
-    "rose_planted": 1
-   },
-   "resident": {
-    "rose_flowering": 1,
-    "grill": 1,
-    "tire": 1
-   }
+  {
+    "name": "Mulberry",
+    "species": "black bear cub",
+    "plan": "sitter",
+    "plant": "boxwood",
+    "palette": "dark",
+    "wants": {
+      "notice": {
+        "apples": 1
+      },
+      "visit": {
+        "rose_planted": 1
+      },
+      "resident": {
+        "rose_flowering": 1,
+        "grill": 1,
+        "tire": 1
+      }
+    },
+    "hints": [
+      "A bear cub can smell windfall apples a mile off.",
+      "Rose hips. Bears love them.",
+      "Roses in bloom, the grill to sniff, a tire to sit in."
+    ],
+    "size": 1.1,
+    "skin": "2e2a26",
+    "skin2": "b89a78",
+    "dark": "221e1a",
+    "ears": "round",
+    "snout": "short",
+    "tail": "short",
+    "extras": [
+      "hands"
+    ],
+    "eyes": 1.05
   },
-  "hints": [
-   "A bear cub can smell windfall apples a mile off.",
-   "Rose hips. Bears love them.",
-   "Roses in bloom, the grill to sniff, a tire to sit in."
-  ],
-  "size": 1.1,
-  "skin": "2e2a26",
-  "skin2": "b89a78",
-  "dark": "221e1a",
-  "ears": "round",
-  "snout": "short",
-  "tail": "short",
-  "extras": [
-   "hands"
-  ],
-  "eyes": 1.05
- },
- {
-  "name": "Juneberry",
-  "species": "striped skunk",
-  "plan": "quadruped",
-  "plant": "boxwood",
-  "palette": "dark",
-  "wants": {
-   "notice": {
-    "tire": 1
-   },
-   "visit": {
-    "log_pile": 1
-   },
-   "resident": {
-    "tire": 1,
-    "leaf_pile": 1
-   }
+  {
+    "name": "Juneberry",
+    "species": "striped skunk",
+    "plan": "quadruped",
+    "plant": "boxwood",
+    "palette": "dark",
+    "wants": {
+      "notice": {
+        "tire": 1
+      },
+      "visit": {
+        "log_pile": 1
+      },
+      "resident": {
+        "tire": 1,
+        "leaf_pile": 1
+      }
+    },
+    "hints": [
+      "Skunks den in old tires. Don't move it.",
+      "A log pile to snuffle under.",
+      "The tire and a leaf pile. She's polite, honestly."
+    ],
+    "size": 0.8,
+    "skin": "24221e",
+    "skin2": "2e2a26",
+    "dark": "1a1816",
+    "ears": "nubs",
+    "snout": "long",
+    "tail": "bushy",
+    "tip": true,
+    "extras": [
+      "blaze"
+    ],
+    "leg": 0.05,
+    "bloom": "f6f6ee",
+    "flowering": 0.1
   },
-  "hints": [
-   "Skunks den in old tires. Don't move it.",
-   "A log pile to snuffle under.",
-   "The tire and a leaf pile. She's polite, honestly."
-  ],
-  "size": 0.8,
-  "skin": "24221e",
-  "skin2": "2e2a26",
-  "dark": "1a1816",
-  "ears": "nubs",
-  "snout": "long",
-  "tail": "bushy",
-  "tip": true,
-  "extras": [
-   "blaze"
-  ],
-  "leg": 0.05,
-  "bloom": "f6f6ee",
-  "flowering": 0.1
- },
- {
-  "name": "Parsnip",
-  "species": "opossum",
-  "plan": "quadruped",
-  "plant": "sage",
-  "palette": "silver",
-  "wants": {
-   "notice": {
-    "pot": 1
-   },
-   "visit": {
-    "sage_planted": 1
-   },
-   "resident": {
-    "pot": 1,
-    "sage_grown": 1,
-    "pumpkin": 1
-   }
+  {
+    "name": "Parsnip",
+    "species": "opossum",
+    "plan": "quadruped",
+    "plant": "sage",
+    "palette": "silver",
+    "wants": {
+      "notice": {
+        "pot": 1
+      },
+      "visit": {
+        "sage_planted": 1
+      },
+      "resident": {
+        "pot": 1,
+        "sage_grown": 1,
+        "pumpkin": 1
+      }
+    },
+    "hints": [
+      "Opossums nap in tipped pots.",
+      "Sage. He rolls in it.",
+      "His pot, his sage, and a pumpkin to nibble."
+    ],
+    "size": 0.85,
+    "skin": "eeeae0",
+    "skin2": "f2eee6",
+    "dark": "2a2624",
+    "ear_color": "2a2624",
+    "ears": "round",
+    "snout": "long",
+    "tail": "thin",
+    "tail_color": "e8b4ac",
+    "leg": 0.12,
+    "eyes": 1.1
   },
-  "hints": [
-   "Opossums nap in tipped pots.",
-   "Sage. He rolls in it.",
-   "His pot, his sage, and a pumpkin to nibble."
-  ],
-  "size": 0.85,
-  "skin": "eeeae0",
-  "skin2": "f2eee6",
-  "dark": "2a2624",
-  "ear_color": "2a2624",
-  "ears": "round",
-  "snout": "long",
-  "tail": "thin",
-  "tail_color": "e8b4ac",
-  "leg": 0.12,
-  "eyes": 1.1
- },
- {
-  "name": "Burrow",
-  "species": "woodchuck",
-  "plan": "sitter",
-  "plant": "clover",
-  "palette": "bark",
-  "wants": {
-   "notice": {
-    "pumpkin": 2
-   },
-   "visit": {
-    "cleared": 4
-   },
-   "resident": {
-    "clover_flowering": 2,
-    "cleared": 6
-   }
+  {
+    "name": "Burrow",
+    "species": "woodchuck",
+    "plan": "sitter",
+    "plant": "clover",
+    "palette": "bark",
+    "wants": {
+      "notice": {
+        "pumpkin": 2
+      },
+      "visit": {
+        "cleared": 4
+      },
+      "resident": {
+        "clover_flowering": 2,
+        "cleared": 6
+      }
+    },
+    "hints": [
+      "Woodchucks can't resist pumpkins.",
+      "Room to dig. Clear some junk.",
+      "Lots of clover and lots of room. He'll stay till spring."
+    ],
+    "size": 1.0,
+    "skin": "8a6a48",
+    "skin2": "c8b090",
+    "dark": "3a2a1e",
+    "ears": "nubs",
+    "snout": "short",
+    "tail": "short",
+    "teeth": true,
+    "mouth": "beaver",
+    "extras": [
+      "hands"
+    ],
+    "body": [
+      1.15,
+      0.95,
+      1.1
+    ]
   },
-  "hints": [
-   "Woodchucks can't resist pumpkins.",
-   "Room to dig. Clear some junk.",
-   "Lots of clover and lots of room. He'll stay till spring."
-  ],
-  "size": 1.0,
-  "skin": "8a6a48",
-  "skin2": "c8b090",
-  "dark": "3a2a1e",
-  "ears": "nubs",
-  "snout": "short",
-  "tail": "short",
-  "teeth": true,
-  "mouth": "beaver",
-  "extras": [
-   "hands"
-  ],
-  "body": [
-   1.15,
-   0.95,
-   1.1
-  ]
- },
- {
-  "name": "Bristlecone",
-  "species": "porcupine",
-  "plan": "round",
-  "plant": "pine",
-  "palette": "pine",
-  "wants": {
-   "notice": {
-    "pine_planted": 1
-   },
-   "visit": {
-    "brush_pile": 1,
-    "pine_grown": 1
-   },
-   "resident": {
-    "pine_flowering": 1,
-    "branches": 1
-   }
+  {
+    "name": "Bristlecone",
+    "species": "porcupine",
+    "plan": "round",
+    "plant": "pine",
+    "palette": "pine",
+    "wants": {
+      "notice": {
+        "pine_planted": 1
+      },
+      "visit": {
+        "brush_pile": 1,
+        "pine_grown": 1
+      },
+      "resident": {
+        "pine_flowering": 1,
+        "branches": 1
+      }
+    },
+    "hints": [
+      "A porcupine likes the smell of new pine.",
+      "A brush pile to hide under, and a grown pine.",
+      "A pine with cones and a branch to perch on."
+    ],
+    "size": 0.9,
+    "skin": "4a3a2e",
+    "skin2": "6a5a48",
+    "dark": "2a2018",
+    "ears": "nubs",
+    "snout": "short",
+    "tail": "short",
+    "eyes": 1.1
   },
-  "hints": [
-   "A porcupine likes the smell of new pine.",
-   "A brush pile to hide under, and a grown pine.",
-   "A pine with cones and a branch to perch on."
-  ],
-  "size": 0.9,
-  "skin": "4a3a2e",
-  "skin2": "6a5a48",
-  "dark": "2a2018",
-  "ears": "nubs",
-  "snout": "short",
-  "tail": "short",
-  "eyes": 1.1
- },
- {
-  "name": "Ripple",
-  "species": "river otter",
-  "plan": "quadruped",
-  "plant": "willow",
-  "palette": "bark",
-  "wants": {
-   "notice": {
-    "puddle": 1
-   },
-   "visit": {
-    "rocks": 3
-   },
-   "resident": {
-    "puddle": 1,
-    "willow_flowering": 1
-   }
+  {
+    "name": "Ripple",
+    "species": "river otter",
+    "plan": "quadruped",
+    "plant": "willow",
+    "palette": "bark",
+    "wants": {
+      "notice": {
+        "puddle": 1
+      },
+      "visit": {
+        "rocks": 3
+      },
+      "resident": {
+        "puddle": 1,
+        "willow_flowering": 1
+      }
+    },
+    "hints": [
+      "Otters follow water.",
+      "Rocks to slide off.",
+      "A willow by the water. Perfect."
+    ],
+    "size": 0.85,
+    "skin": "6a4a34",
+    "skin2": "d8c0a0",
+    "ears": "nubs",
+    "snout": "short",
+    "tail": "taper",
+    "body": [
+      1.3,
+      0.8,
+      0.8
+    ],
+    "leg": 0.05
   },
-  "hints": [
-   "Otters follow water.",
-   "Rocks to slide off.",
-   "A willow by the water. Perfect."
-  ],
-  "size": 0.85,
-  "skin": "6a4a34",
-  "skin2": "d8c0a0",
-  "ears": "nubs",
-  "snout": "short",
-  "tail": "taper",
-  "body": [
-   1.3,
-   0.8,
-   0.8
-  ],
-  "leg": 0.05
- },
- {
-  "name": "Larkspur",
-  "species": "bobcat",
-  "plan": "quadruped",
-  "plant": "oak",
-  "palette": "autumn",
-  "wants": {
-   "notice": {
-    "lawn_chair": 1
-   },
-   "visit": {
-    "brush_pile": 1,
-    "branches": 1
-   },
-   "resident": {
-    "lawn_chair": 1,
-    "oak_grown": 2
-   }
+  {
+    "name": "Larkspur",
+    "species": "bobcat",
+    "plan": "quadruped",
+    "plant": "oak",
+    "palette": "autumn",
+    "wants": {
+      "notice": {
+        "lawn_chair": 1
+      },
+      "visit": {
+        "brush_pile": 1,
+        "branches": 1
+      },
+      "resident": {
+        "lawn_chair": 1,
+        "oak_grown": 2
+      }
+    },
+    "hints": [
+      "A bobcat would nap under that chair.",
+      "A brush pile and a branch to stalk along.",
+      "Two oaks and her chair. She'll pretend she doesn't care."
+    ],
+    "skin": "c08a58",
+    "skin2": "f0e0c8",
+    "dark": "3a2a1e",
+    "ears": "tufts",
+    "snout": "short",
+    "tail": "short",
+    "tail_color": "3a2a1e",
+    "leg": 0.28,
+    "eyes": 1.15
   },
-  "hints": [
-   "A bobcat would nap under that chair.",
-   "A brush pile and a branch to stalk along.",
-   "Two oaks and her chair. She'll pretend she doesn't care."
-  ],
-  "skin": "c08a58",
-  "skin2": "f0e0c8",
-  "dark": "3a2a1e",
-  "ears": "tufts",
-  "snout": "short",
-  "tail": "short",
-  "tail_color": "3a2a1e",
-  "leg": 0.28,
-  "eyes": 1.15
- },
- {
-  "name": "Peeper",
-  "species": "spring peeper",
-  "plan": "round",
-  "plant": "clover",
-  "palette": "spring",
-  "wants": {
-   "notice": {
-    "puddle": 1
-   },
-   "visit": {
-    "clover_planted": 1
-   },
-   "resident": {
-    "puddle": 1,
-    "clover_grown": 1,
-    "rocks": 2
-   }
+  {
+    "name": "Peeper",
+    "species": "spring peeper",
+    "plan": "round",
+    "plant": "clover",
+    "palette": "spring",
+    "wants": {
+      "notice": {
+        "puddle": 1
+      },
+      "visit": {
+        "clover_planted": 1
+      },
+      "resident": {
+        "puddle": 1,
+        "clover_grown": 1,
+        "rocks": 2
+      }
+    },
+    "hints": [
+      "Something is peeping by the puddle at dusk.",
+      "Low clover to hide in.",
+      "The puddle, clover, a couple of stones."
+    ],
+    "size": 0.55,
+    "skin": "b89a5a",
+    "skin2": "e8d8a8",
+    "ears": "none",
+    "snout": "none",
+    "tail": "none",
+    "eye_dir": [
+      0.4,
+      0.7,
+      0.6
+    ],
+    "eyes": 1.6,
+    "head": 1.25
   },
-  "hints": [
-   "Something is peeping by the puddle at dusk.",
-   "Low clover to hide in.",
-   "The puddle, clover, a couple of stones."
-  ],
-  "size": 0.55,
-  "skin": "b89a5a",
-  "skin2": "e8d8a8",
-  "ears": "none",
-  "snout": "none",
-  "tail": "none",
-  "eye_dir": [
-   0.4,
-   0.7,
-   0.6
-  ],
-  "eyes": 1.6,
-  "head": 1.25
- },
- {
-  "name": "Cinder",
-  "species": "red eft",
-  "plan": "long",
-  "plant": "maple",
-  "palette": "crimson",
-  "wants": {
-   "notice": {
-    "leaf_pile": 1
-   },
-   "visit": {
-    "puddle": 1
-   },
-   "resident": {
-    "leaf_pile": 1,
-    "puddle": 1,
-    "maple_grown": 1
-   }
+  {
+    "name": "Cinder",
+    "species": "red eft",
+    "plan": "long",
+    "plant": "maple",
+    "palette": "crimson",
+    "wants": {
+      "notice": {
+        "leaf_pile": 1
+      },
+      "visit": {
+        "puddle": 1
+      },
+      "resident": {
+        "leaf_pile": 1,
+        "puddle": 1,
+        "maple_grown": 1
+      }
+    },
+    "hints": [
+      "A red eft wanders out of the leaves after rain.",
+      "Damp ground: the puddle.",
+      "Leaves, water, and a maple to match."
+    ],
+    "size": 0.6,
+    "skin": "e0642a",
+    "dark": "b04a20",
+    "ears": "none",
+    "snout": "none",
+    "tail": "none",
+    "taper": false,
+    "segments": 5,
+    "eyes": 1.3
   },
-  "hints": [
-   "A red eft wanders out of the leaves after rain.",
-   "Damp ground: the puddle.",
-   "Leaves, water, and a maple to match."
-  ],
-  "size": 0.6,
-  "skin": "e0642a",
-  "dark": "b04a20",
-  "ears": "none",
-  "snout": "none",
-  "tail": "none",
-  "taper": false,
-  "segments": 5,
-  "eyes": 1.3
- },
- {
-  "name": "Ribbon",
-  "species": "garter snake",
-  "plan": "long",
-  "plant": "ivy",
-  "palette": "spring",
-  "wants": {
-   "notice": {
-    "rocks": 4
-   },
-   "visit": {
-    "ivy_planted": 1
-   },
-   "resident": {
-    "rocks": 3,
-    "ivy_grown": 2
-   }
+  {
+    "name": "Ribbon",
+    "species": "garter snake",
+    "plan": "long",
+    "plant": "ivy",
+    "palette": "spring",
+    "wants": {
+      "notice": {
+        "rocks": 4
+      },
+      "visit": {
+        "ivy_planted": 1
+      },
+      "resident": {
+        "rocks": 3,
+        "ivy_grown": 2
+      }
+    },
+    "hints": [
+      "Garter snakes bask on warm rocks.",
+      "Ivy to slither through.",
+      "Rocks to bask on and ivy to hide in. Harmless, and handy."
+    ],
+    "size": 0.75,
+    "skin": "4a6a3a",
+    "ears": "none",
+    "snout": "none",
+    "tail": "none",
+    "segments": 7,
+    "eyes": 1.2
   },
-  "hints": [
-   "Garter snakes bask on warm rocks.",
-   "Ivy to slither through.",
-   "Rocks to bask on and ivy to hide in. Harmless, and handy."
-  ],
-  "size": 0.75,
-  "skin": "4a6a3a",
-  "ears": "none",
-  "snout": "none",
-  "tail": "none",
-  "segments": 7,
-  "eyes": 1.2
- },
- {
-  "name": "Gobbles",
-  "species": "wild turkey",
-  "plan": "bird",
-  "plant": "oak",
-  "palette": "bark",
-  "wants": {
-   "notice": {
-    "clearing": 1
-   },
-   "visit": {
-    "oak_grown": 1
-   },
-   "resident": {
-    "oak_flowering": 1,
-    "cleared": 8
-   }
+  {
+    "name": "Gobbles",
+    "species": "wild turkey",
+    "plan": "bird",
+    "plant": "oak",
+    "palette": "bark",
+    "wants": {
+      "notice": {
+        "clearing": 1
+      },
+      "visit": {
+        "oak_grown": 1
+      },
+      "resident": {
+        "oak_flowering": 1,
+        "cleared": 8
+      }
+    },
+    "hints": [
+      "Turkeys come out where the grass is open and sunny.",
+      "A grown oak.",
+      "Acorns and a wide clear lawn to strut on."
+    ],
+    "size": 1.3,
+    "skin": "c8786a",
+    "beak": "d8b070",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "fan",
+    "extras": [
+      "wattle"
+    ],
+    "leg": 0.35,
+    "neck": 0.15,
+    "head": 0.85,
+    "fan": 2.2
   },
-  "hints": [
-   "Turkeys come out where the grass is open and sunny.",
-   "A grown oak.",
-   "Acorns and a wide clear lawn to strut on."
-  ],
-  "size": 1.3,
-  "skin": "c8786a",
-  "beak": "d8b070",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "fan",
-  "extras": [
-   "wattle"
-  ],
-  "leg": 0.35,
-  "neck": 0.15,
-  "head": 0.85,
-  "fan": 2.2
- },
- {
-  "name": "Tuppence",
-  "species": "black-capped chickadee",
-  "plan": "bird",
-  "plant": "boxwood",
-  "palette": "snow",
-  "wants": {
-   "notice": {
-    "pine_planted": 1
-   },
-   "visit": {
-    "feeder": 1
-   },
-   "resident": {
-    "pine_grown": 1,
-    "boxwood_grown": 1,
-    "feather": 1
-   }
+  {
+    "name": "Tuppence",
+    "species": "black-capped chickadee",
+    "plan": "bird",
+    "plant": "boxwood",
+    "palette": "snow",
+    "wants": {
+      "notice": {
+        "pine_planted": 1
+      },
+      "visit": {
+        "feeder": 1
+      },
+      "resident": {
+        "pine_grown": 1,
+        "boxwood_grown": 1,
+        "feather": 1
+      }
+    },
+    "hints": [
+      "Chick-a-dee-dee-dee! A pine seedling caught her eye.",
+      "A feeder full of seed.",
+      "A pine and a boxwood to dart between."
+    ],
+    "size": 0.55,
+    "skin": "f2eee4",
+    "beak": "2a2624",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "fan",
+    "extras": [
+      "cap",
+      "bib"
+    ],
+    "dark": "1e1c1a",
+    "eyes": 1.2,
+    "head": 1.15
   },
-  "hints": [
-   "Chick-a-dee-dee-dee! A pine seedling caught her eye.",
-   "A feeder full of seed.",
-   "A pine and a boxwood to dart between."
-  ],
-  "size": 0.55,
-  "skin": "f2eee4",
-  "beak": "2a2624",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "fan",
-  "extras": [
-   "cap",
-   "bib"
-  ],
-  "dark": "1e1c1a",
-  "eyes": 1.2,
-  "head": 1.15
- },
- {
-  "name": "Cranberry",
-  "species": "northern cardinal",
-  "plan": "bird",
-  "plant": "maple",
-  "palette": "cardinal",
-  "wants": {
-   "notice": {
-    "feeder": 1
-   },
-   "visit": {
-    "maple_planted": 1
-   },
-   "resident": {
-    "maple_grown": 1,
-    "rose_grown": 1
-   }
+  {
+    "name": "Cranberry",
+    "species": "northern cardinal",
+    "plan": "bird",
+    "plant": "maple",
+    "palette": "cardinal",
+    "wants": {
+      "notice": {
+        "feeder": 1
+      },
+      "visit": {
+        "maple_planted": 1
+      },
+      "resident": {
+        "maple_grown": 1,
+        "rose_grown": 1
+      }
+    },
+    "hints": [
+      "Cardinals come to feeders first.",
+      "A maple.",
+      "A maple to sing from and roses below."
+    ],
+    "size": 0.6,
+    "skin": "c83a2a",
+    "beak": "e88a30",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "fan",
+    "extras": [
+      "crest",
+      "eyepatch"
+    ],
+    "dark": "2a1e1c",
+    "eyes": 1.15,
+    "head": 1.1
   },
-  "hints": [
-   "Cardinals come to feeders first.",
-   "A maple.",
-   "A maple to sing from and roses below."
-  ],
-  "size": 0.6,
-  "skin": "c83a2a",
-  "beak": "e88a30",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "fan",
-  "extras": [
-   "crest",
-   "eyepatch"
-  ],
-  "dark": "2a1e1c",
-  "eyes": 1.15,
-  "head": 1.1
- },
- {
-  "name": "Jay",
-  "species": "blue jay",
-  "plan": "bird",
-  "plant": "oak",
-  "palette": "blue",
-  "wants": {
-   "notice": {
-    "oak_planted": 1
-   },
-   "visit": {
-    "sticks": 4
-   },
-   "resident": {
-    "oak_flowering": 1,
-    "has_chipmunk": 1,
-    "feeder": 1,
-    "acorn": 1
-   }
+  {
+    "name": "Jay",
+    "species": "blue jay",
+    "plan": "bird",
+    "plant": "oak",
+    "palette": "blue",
+    "wants": {
+      "notice": {
+        "oak_planted": 1
+      },
+      "visit": {
+        "sticks": 4
+      },
+      "resident": {
+        "oak_flowering": 1,
+        "has_chipmunk": 1,
+        "feeder": 1,
+        "acorn": 1
+      }
+    },
+    "hints": [
+      "A loud jay is shouting about your oak.",
+      "Sticks for a big messy nest.",
+      "Acorns, a feeder to boss, and the chipmunk to argue with."
+    ],
+    "size": 0.7,
+    "skin": "6a8ab8",
+    "beak": "2a2624",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "fan",
+    "extras": [
+      "crest",
+      "bib"
+    ],
+    "dark": "2a2a2e",
+    "eyes": 1.15,
+    "head": 1.05
   },
-  "hints": [
-   "A loud jay is shouting about your oak.",
-   "Sticks for a big messy nest.",
-   "Acorns, a feeder to boss, and the chipmunk to argue with."
-  ],
-  "size": 0.7,
-  "skin": "6a8ab8",
-  "beak": "2a2624",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "fan",
-  "extras": [
-   "crest",
-   "bib"
-  ],
-  "dark": "2a2a2e",
-  "eyes": 1.15,
-  "head": 1.05
- },
- {
-  "name": "Robin",
-  "species": "American robin",
-  "plan": "bird",
-  "plant": "fern",
-  "palette": "bark",
-  "wants": {
-   "notice": {
-    "clearing": 1
-   },
-   "visit": {
-    "puddle": 1
-   },
-   "resident": {
-    "bath": 1,
-    "cleared": 5,
-    "fern_grown": 1
-   }
+  {
+    "name": "Robin",
+    "species": "American robin",
+    "plan": "bird",
+    "plant": "fern",
+    "palette": "bark",
+    "wants": {
+      "notice": {
+        "clearing": 1
+      },
+      "visit": {
+        "puddle": 1
+      },
+      "resident": {
+        "bath": 1,
+        "cleared": 5,
+        "fern_grown": 1
+      }
+    },
+    "hints": [
+      "Robins hunt worms on open lawn: clear the middle of the yard.",
+      "A puddle to bathe in.",
+      "A bird bath, open lawn and a fern for the nest."
+    ],
+    "size": 0.65,
+    "skin": "5a5048",
+    "beak": "e8b030",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "fan",
+    "extras": [
+      "belly"
+    ],
+    "skin2": "d8743a",
+    "eyes": 1.1
   },
-  "hints": [
-   "Robins hunt worms on open lawn: clear the middle of the yard.",
-   "A puddle to bathe in.",
-   "A bird bath, open lawn and a fern for the nest."
-  ],
-  "size": 0.65,
-  "skin": "5a5048",
-  "beak": "e8b030",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "fan",
-  "extras": [
-   "belly"
-  ],
-  "skin2": "d8743a",
-  "eyes": 1.1
- },
- {
-  "name": "Puddlejump",
-  "species": "mallard",
-  "plan": "bird",
-  "plant": "willow",
-  "palette": "spring",
-  "wants": {
-   "notice": {
-    "puddle": 1
-   },
-   "visit": {
-    "willow_planted": 1
-   },
-   "resident": {
-    "puddle": 1,
-    "willow_grown": 1,
-    "has_spring peeper": 1
-   }
+  {
+    "name": "Puddlejump",
+    "species": "mallard",
+    "plan": "bird",
+    "plant": "willow",
+    "palette": "spring",
+    "wants": {
+      "notice": {
+        "puddle": 1
+      },
+      "visit": {
+        "willow_planted": 1
+      },
+      "resident": {
+        "puddle": 1,
+        "willow_grown": 1,
+        "has_spring peeper": 1
+      }
+    },
+    "hints": [
+      "Ducks land where there's water.",
+      "A willow by the puddle.",
+      "The puddle, a willow, and a peeper for company."
+    ],
+    "size": 0.85,
+    "skin": "2e6a4a",
+    "beak": "e8c040",
+    "ears": "none",
+    "snout": "bill",
+    "tail": "short",
+    "tail_color": "2a2a2a",
+    "extras": [
+      "ring"
+    ],
+    "skin2": "f2f0e6",
+    "eyes": 1.0
   },
-  "hints": [
-   "Ducks land where there's water.",
-   "A willow by the puddle.",
-   "The puddle, a willow, and a peeper for company."
-  ],
-  "size": 0.85,
-  "skin": "2e6a4a",
-  "beak": "e8c040",
-  "ears": "none",
-  "snout": "bill",
-  "tail": "short",
-  "tail_color": "2a2a2a",
-  "extras": [
-   "ring"
-  ],
-  "skin2": "f2f0e6",
-  "eyes": 1.0
- },
- {
-  "name": "Birchwick",
-  "species": "barred owl",
-  "plan": "bird",
-  "plant": "oak",
-  "palette": "bark",
-  "wants": {
-   "notice": {
-    "branches": 1
-   },
-   "visit": {
-    "oak_grown": 1
-   },
-   "resident": {
-    "oak_grown": 2,
-    "pine_grown": 1
-   }
+  {
+    "name": "Birchwick",
+    "species": "barred owl",
+    "plan": "bird",
+    "plant": "oak",
+    "palette": "bark",
+    "wants": {
+      "notice": {
+        "branches": 1
+      },
+      "visit": {
+        "oak_grown": 1
+      },
+      "resident": {
+        "oak_grown": 2,
+        "pine_grown": 1
+      }
+    },
+    "hints": [
+      "Who cooks for you? Something on that branch.",
+      "A grown oak to roost in.",
+      "Tall trees: two oaks and a pine."
+    ],
+    "size": 0.95,
+    "skin": "b8a488",
+    "beak": "e0c060",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "short",
+    "extras": [
+      "facedisc"
+    ],
+    "skin2": "e8dcc6",
+    "eyes": 1.45,
+    "head": 1.25
   },
-  "hints": [
-   "Who cooks for you? Something on that branch.",
-   "A grown oak to roost in.",
-   "Tall trees: two oaks and a pine."
-  ],
-  "size": 0.95,
-  "skin": "b8a488",
-  "beak": "e0c060",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "short",
-  "extras": [
-   "facedisc"
-  ],
-  "skin2": "e8dcc6",
-  "eyes": 1.45,
-  "head": 1.25
- },
- {
-  "name": "Vesper",
-  "species": "little brown bat",
-  "plan": "sitter",
-  "plant": "lavender",
-  "palette": "lavender",
-  "wants": {
-   "notice": {
-    "lawn_chair": 1
-   },
-   "visit": {
-    "lavender_planted": 1
-   },
-   "resident": {
-    "lavender_flowering": 1,
-    "lawn_chair": 1
-   }
+  {
+    "name": "Vesper",
+    "species": "little brown bat",
+    "plan": "sitter",
+    "plant": "lavender",
+    "palette": "lavender",
+    "wants": {
+      "notice": {
+        "lawn_chair": 1
+      },
+      "visit": {
+        "lavender_planted": 1
+      },
+      "resident": {
+        "lavender_flowering": 1,
+        "lawn_chair": 1
+      }
+    },
+    "hints": [
+      "Something hangs under the lawn chair at dusk.",
+      "Lavender: it brings the moths.",
+      "Lavender in bloom and the chair to hang under."
+    ],
+    "size": 0.5,
+    "skin": "6a4a34",
+    "skin2": "8a6a50",
+    "ears": "biground",
+    "snout": "short",
+    "tail": "none",
+    "extras": [
+      "wings"
+    ],
+    "eyes": 1.2
   },
-  "hints": [
-   "Something hangs under the lawn chair at dusk.",
-   "Lavender: it brings the moths.",
-   "Lavender in bloom and the chair to hang under."
-  ],
-  "size": 0.5,
-  "skin": "6a4a34",
-  "skin2": "8a6a50",
-  "ears": "biground",
-  "snout": "short",
-  "tail": "none",
-  "extras": [
-   "wings"
-  ],
-  "eyes": 1.2
- },
- {
-  "name": "Fernwick",
-  "species": "star-nosed mole",
-  "plan": "round",
-  "plant": "boxwood",
-  "palette": "dark",
-  "wants": {
-   "notice": {
-    "leaf_pile": 1
-   },
-   "visit": {
-    "puddle": 1
-   },
-   "resident": {
-    "puddle": 1,
-    "cleared": 4
-   }
+  {
+    "name": "Fernwick",
+    "species": "star-nosed mole",
+    "plan": "round",
+    "plant": "boxwood",
+    "palette": "dark",
+    "wants": {
+      "notice": {
+        "leaf_pile": 1
+      },
+      "visit": {
+        "puddle": 1
+      },
+      "resident": {
+        "puddle": 1,
+        "cleared": 4
+      }
+    },
+    "hints": [
+      "Little tunnels under the leaf pile...",
+      "Soft wet ground.",
+      "Water and room to dig."
+    ],
+    "size": 0.6,
+    "skin": "2a2622",
+    "ears": "none",
+    "snout": "star",
+    "tail": "thin",
+    "tail_color": "2a2622",
+    "eyes": 0.6
   },
-  "hints": [
-   "Little tunnels under the leaf pile...",
-   "Soft wet ground.",
-   "Water and room to dig."
-  ],
-  "size": 0.6,
-  "skin": "2a2622",
-  "ears": "none",
-  "snout": "star",
-  "tail": "thin",
-  "tail_color": "2a2622",
-  "eyes": 0.6
- },
- {
-  "name": "Snowdrop",
-  "species": "snowshoe hare",
-  "plan": "sitter",
-  "plant": "boxwood",
-  "palette": "snow",
-  "wants": {
-   "notice": {
-    "clover_planted": 1
-   },
-   "visit": {
-    "clover_grown": 2
-   },
-   "resident": {
-    "clover_flowering": 1,
-    "boxwood_grown": 1
-   }
+  {
+    "name": "Snowdrop",
+    "species": "snowshoe hare",
+    "plan": "sitter",
+    "plant": "boxwood",
+    "palette": "snow",
+    "wants": {
+      "notice": {
+        "clover_planted": 1
+      },
+      "visit": {
+        "clover_grown": 2
+      },
+      "resident": {
+        "clover_flowering": 1,
+        "boxwood_grown": 1
+      }
+    },
+    "hints": [
+      "Big feet at the gap in the fence.",
+      "Clover, lots.",
+      "Clover in flower and a boxwood to hide behind."
+    ],
+    "size": 0.85,
+    "skin": "f2f0e8",
+    "skin2": "f6f4ee",
+    "ears": "long",
+    "snout": "short",
+    "tail": "cotton",
+    "teeth": true,
+    "mouth": "bunny",
+    "eyes": 1.15,
+    "ear_color": "eae6dc"
   },
-  "hints": [
-   "Big feet at the gap in the fence.",
-   "Clover, lots.",
-   "Clover in flower and a boxwood to hide behind."
-  ],
-  "size": 0.85,
-  "skin": "f2f0e8",
-  "skin2": "f6f4ee",
-  "ears": "long",
-  "snout": "short",
-  "tail": "cotton",
-  "teeth": true,
-  "mouth": "bunny",
-  "eyes": 1.15,
-  "ear_color": "eae6dc"
- },
- {
-  "name": "Thimble",
-  "species": "deer mouse",
-  "plan": "sitter",
-  "plant": "clover",
-  "palette": "spring",
-  "wants": {
-   "notice": {
-    "pot": 1
-   },
-   "visit": {
-    "clover_planted": 1
-   },
-   "resident": {
-    "pot": 1,
-    "clover_flowering": 1
-   }
+  {
+    "name": "Thimble",
+    "species": "deer mouse",
+    "plan": "sitter",
+    "plant": "clover",
+    "palette": "spring",
+    "wants": {
+      "notice": {
+        "pot": 1
+      },
+      "visit": {
+        "clover_planted": 1
+      },
+      "resident": {
+        "pot": 1,
+        "clover_flowering": 1
+      }
+    },
+    "hints": [
+      "A tiny nose in the tipped pot.",
+      "Clover seeds.",
+      "Her pot and clover in flower."
+    ],
+    "size": 0.42,
+    "skin": "a8825e",
+    "skin2": "f2e6da",
+    "ears": "mouse",
+    "snout": "short",
+    "tail": "thin",
+    "tail_color": "e8b4ac",
+    "extras": [
+      "hands"
+    ],
+    "eyes": 1.3
   },
-  "hints": [
-   "A tiny nose in the tipped pot.",
-   "Clover seeds.",
-   "Her pot and clover in flower."
-  ],
-  "size": 0.42,
-  "skin": "a8825e",
-  "skin2": "f2e6da",
-  "ears": "mouse",
-  "snout": "short",
-  "tail": "thin",
-  "tail_color": "e8b4ac",
-  "extras": [
-   "hands"
-  ],
-  "eyes": 1.3
- },
- {
-  "name": "Monarch",
-  "species": "monarch caterpillar",
-  "plan": "long",
-  "plant": "jasmine",
-  "palette": "golden",
-  "wants": {
-   "notice": {
-    "jasmine_planted": 1
-   },
-   "visit": {
-    "jasmine_grown": 1
-   },
-   "resident": {
-    "jasmine_flowering": 2
-   }
+  {
+    "name": "Monarch",
+    "species": "monarch caterpillar",
+    "plan": "long",
+    "plant": "jasmine",
+    "palette": "golden",
+    "wants": {
+      "notice": {
+        "jasmine_planted": 1
+      },
+      "visit": {
+        "jasmine_grown": 1
+      },
+      "resident": {
+        "jasmine_flowering": 2
+      }
+    },
+    "hints": [
+      "A stripy someone is looking for flowers.",
+      "Leaves to munch.",
+      "Lots of flowers. Something wonderful might happen."
+    ],
+    "size": 0.55,
+    "skin": "2a2a2a",
+    "dark": "1e1e1e",
+    "ears": "none",
+    "snout": "none",
+    "tail": "none",
+    "taper": false,
+    "segments": 6,
+    "extras": [
+      "antennae"
+    ],
+    "eyes": 1.2
   },
-  "hints": [
-   "A stripy someone is looking for flowers.",
-   "Leaves to munch.",
-   "Lots of flowers. Something wonderful might happen."
-  ],
-  "size": 0.55,
-  "skin": "2a2a2a",
-  "dark": "1e1e1e",
-  "ears": "none",
-  "snout": "none",
-  "tail": "none",
-  "taper": false,
-  "segments": 6,
-  "extras": [
-   "antennae"
-  ],
-  "eyes": 1.2
- },
- {
-  "name": "Nutmeg",
-  "species": "eastern gray squirrel",
-  "plan": "sitter",
-  "plant": "oak",
-  "palette": "silver",
-  "wants": {
-   "notice": {
-    "branches": 1
-   },
-   "visit": {
-    "oak_planted": 1
-   },
-   "resident": {
-    "oak_flowering": 1,
-    "feeder": 1,
-    "sticks": 2
-   }
+  {
+    "name": "Nutmeg",
+    "species": "eastern gray squirrel",
+    "plan": "sitter",
+    "plant": "oak",
+    "palette": "silver",
+    "wants": {
+      "notice": {
+        "branches": 1
+      },
+      "visit": {
+        "oak_planted": 1
+      },
+      "resident": {
+        "oak_flowering": 1,
+        "feeder": 1,
+        "sticks": 2
+      }
+    },
+    "hints": [
+      "A gray squirrel is running the fence rail.",
+      "An oak. Always an oak.",
+      "Acorns, a feeder to raid, and twigs for a drey."
+    ],
+    "size": 0.75,
+    "skin": "9a9a90",
+    "skin2": "eceae0",
+    "ears": "pointy",
+    "snout": "short",
+    "tail": "bushy",
+    "extras": [
+      "hands"
+    ],
+    "teeth": true,
+    "mouth": "bunny",
+    "eyes": 1.15
   },
-  "hints": [
-   "A gray squirrel is running the fence rail.",
-   "An oak. Always an oak.",
-   "Acorns, a feeder to raid, and twigs for a drey."
-  ],
-  "size": 0.75,
-  "skin": "9a9a90",
-  "skin2": "eceae0",
-  "ears": "pointy",
-  "snout": "short",
-  "tail": "bushy",
-  "extras": [
-   "hands"
-  ],
-  "teeth": true,
-  "mouth": "bunny",
-  "eyes": 1.15
- },
- {
-  "name": "Sagebrush",
-  "species": "eastern coyote",
-  "plan": "quadruped",
-  "plant": "willow",
-  "palette": "golden",
-  "wants": {
-   "notice": {
-    "cleared": 6
-   },
-   "visit": {
-    "willow_grown": 1
-   },
-   "resident": {
-    "willow_grown": 2,
-    "rocks": 3
-   }
+  {
+    "name": "Sagebrush",
+    "species": "eastern coyote",
+    "plan": "quadruped",
+    "plant": "willow",
+    "palette": "golden",
+    "wants": {
+      "notice": {
+        "cleared": 6
+      },
+      "visit": {
+        "willow_grown": 1
+      },
+      "resident": {
+        "willow_grown": 2,
+        "rocks": 3
+      }
+    },
+    "hints": [
+      "Something yips at night past the fence.",
+      "Long grass: a willow.",
+      "Willows and a rock pile to lie on. He's mostly bluster."
+    ],
+    "skin": "b89a6a",
+    "skin2": "eae0cc",
+    "dark": "3a3028",
+    "ears": "pointy",
+    "snout": "long",
+    "tail": "bushy",
+    "leg": 0.32,
+    "body": [
+      1.0,
+      0.85,
+      0.85
+    ]
   },
-  "hints": [
-   "Something yips at night past the fence.",
-   "Long grass: a willow.",
-   "Willows and a rock pile to lie on. He's mostly bluster."
-  ],
-  "skin": "b89a6a",
-  "skin2": "eae0cc",
-  "dark": "3a3028",
-  "ears": "pointy",
-  "snout": "long",
-  "tail": "bushy",
-  "leg": 0.32,
-  "body": [
-   1.0,
-   0.85,
-   0.85
-  ]
- },
- {
-  "name": "Inkwell",
-  "species": "fisher",
-  "plan": "quadruped",
-  "plant": "pine",
-  "palette": "bark",
-  "wants": {
-   "notice": {
-    "pine_grown": 1
-   },
-   "visit": {
-    "brush_pile": 1
-   },
-   "resident": {
-    "pine_flowering": 1,
-    "branches": 1,
-    "leaf_pile": 1
-   }
+  {
+    "name": "Inkwell",
+    "species": "fisher",
+    "plan": "quadruped",
+    "plant": "pine",
+    "palette": "bark",
+    "wants": {
+      "notice": {
+        "pine_grown": 1
+      },
+      "visit": {
+        "brush_pile": 1
+      },
+      "resident": {
+        "pine_flowering": 1,
+        "branches": 1,
+        "leaf_pile": 1
+      }
+    },
+    "hints": [
+      "A dark shape in the pines.",
+      "Shy. A brush pile at the woodland edge.",
+      "A pine with cones, a branch and a leaf pile den."
+    ],
+    "size": 0.85,
+    "skin": "3a2a20",
+    "skin2": "5a4434",
+    "dark": "221812",
+    "ears": "round",
+    "snout": "short",
+    "tail": "bushy",
+    "leg": 0.12,
+    "body": [
+      1.25,
+      0.85,
+      0.85
+    ]
   },
-  "hints": [
-   "A dark shape in the pines.",
-   "Shy. A brush pile at the woodland edge.",
-   "A pine with cones, a branch and a leaf pile den."
-  ],
-  "size": 0.85,
-  "skin": "3a2a20",
-  "skin2": "5a4434",
-  "dark": "221812",
-  "ears": "round",
-  "snout": "short",
-  "tail": "bushy",
-  "leg": 0.12,
-  "body": [
-   1.25,
-   0.85,
-   0.85
-  ]
- },
- {
-  "name": "Velvet",
-  "species": "mink",
-  "plan": "quadruped",
-  "plant": "moss",
-  "palette": "dark",
-  "wants": {
-   "notice": {
-    "puddle": 1
-   },
-   "visit": {
-    "moss_planted": 1
-   },
-   "resident": {
-    "puddle": 1,
-    "moss_grown": 2
-   }
+  {
+    "name": "Velvet",
+    "species": "mink",
+    "plan": "quadruped",
+    "plant": "moss",
+    "palette": "dark",
+    "wants": {
+      "notice": {
+        "puddle": 1
+      },
+      "visit": {
+        "moss_planted": 1
+      },
+      "resident": {
+        "puddle": 1,
+        "moss_grown": 2
+      }
+    },
+    "hints": [
+      "A sleek little swimmer by the puddle.",
+      "Soft moss by the water.",
+      "Moss and the puddle. Very fancy."
+    ],
+    "size": 0.6,
+    "skin": "3a2a20",
+    "skin2": "f2eee4",
+    "ears": "nubs",
+    "snout": "short",
+    "tail": "bushy",
+    "body": [
+      1.35,
+      0.75,
+      0.75
+    ],
+    "leg": 0.05,
+    "eyes": 1.15
   },
-  "hints": [
-   "A sleek little swimmer by the puddle.",
-   "Soft moss by the water.",
-   "Moss and the puddle. Very fancy."
-  ],
-  "size": 0.6,
-  "skin": "3a2a20",
-  "skin2": "f2eee4",
-  "ears": "nubs",
-  "snout": "short",
-  "tail": "bushy",
-  "body": [
-   1.35,
-   0.75,
-   0.75
-  ],
-  "leg": 0.05,
-  "eyes": 1.15
- },
- {
-  "name": "Snapper",
-  "species": "snapping turtle",
-  "plan": "round",
-  "plant": "moss",
-  "palette": "moss",
-  "wants": {
-   "notice": {
-    "puddle": 1
-   },
-   "visit": {
-    "moss_planted": 1
-   },
-   "resident": {
-    "puddle": 1,
-    "moss_flowering": 1,
-    "rocks": 2
-   }
+  {
+    "name": "Snapper",
+    "species": "snapping turtle",
+    "plan": "round",
+    "plant": "moss",
+    "palette": "moss",
+    "wants": {
+      "notice": {
+        "puddle": 1
+      },
+      "visit": {
+        "moss_planted": 1
+      },
+      "resident": {
+        "puddle": 1,
+        "moss_flowering": 1,
+        "rocks": 2
+      }
+    },
+    "hints": [
+      "An old turtle is crossing the lawn. Slowly.",
+      "Moss to grow on his back.",
+      "Mossy shell, a puddle, two rocks. He's ancient and content."
+    ],
+    "size": 1.1,
+    "skin": "5a6040",
+    "dark": "3a3e28",
+    "ears": "none",
+    "snout": "none",
+    "tail": "taper",
+    "body": [
+      1.15,
+      0.65,
+      1.05
+    ],
+    "head": 0.9,
+    "head_taper": 0.3,
+    "eyes": 0.9
   },
-  "hints": [
-   "An old turtle is crossing the lawn. Slowly.",
-   "Moss to grow on his back.",
-   "Mossy shell, a puddle, two rocks. He's ancient and content."
-  ],
-  "size": 1.1,
-  "skin": "5a6040",
-  "dark": "3a3e28",
-  "ears": "none",
-  "snout": "none",
-  "tail": "taper",
-  "body": [
-   1.15,
-   0.65,
-   1.05
-  ],
-  "head": 0.9,
-  "head_taper": 0.3,
-  "eyes": 0.9
- },
- {
-  "name": "Mosaic",
-  "species": "painted turtle",
-  "plan": "round",
-  "plant": "moss",
-  "palette": "spring",
-  "wants": {
-   "notice": {
-    "rocks": 3
-   },
-   "visit": {
-    "puddle": 1
-   },
-   "resident": {
-    "puddle": 1,
-    "rocks": 3,
-    "moss_grown": 1
-   }
+  {
+    "name": "Mosaic",
+    "species": "painted turtle",
+    "plan": "round",
+    "plant": "moss",
+    "palette": "spring",
+    "wants": {
+      "notice": {
+        "rocks": 3
+      },
+      "visit": {
+        "puddle": 1
+      },
+      "resident": {
+        "puddle": 1,
+        "rocks": 3,
+        "moss_grown": 1
+      }
+    },
+    "hints": [
+      "Basking turtles like a row of rocks.",
+      "Water nearby.",
+      "Rocks to bask on, moss, and water."
+    ],
+    "size": 0.7,
+    "skin": "3e4a3a",
+    "ears": "none",
+    "snout": "none",
+    "tail": "short",
+    "body": [
+      1.05,
+      0.6,
+      1.0
+    ],
+    "extras": [
+      "stripes"
+    ],
+    "dark": "e0a030",
+    "eyes": 1.0
   },
-  "hints": [
-   "Basking turtles like a row of rocks.",
-   "Water nearby.",
-   "Rocks to bask on, moss, and water."
-  ],
-  "size": 0.7,
-  "skin": "3e4a3a",
-  "ears": "none",
-  "snout": "none",
-  "tail": "short",
-  "body": [
-   1.05,
-   0.6,
-   1.0
-  ],
-  "extras": [
-   "stripes"
-  ],
-  "dark": "e0a030",
-  "eyes": 1.0
- },
- {
-  "name": "Lake",
-  "species": "common loon",
-  "plan": "bird",
-  "plant": "willow",
-  "palette": "dark",
-  "wants": {
-   "notice": {
-    "puddle": 1,
-    "cleared": 4
-   },
-   "visit": {
-    "willow_planted": 2
-   },
-   "resident": {
-    "puddle": 1,
-    "willow_flowering": 1
-   }
+  {
+    "name": "Lake",
+    "species": "common loon",
+    "plan": "bird",
+    "plant": "willow",
+    "palette": "dark",
+    "wants": {
+      "notice": {
+        "puddle": 1,
+        "cleared": 4
+      },
+      "visit": {
+        "willow_planted": 2
+      },
+      "resident": {
+        "puddle": 1,
+        "willow_flowering": 1
+      }
+    },
+    "hints": [
+      "A haunting call from somewhere north.",
+      "Willows, like a lakeshore.",
+      "Willow and water. She'll sing at dusk."
+    ],
+    "size": 1.0,
+    "skin": "1e2a26",
+    "beak": "2a2a2a",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "short",
+    "tail_color": "1e2a26",
+    "extras": [
+      "ring"
+    ],
+    "skin2": "eceae0",
+    "body": [
+      1.35,
+      0.7,
+      0.95
+    ],
+    "flowering": 0.85,
+    "bloom": "f6f4ec",
+    "eyes": 1.0
   },
-  "hints": [
-   "A haunting call from somewhere north.",
-   "Willows, like a lakeshore.",
-   "Willow and water. She'll sing at dusk."
-  ],
-  "size": 1.0,
-  "skin": "1e2a26",
-  "beak": "2a2a2a",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "short",
-  "tail_color": "1e2a26",
-  "extras": [
-   "ring"
-  ],
-  "skin2": "eceae0",
-  "body": [
-   1.35,
-   0.7,
-   0.95
-  ],
-  "flowering": 0.85,
-  "bloom": "f6f4ec",
-  "eyes": 1.0
- },
- {
-  "name": "Marsh",
-  "species": "wood duck",
-  "plan": "bird",
-  "plant": "holly",
-  "palette": "green",
-  "wants": {
-   "notice": {
-    "puddle": 1
-   },
-   "visit": {
-    "holly_planted": 1
-   },
-   "resident": {
-    "puddle": 1,
-    "holly_grown": 1,
-    "tire": 1
-   }
+  {
+    "name": "Marsh",
+    "species": "wood duck",
+    "plan": "bird",
+    "plant": "holly",
+    "palette": "green",
+    "wants": {
+      "notice": {
+        "puddle": 1
+      },
+      "visit": {
+        "holly_planted": 1
+      },
+      "resident": {
+        "puddle": 1,
+        "holly_grown": 1,
+        "tire": 1
+      }
+    },
+    "hints": [
+      "A fancy duck is checking out the puddle.",
+      "Holly, for the colour.",
+      "Holly, the puddle, and the tire as a nest box."
+    ],
+    "size": 0.8,
+    "skin": "2a5a4a",
+    "beak": "d8503a",
+    "ears": "none",
+    "snout": "bill",
+    "tail": "short",
+    "tail_color": "2a3a3a",
+    "extras": [
+      "crest",
+      "ring"
+    ],
+    "crest_color": "3a2a5a",
+    "skin2": "f2f0e6"
   },
-  "hints": [
-   "A fancy duck is checking out the puddle.",
-   "Holly, for the colour.",
-   "Holly, the puddle, and the tire as a nest box."
-  ],
-  "size": 0.8,
-  "skin": "2a5a4a",
-  "beak": "d8503a",
-  "ears": "none",
-  "snout": "bill",
-  "tail": "short",
-  "tail_color": "2a3a3a",
-  "extras": [
-   "crest",
-   "ring"
-  ],
-  "crest_color": "3a2a5a",
-  "skin2": "f2f0e6"
- },
- {
-  "name": "Knotwood",
-  "species": "downy woodpecker",
-  "plan": "bird",
-  "plant": "holly",
-  "palette": "holly",
-  "wants": {
-   "notice": {
-    "branches": 1
-   },
-   "visit": {
-    "holly_planted": 1
-   },
-   "resident": {
-    "holly_flowering": 1,
-    "log_pile": 1
-   }
+  {
+    "name": "Knotwood",
+    "species": "downy woodpecker",
+    "plan": "bird",
+    "plant": "holly",
+    "palette": "holly",
+    "wants": {
+      "notice": {
+        "branches": 1
+      },
+      "visit": {
+        "holly_planted": 1
+      },
+      "resident": {
+        "holly_flowering": 1,
+        "log_pile": 1
+      }
+    },
+    "hints": [
+      "Tap tap tap... on the fallen branch.",
+      "Holly berries.",
+      "Holly berries and a log pile full of grubs."
+    ],
+    "size": 0.55,
+    "skin": "f2f0ea",
+    "beak": "2a2624",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "fan",
+    "extras": [
+      "cap",
+      "crest"
+    ],
+    "crest_color": "d43a2a",
+    "dark": "1e1c1a",
+    "eyes": 1.15
   },
-  "hints": [
-   "Tap tap tap... on the fallen branch.",
-   "Holly berries.",
-   "Holly berries and a log pile full of grubs."
-  ],
-  "size": 0.55,
-  "skin": "f2f0ea",
-  "beak": "2a2624",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "fan",
-  "extras": [
-   "cap",
-   "crest"
-  ],
-  "crest_color": "d43a2a",
-  "dark": "1e1c1a",
-  "eyes": 1.15
- },
- {
-  "name": "Coo",
-  "species": "mourning dove",
-  "plan": "bird",
-  "plant": "boxwood",
-  "palette": "silver",
-  "wants": {
-   "notice": {
-    "cleared": 2
-   },
-   "visit": {
-    "feeder": 1
-   },
-   "resident": {
-    "boxwood_grown": 1,
-    "puddle": 1
-   }
+  {
+    "name": "Coo",
+    "species": "mourning dove",
+    "plan": "bird",
+    "plant": "boxwood",
+    "palette": "silver",
+    "wants": {
+      "notice": {
+        "cleared": 2
+      },
+      "visit": {
+        "feeder": 1
+      },
+      "resident": {
+        "boxwood_grown": 1,
+        "puddle": 1
+      }
+    },
+    "hints": [
+      "Coo-OO-oo, from the fence.",
+      "Seed spilled under a feeder.",
+      "Boxwood and a drink. She just likes it here."
+    ],
+    "size": 0.7,
+    "skin": "b8a898",
+    "beak": "3a3030",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "fan",
+    "eyes": 1.05
   },
-  "hints": [
-   "Coo-OO-oo, from the fence.",
-   "Seed spilled under a feeder.",
-   "Boxwood and a drink. She just likes it here."
-  ],
-  "size": 0.7,
-  "skin": "b8a898",
-  "beak": "3a3030",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "fan",
-  "eyes": 1.05
- },
- {
-  "name": "Jug",
-  "species": "bullfrog",
-  "plan": "round",
-  "plant": "willow",
-  "palette": "green",
-  "wants": {
-   "notice": {
-    "puddle": 1,
-    "rocks": 2
-   },
-   "visit": {
-    "willow_planted": 1
-   },
-   "resident": {
-    "puddle": 1,
-    "willow_grown": 1
-   }
+  {
+    "name": "Jug",
+    "species": "bullfrog",
+    "plan": "round",
+    "plant": "willow",
+    "palette": "green",
+    "wants": {
+      "notice": {
+        "puddle": 1,
+        "rocks": 2
+      },
+      "visit": {
+        "willow_planted": 1
+      },
+      "resident": {
+        "puddle": 1,
+        "willow_grown": 1
+      }
+    },
+    "hints": [
+      "Jug-o-rum! Something big by the puddle.",
+      "Willows to sit under.",
+      "A willow over the puddle."
+    ],
+    "size": 0.85,
+    "skin": "6a8a4a",
+    "skin2": "e8e2b8",
+    "ears": "none",
+    "snout": "none",
+    "tail": "none",
+    "eye_dir": [
+      0.4,
+      0.7,
+      0.6
+    ],
+    "eyes": 1.5,
+    "head": 1.25
   },
-  "hints": [
-   "Jug-o-rum! Something big by the puddle.",
-   "Willows to sit under.",
-   "A willow over the puddle."
-  ],
-  "size": 0.85,
-  "skin": "6a8a4a",
-  "skin2": "e8e2b8",
-  "ears": "none",
-  "snout": "none",
-  "tail": "none",
-  "eye_dir": [
-   0.4,
-   0.7,
-   0.6
-  ],
-  "eyes": 1.5,
-  "head": 1.25
- },
- {
-  "name": "Lantern",
-  "species": "luna moth",
-  "plan": "bird",
-  "plant": "willow",
-  "palette": "spring",
-  "wants": {
-   "notice": {
-    "pumpkin": 1,
-    "lavender_flowering": 1
-   },
-   "visit": {
-    "willow_grown": 1
-   },
-   "resident": {
-    "lavender_flowering": 2,
-    "willow_flowering": 1
-   }
+  {
+    "name": "Lantern",
+    "species": "luna moth",
+    "plan": "bird",
+    "plant": "willow",
+    "palette": "spring",
+    "wants": {
+      "notice": {
+        "pumpkin": 1,
+        "lavender_flowering": 1
+      },
+      "visit": {
+        "willow_grown": 1
+      },
+      "resident": {
+        "lavender_flowering": 2,
+        "willow_flowering": 1
+      }
+    },
+    "hints": [
+      "A pale moth circling the pumpkins at dusk.",
+      "A willow to rest on.",
+      "Lavender blooms and a flowering willow. Magical."
+    ],
+    "size": 0.6,
+    "skin": "c8e0a8",
+    "ears": "none",
+    "snout": "none",
+    "tail": "none",
+    "extras": [
+      "antennae",
+      "wings"
+    ],
+    "dark": "8a7a4a",
+    "eyes": 1.2,
+    "leg": 0.0
   },
-  "hints": [
-   "A pale moth circling the pumpkins at dusk.",
-   "A willow to rest on.",
-   "Lavender blooms and a flowering willow. Magical."
-  ],
-  "size": 0.6,
-  "skin": "c8e0a8",
-  "ears": "none",
-  "snout": "none",
-  "tail": "none",
-  "extras": [
-   "antennae",
-   "wings"
-  ],
-  "dark": "8a7a4a",
-  "eyes": 1.2,
-  "leg": 0.0
- },
- {
-  "name": "Tidewell",
-  "species": "harbor seal",
-  "plan": "quadruped",
-  "plant": "willow",
-  "palette": "silver",
-  "wants": {
-   "notice": {
-    "puddle": 1,
-    "rocks": 4
-   },
-   "visit": {
-    "cleared": 6
-   },
-   "resident": {
-    "puddle": 1,
-    "rocks": 4,
-    "willow_grown": 1
-   }
+  {
+    "name": "Tidewell",
+    "species": "harbor seal",
+    "plan": "quadruped",
+    "plant": "willow",
+    "palette": "silver",
+    "wants": {
+      "notice": {
+        "puddle": 1,
+        "rocks": 4
+      },
+      "visit": {
+        "cleared": 6
+      },
+      "resident": {
+        "puddle": 1,
+        "rocks": 4,
+        "willow_grown": 1
+      }
+    },
+    "hints": [
+      "Is that... a seal? In the yard?",
+      "Room to flop.",
+      "Rocks, water, a willow. Don't ask how he got here."
+    ],
+    "size": 1.05,
+    "skin": "8a8e90",
+    "skin2": "b0b4b4",
+    "ears": "none",
+    "snout": "short",
+    "tail": "fan",
+    "body": [
+      1.3,
+      0.85,
+      0.85
+    ],
+    "eyes": 1.45
   },
-  "hints": [
-   "Is that... a seal? In the yard?",
-   "Room to flop.",
-   "Rocks, water, a willow. Don't ask how he got here."
-  ],
-  "size": 1.05,
-  "skin": "8a8e90",
-  "skin2": "b0b4b4",
-  "ears": "none",
-  "snout": "short",
-  "tail": "fan",
-  "body": [
-   1.3,
-   0.85,
-   0.85
-  ],
-  "eyes": 1.45
- },
- {
-  "name": "Beacon",
-  "species": "Atlantic puffin",
-  "plan": "bird",
-  "plant": "moss",
-  "palette": "dark",
-  "wants": {
-   "notice": {
-    "rocks": 5
-   },
-   "visit": {
-    "moss_planted": 1
-   },
-   "resident": {
-    "rocks": 5,
-    "moss_grown": 1,
-    "puddle": 1
-   }
+  {
+    "name": "Beacon",
+    "species": "Atlantic puffin",
+    "plan": "bird",
+    "plant": "moss",
+    "palette": "dark",
+    "wants": {
+      "notice": {
+        "rocks": 5
+      },
+      "visit": {
+        "moss_planted": 1
+      },
+      "resident": {
+        "rocks": 5,
+        "moss_grown": 1,
+        "puddle": 1
+      }
+    },
+    "hints": [
+      "A puffin, a long way from the islands.",
+      "Moss, like a clifftop.",
+      "Rocks, moss and water. He'll stay for the summer."
+    ],
+    "size": 0.65,
+    "skin": "f2f0ea",
+    "beak": "e8602a",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "short",
+    "tail_color": "1e1e1e",
+    "extras": [
+      "cap"
+    ],
+    "dark": "1e1e1e",
+    "eyes": 1.15
   },
-  "hints": [
-   "A puffin, a long way from the islands.",
-   "Moss, like a clifftop.",
-   "Rocks, moss and water. He'll stay for the summer."
-  ],
-  "size": 0.65,
-  "skin": "f2f0ea",
-  "beak": "e8602a",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "short",
-  "tail_color": "1e1e1e",
-  "extras": [
-   "cap"
-  ],
-  "dark": "1e1e1e",
-  "eyes": 1.15
- },
- {
-  "name": "Sky",
-  "species": "eastern bluebird",
-  "plan": "bird",
-  "plant": "boxwood",
-  "palette": "blue",
-  "wants": {
-   "notice": {
-    "cleared": 3
-   },
-   "visit": {
-    "boxwood_planted": 1
-   },
-   "resident": {
-    "nest_box": 1,
-    "boxwood_grown": 1
-   }
+  {
+    "name": "Sky",
+    "species": "eastern bluebird",
+    "plan": "bird",
+    "plant": "boxwood",
+    "palette": "blue",
+    "wants": {
+      "notice": {
+        "cleared": 3
+      },
+      "visit": {
+        "boxwood_planted": 1
+      },
+      "resident": {
+        "nest_box": 1,
+        "boxwood_grown": 1
+      }
+    },
+    "hints": [
+      "A flash of blue on the fence post.",
+      "A boxwood.",
+      "A nest box and a boxwood."
+    ],
+    "size": 0.6,
+    "skin": "4a7ac0",
+    "beak": "2a2624",
+    "ears": "none",
+    "snout": "beak",
+    "tail": "fan",
+    "extras": [
+      "belly"
+    ],
+    "skin2": "d07a40",
+    "eyes": 1.15
   },
-  "hints": [
-   "A flash of blue on the fence post.",
-   "A boxwood.",
-   "A nest box and a boxwood."
-  ],
-  "size": 0.6,
-  "skin": "4a7ac0",
-  "beak": "2a2624",
-  "ears": "none",
-  "snout": "beak",
-  "tail": "fan",
-  "extras": [
-   "belly"
-  ],
-  "skin2": "d07a40",
-  "eyes": 1.15
- },
- {
-  "name": "Patches",
-  "species": "calico cat",
-  "plan": "quadruped",
-  "plant": "aster",
-  "palette": "aster",
-  "wants": {
-   "notice": {
-    "cleared": 3
-   },
-   "visit": {
-    "aster_planted": 1
-   },
-   "resident": {
-    "aster_flowering": 2
-   }
+  {
+    "name": "Patches",
+    "species": "calico cat",
+    "plan": "quadruped",
+    "plant": "aster",
+    "palette": "aster",
+    "wants": {
+      "notice": {
+        "cleared": 3
+      },
+      "visit": {
+        "aster_planted": 1
+      },
+      "resident": {
+        "aster_flowering": 2
+      }
+    },
+    "hints": [
+      "Something calico watches the bees from the gap in the fence.",
+      "Calico aster: she likes the little bees it brings.",
+      "Two asters in flower, humming with bees."
+    ],
+    "skin": "d88a42",
+    "skin2": "f4ede0",
+    "dark": "2a2422",
+    "ears": "pointy",
+    "snout": "short",
+    "tail": "thin",
+    "extras": [
+      "bib",
+      "blaze"
+    ],
+    "leg": 0.22,
+    "body": [
+      0.9,
+      0.85,
+      0.85
+    ],
+    "bloom": "fffaf4",
+    "flowering": 0.9
   },
-  "hints": [
-   "Something calico watches the bees from the gap in the fence.",
-   "Calico aster: she likes the little bees it brings.",
-   "Two asters in flower, humming with bees."
-  ],
-  "skin": "d88a42",
-  "skin2": "f4ede0",
-  "dark": "2a2422",
-  "ears": "pointy",
-  "snout": "short",
-  "tail": "thin",
-  "extras": [
-   "bib",
-   "blaze"
-  ],
-  "leg": 0.22,
-  "body": [
-   0.9,
-   0.85,
-   0.85
-  ],
-  "bloom": "fffaf4",
-  "flowering": 0.9
- }
+  {
+    "name": "Hedgerow",
+    "species": "European hedgehog",
+    "dlc": "hp-hedgerow",
+    "plan": "round",
+    "plant": "fern",
+    "palette": "bark",
+    "wants": {
+      "notice": {
+        "brush_pile": 1
+      },
+      "visit": {
+        "fern_planted": 1,
+        "leaf_pile": 1
+      },
+      "resident": {
+        "fern_grown": 2,
+        "leaf_pile": 1
+      }
+    },
+    "hints": [
+      "Snuffling at the bottom of the hedge, after dark.",
+      "A fern and a leaf pile to nose about in.",
+      "Two grown ferns and a leaf pile to sleep under."
+    ],
+    "size": 0.8,
+    "skin": "8a6a4a",
+    "skin2": "e8d8bc",
+    "dark": "2a2018",
+    "ears": "round",
+    "snout": "long",
+    "tail": "short",
+    "eyes": 1.1,
+    "leg": 0.15
+  },
+  {
+    "name": "Moonbeam",
+    "species": "snowy arctic fox",
+    "dlc": "hp-moonbeam",
+    "plan": "quadruped",
+    "plant": "aster",
+    "palette": "snow",
+    "wants": {
+      "notice": {
+        "cleared": 3
+      },
+      "visit": {
+        "aster_planted": 1
+      },
+      "resident": {
+        "aster_flowering": 1,
+        "rocks": 2
+      }
+    },
+    "hints": [
+      "White fur by the gate, like the first snow.",
+      "Asters, for the cool weather.",
+      "Asters in flower and a few rocks to curl up by."
+    ],
+    "skin": "f4f2ec",
+    "skin2": "ffffff",
+    "dark": "3a3a3a",
+    "ears": "pointy",
+    "snout": "long",
+    "tail": "bushy",
+    "leg": 0.22,
+    "body": [
+      0.95,
+      0.9,
+      0.9
+    ]
+  },
+  {
+    "name": "Glimmer",
+    "species": "firefly",
+    "dlc": "hp-glimmer",
+    "plan": "bird",
+    "plant": "lavender",
+    "palette": "golden",
+    "wants": {
+      "notice": {
+        "lavender_planted": 1
+      },
+      "visit": {
+        "puddle": 1
+      },
+      "resident": {
+        "lavender_flowering": 1,
+        "lawn_chair": 1
+      }
+    },
+    "hints": [
+      "A tiny light blinking over the lawn at dusk.",
+      "A little water nearby.",
+      "Lavender in flower and a chair to watch the show from."
+    ],
+    "size": 0.55,
+    "skin": "ffe25a",
+    "dark": "3a3018",
+    "ears": "none",
+    "snout": "none",
+    "tail": "none",
+    "extras": [
+      "antennae",
+      "wings"
+    ],
+    "eyes": 1.2,
+    "leg": 0.0,
+    "bloom": "fff27a",
+    "flowering": 0.95,
+    "skin2": "fff6b0"
+  }
 ]

@@ -16,6 +16,7 @@ extends RefCounted
 ##            facedisc
 ##   bloom    hex for the cell-13 bloom; flowering 0..1
 ##   wants / hints   garden wishes (see garden_game.gd) and the journal's words for them
+##   dlc      optional: a Fruitstand add-on id ("hp-hedgerow"); the pet stays away until the player unlocks it
 ##
 ## Built in creature space: x forward, y up, z to the side. Head parts are in head units (h = head radius).
 
@@ -180,6 +181,7 @@ static func build(spec: Dictionary) -> CharacterArtProfile:
 	var p := CharacterArtProfile.new()
 	p.pet_name = spec["name"]
 	p.species = spec["species"]
+	p.dlc = str(spec.get("dlc", ""))
 	p.adopted = spec.get("adopted", "October 8, 2026")
 	p.seed = absi(hash(p.pet_name)) % 100000
 	p.leaf_sheet = "hedge" + str(spec.get("plant", "ivy"))
